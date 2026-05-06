@@ -17,5 +17,8 @@ public class YiAnLianConstants
      */
     public static final String deptListPath = "/enadmin/api/open/v1/contact/dept/list";
 
-
+    /**
+     * 获取部门列表接口路径
+     */
+    public static final String deptCreatePath = "/enadmin/api/open/v1/contact/dept/create";
 }

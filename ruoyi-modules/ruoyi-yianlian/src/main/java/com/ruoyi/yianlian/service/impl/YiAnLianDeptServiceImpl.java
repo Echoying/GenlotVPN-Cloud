@@ -1,4 +1,6 @@
 package com.ruoyi.yianlian.service.impl;
+import com.ruoyi.common.core.utils.StringUtils;
+import com.ruoyi.yianlian.api.domain.vo.YiAnLianDeptVO;
 import com.ruoyi.yianlian.client.OpenApiClient;
 import com.ruoyi.yianlian.client.dto.DeptListRequest;
 import com.ruoyi.yianlian.client.dto.DeptListResp;
@@ -29,5 +31,22 @@ public class YiAnLianDeptServiceImpl implements YiAnLianDeptService
             return null;
         }
 
+    }
+
+    @Override
+    public Boolean create(YiAnLianDeptVO request) {
+        if(StringUtils.isNull(request.getId()) || StringUtils.isNull(request.getName())
+                || StringUtils.isNull(request.getPath())
+                || StringUtils.isNull(request.getType())  || StringUtils.isNull(request.getParentId())){
+            log.error("创建部门参数错误 {}", request);
+            return false;
+        }
+        try {
+            return yiAnLianOpenApiClient.post(YiAnLianConstants.deptCreatePath, request, Boolean.class);
+        }
+        catch (Exception e){
+            log.info(e.getMessage());
+        }
+        return false;
     }
 }

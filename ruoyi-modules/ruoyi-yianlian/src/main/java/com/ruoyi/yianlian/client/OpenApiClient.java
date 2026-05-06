@@ -60,11 +60,14 @@ public class OpenApiClient
                 redisService.setCacheObject(cacheKey, tokenVO);
             }
             response = post(path, body, tokenVO.getAccessToken(), YiAnLianResponse.class);
-            if(response == null || response.getData() == null){
+            if(response == null ){
                 throw new YiAnLianException("易安联接口返回结果为空");
             }
             if(YiAnLianResultCode.SUCCESS.getCode() != response.getCode()) {
                 throw new YiAnLianException(response.getMessages());
+            }
+            if(responseType == Boolean.class){
+                return (T) Boolean.TRUE;
             }
         }
         catch (YiAnLianException e)
