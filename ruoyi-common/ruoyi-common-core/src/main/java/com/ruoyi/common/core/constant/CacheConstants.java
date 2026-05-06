@@ -53,6 +53,11 @@ public class CacheConstants
     public static final String PWD_ERR_CNT_KEY = "pwd_err_cnt:";
 
     /**
+     * 易安联 token 缓存 key
+     */
+    public static final String YIANLIAN_TOKEN_KEY = "yianlian_token:";
+
+    /**
      * 登录IP黑名单 cache key
      */
     public static final String SYS_LOGIN_BLACKIPLIST = SYS_CONFIG_KEY + "sys.login.blackIPList";

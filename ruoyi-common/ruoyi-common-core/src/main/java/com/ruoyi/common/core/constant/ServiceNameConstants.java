@@ -21,4 +21,9 @@ public class ServiceNameConstants
      * 文件服务的serviceid
      */
     public static final String FILE_SERVICE = "ruoyi-file";
+
+    /**
+     * 易安联服务的serviceid
+     */
+    public static final String YIANLIAN_SERVICE = "ruoyi-yianlian";
 }

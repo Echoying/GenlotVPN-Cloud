@@ -10,6 +10,7 @@
 
     <modules>
         <module>ruoyi-api-system</module>
+        <module>ruoyi-api-yianlian</module>
     </modules>
 
     <artifactId>ruoyi-api</artifactId>

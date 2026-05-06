@@ -289,6 +289,13 @@
                 <version>${ruoyi.version}</version>
             </dependency>
 
+            <!-- 易安联接口 -->
+            <dependency>
+                <groupId>com.ruoyi</groupId>
+                <artifactId>ruoyi-api-yianlian</artifactId>
+                <version>${ruoyi.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 

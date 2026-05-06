@@ -2,7 +2,7 @@
 
 # 使用说明，用来提示输入参数
 usage() {
-	echo "Usage: sh 执行脚本.sh [port|base|modules|stop|rm]"
+	echo "Usage: sh 执行脚本.sh [port|base|modules|stop|stop-sub|rm]"
 	exit 1
 }
 
@@ -31,13 +31,18 @@ base(){
 
 # 启动程序模块（必须）
 modules(){
-	docker-compose up -d ruoyi-nginx ruoyi-gateway ruoyi-auth ruoyi-modules-system ruoyi-modules-gen ruoyi-modules-job ruoyi-modules-file ruoyi-visual-monitor
+	docker-compose up -d ruoyi-nginx ruoyi-gateway ruoyi-auth ruoyi-modules-system ruoyi-modules-gen ruoyi-modules-job ruoyi-modules-file ruoyi-visual-monitor ruoyi-modules-yianlian
 }
 
 # 关闭所有环境/模块
 stop(){
 	docker-compose stop
 }
+# 关闭所有环境/模块
+stopSub(){
+	docker-compose stop ruoyi-nginx ruoyi-gateway ruoyi-auth ruoyi-modules-system ruoyi-modules-gen ruoyi-modules-job ruoyi-modules-file ruoyi-visual-monitor ruoyi-modules-yianlian
+}
+
 
 # 删除所有环境/模块
 rm(){
@@ -57,6 +62,9 @@ case "$1" in
 ;;
 "stop")
 	stop
+;;
+"stop-sub")
+	stopSub
 ;;
 "rm")
 	rm

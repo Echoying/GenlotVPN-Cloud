@@ -54,6 +54,9 @@ def main() -> int:
     print("begin copy ruoyi-modules-gen")
     copy_file(base.parent / "ruoyi-modules" / "ruoyi-gen" / "target" / "ruoyi-modules-gen.jar", base / "ruoyi" / "modules" / "gen" / "jar")
 
+    print("begin copy ruoyi-modules-yianlian")
+    copy_file(base.parent / "ruoyi-modules" / "ruoyi-yianlian" / "target" / "ruoyi-modules-yianlian.jar", base / "ruoyi" / "modules" / "yianlian" / "jar")
+
     print("copy finished.")
     return 0
 

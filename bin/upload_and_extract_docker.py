@@ -122,7 +122,8 @@ def main() -> int:
             sftp.close()
 
         print("[4/4] 远端解压并完成替换")
-        run_remote(ssh, f"rm -rf '{args.remote_base}/docker'")
+        # 不能删除基础数据
+        # run_remote(ssh, f"rm -rf '{args.remote_base}/docker'")
         run_remote(ssh, f"tar -xzf '{remote_archive}' -C '{args.remote_base}'")
         if not args.keep_remote_archive:
             run_remote(ssh, f"rm -f '{remote_archive}'")
