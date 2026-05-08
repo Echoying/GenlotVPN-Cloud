@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 
 /**
  * 易安联token服务实现
@@ -43,6 +45,38 @@ public class YiAnLianDeptServiceImpl implements YiAnLianDeptService
         }
         try {
             return yiAnLianOpenApiClient.post(YiAnLianConstants.deptCreatePath, request, Boolean.class);
+        }
+        catch (Exception e){
+            log.info(e.getMessage());
+        }
+        return false;
+    }
+
+    @Override
+    public Boolean update(YiAnLianDeptVO request) {
+        if (StringUtils.isNull(request.getId()) || StringUtils.isNull(request.getName())
+                || StringUtils.isNull(request.getPath()) || StringUtils.isNull(request.getType())
+                || StringUtils.isNull(request.getParentId())) {
+            log.error("更新部门参数错误 {}", request);
+            return false;
+        }
+        try {
+            return yiAnLianOpenApiClient.post(YiAnLianConstants.deptUpdatePath + "/" + request.getId(), request, Boolean.class);
+        }
+        catch (Exception e){
+            log.info(e.getMessage());
+        }
+        return false;
+    }
+
+    @Override
+    public Boolean delete(List<String> ids) {
+        if (StringUtils.isNull(ids) || ids.isEmpty()) {
+            log.error("删除部门参数错误 {}", ids);
+            return false;
+        }
+        try {
+            return yiAnLianOpenApiClient.post(YiAnLianConstants.deptDeletePath, ids, Boolean.class);
         }
         catch (Exception e){
             log.info(e.getMessage());

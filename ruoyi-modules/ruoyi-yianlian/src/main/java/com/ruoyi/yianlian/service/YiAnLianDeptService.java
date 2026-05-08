@@ -4,6 +4,8 @@ import com.ruoyi.yianlian.api.domain.vo.YiAnLianDeptVO;
 import com.ruoyi.yianlian.client.dto.DeptListRequest;
 import com.ruoyi.yianlian.client.dto.DeptListResp;
 
+import java.util.List;
+
 /**
  * 易安联token服务
  */
@@ -24,5 +26,21 @@ public interface YiAnLianDeptService
      * @return token数据
      */
     Boolean create(YiAnLianDeptVO request);
+
+    /**
+     * 5.2.3更新部门接口
+     *
+     * @param request 请求参数
+     * @return token数据
+     */
+    Boolean update(YiAnLianDeptVO request);
+
+    /**
+     * 5.2.4删除部门接口
+     *
+     * @param ids 请求参数
+     * @return token数据
+     */
+    Boolean delete(List<String> ids);
 
 }
