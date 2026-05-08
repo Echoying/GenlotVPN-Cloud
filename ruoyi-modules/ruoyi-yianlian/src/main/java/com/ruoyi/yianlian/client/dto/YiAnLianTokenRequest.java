@@ -11,7 +11,7 @@ import java.io.Serializable;
  */
 @Data
 @ApiModel("Yianlian Token请求实体")
-public class TokenRequest implements Serializable
+public class YiAnLianTokenRequest implements Serializable
 {
 
     @ApiModelProperty(value = "应用唯一id", example = "xxx")

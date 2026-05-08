@@ -1,4 +1,4 @@
-package com.ruoyi.yianlian.api.domain.vo;
+package com.ruoyi.yianlian.client.dto.vo;
 
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;

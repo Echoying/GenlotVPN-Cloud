@@ -13,7 +13,7 @@ POST https://10.9.1.72:20203/enadmin/api/open/v1/contact/dept/list
 Content-Type: application/json
 # 编码方式
 Content-Encoding: utf-8
-accessToken:enaccess-80cf7875f745ff6cf87b96d64de25936
+accessToken:enaccess-e43d0a3bf309d53c73a81ced2234aeb5
 
 {
 

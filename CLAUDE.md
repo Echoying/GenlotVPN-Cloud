@@ -23,6 +23,9 @@ mvn -pl ruoyi-auth -am clean package -DskipTests
 mvn -pl ruoyi-modules/ruoyi-system -am clean package -DskipTests
 mvn -pl ruoyi-modules/ruoyi-yianlian -am clean package -DskipTests
 
+# Compile only (faster for development)
+mvn -pl ruoyi-modules/ruoyi-yianlian -am clean compile
+
 # Run tests for one module
 mvn -pl ruoyi-auth -am test
 mvn -pl ruoyi-modules/ruoyi-yianlian -am test
@@ -100,6 +103,20 @@ python bin/upload_and_extract_docker.py --password "<服务器密码>"
 ### Internal service call pattern
 - Internal APIs generally use `R<T>` as response wrapper.
 - Internal-only endpoints are guarded via `@InnerAuth` and `from-source: inner` header convention.
+- Feign clients in `ruoyi-api/*` modules define service-to-service contracts.
+- Each Feign interface has a corresponding `FallbackFactory` for circuit breaking.
+
+### YiAnLian module architecture
+- **External endpoints** (`/yianlian/*`): Public REST APIs returning `AjaxResult`.
+- **Internal endpoints** (`/yianlian/inner/*`): Feign-accessible APIs with `@InnerAuth`, returning `R<T>`.
+- **Service layer**: Business logic with validation, calls `OpenApiClient` for third-party integration.
+- **DTO pattern**: Request/Response DTOs in `client.dto` package, VOs in `api.domain.vo` package.
+- **Constants**: API paths centralized in `YiAnLianConstants.java`.
+
+### Cross-module dependencies
+- `ruoyi-yianlian` can call `ruoyi-system` via `RemoteDeptService` and `RemoteRoleService` (Feign).
+- `ruoyi-system` exposes internal endpoints at `/dept/inner/list` and `/role/inner/list`.
+- All internal calls require `SecurityConstants.FROM_SOURCE` header with value "inner".
 
 ## Deployment-specific notes
 - `docker/docker-compose.yml` defines exposed ports and all core containers.
@@ -112,3 +129,30 @@ python bin/upload_and_extract_docker.py --password "<服务器密码>"
 - Root `pom.xml` profiles define Nacos addresses (`10.9.2.177:8848`) and namespaces (`dev`/`test`); service bootstrap files may point to in-network hostnames (e.g. `ruoyi-nacos:8848`) when running in Docker.
 - For module startup issues, prioritize validating Nacos DataId/Group/namespace alignment (especially `*-dev.yml`) before changing code.
 - Yianlian service is not included in `deploy.sh modules`; if deploying it, build/copy/upload and start that container explicitly.
+
+## Code patterns and conventions
+
+### Adding new business modules
+1. Create module structure following existing pattern (controller/service/mapper/domain).
+2. Add module to root `pom.xml` and `ruoyi-modules/pom.xml`.
+3. Create corresponding API module in `ruoyi-api/` if cross-service calls are needed.
+4. Use `@InnerAuth` for internal-only endpoints.
+5. Follow DTO/VO separation: DTOs for transport, VOs for domain entities.
+
+### MyBatis mapper conventions
+- ResultMap ID matches entity name (e.g., `LineAppResult` for `LineApp`).
+- Common SQL fragments use `<sql id="selectXxxVo">` pattern.
+- Dynamic SQL uses `<if test="field != null and field != ''">` for string fields.
+- Insert/Update use dynamic columns with `<if>` tags.
+
+### Frontend conventions
+- API calls in `src/api/` directory, organized by module.
+- Views in `src/views/` follow module structure.
+- Use `dict.type.xxx` for dictionary data binding.
+- Form validation rules defined in component `rules` data property.
+- Use `v-hasPermi` directive for permission control on buttons.
+
+### Database migrations
+- SQL update scripts go in `sql/update/` directory.
+- Use descriptive filenames (e.g., `add_line_app_url.sql`).
+- Include comments explaining the change purpose.

@@ -9,10 +9,10 @@ import com.ruoyi.common.log.enums.BusinessType;
 import com.ruoyi.common.security.annotation.RequiresPermissions;
 import com.ruoyi.common.security.utils.SecurityUtils;
 import com.ruoyi.yianlian.domain.LineApp;
-import com.ruoyi.yianlian.service.ILineAppService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
 
 import javax.servlet.http.HttpServletResponse;
 import java.util.List;
@@ -27,7 +27,7 @@ import java.util.List;
 public class LineAppController extends BaseController
 {
     @Autowired
-    private ILineAppService lineAppService;
+    private IVpnLineAppService lineAppService;
 
     /**
      * 获取线路列表

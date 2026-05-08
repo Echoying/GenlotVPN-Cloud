@@ -1,11 +1,13 @@
-package com.ruoyi.yianlian.service.impl;
+package com.ruoyi.yianlian.service.yianlian.impl;
 import com.ruoyi.common.core.utils.StringUtils;
-import com.ruoyi.yianlian.api.domain.vo.YiAnLianDeptVO;
+import com.ruoyi.yianlian.client.dto.vo.YiAnLianDeptVO;
 import com.ruoyi.yianlian.client.OpenApiClient;
-import com.ruoyi.yianlian.client.dto.DeptListRequest;
-import com.ruoyi.yianlian.client.dto.DeptListResp;
+import com.ruoyi.yianlian.client.dto.YiAnLianDeptListRequest;
+import com.ruoyi.yianlian.client.dto.YiAnLianDeptListResp;
 import com.ruoyi.yianlian.constant.YiAnLianConstants;
-import com.ruoyi.yianlian.service.YiAnLianDeptService;
+import com.ruoyi.yianlian.domain.LineApp;
+import com.ruoyi.yianlian.service.yianlian.IYiAnLianDeptService;
+import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,15 +20,19 @@ import java.util.List;
  */
 @Service
 @Slf4j
-public class YiAnLianDeptServiceImpl implements YiAnLianDeptService
+public class YiAnLianDeptServiceImpl implements IYiAnLianDeptService
 {
     @Autowired
-    private OpenApiClient yiAnLianOpenApiClient;
+    private OpenApiClient openApiClient;
 
 
-    public DeptListResp getDeptList(DeptListRequest request){
+    @Autowired
+    private IVpnLineAppService lineAppService;
+
+
+    public YiAnLianDeptListResp getDeptList(YiAnLianDeptListRequest request){
         try {
-            return yiAnLianOpenApiClient.post(YiAnLianConstants.deptListPath, request, DeptListResp.class);
+            return openApiClient.post(request.getAppId(), YiAnLianConstants.deptListPath, request, YiAnLianDeptListResp.class);
         }
         catch (Exception e){
             log.info(e.getMessage());
@@ -36,7 +42,7 @@ public class YiAnLianDeptServiceImpl implements YiAnLianDeptService
     }
 
     @Override
-    public Boolean create(YiAnLianDeptVO request) {
+    public Boolean create(String appId, YiAnLianDeptVO request) {
         if(StringUtils.isNull(request.getId()) || StringUtils.isNull(request.getName())
                 || StringUtils.isNull(request.getPath())
                 || StringUtils.isNull(request.getType())  || StringUtils.isNull(request.getParentId())){
@@ -44,7 +50,7 @@ public class YiAnLianDeptServiceImpl implements YiAnLianDeptService
             return false;
         }
         try {
-            return yiAnLianOpenApiClient.post(YiAnLianConstants.deptCreatePath, request, Boolean.class);
+            return openApiClient.post(appId,YiAnLianConstants.deptCreatePath, request, Boolean.class);
         }
         catch (Exception e){
             log.info(e.getMessage());
@@ -53,7 +59,7 @@ public class YiAnLianDeptServiceImpl implements YiAnLianDeptService
     }
 
     @Override
-    public Boolean update(YiAnLianDeptVO request) {
+    public Boolean update(String appId, YiAnLianDeptVO request) {
         if (StringUtils.isNull(request.getId()) || StringUtils.isNull(request.getName())
                 || StringUtils.isNull(request.getPath()) || StringUtils.isNull(request.getType())
                 || StringUtils.isNull(request.getParentId())) {
@@ -61,7 +67,7 @@ public class YiAnLianDeptServiceImpl implements YiAnLianDeptService
             return false;
         }
         try {
-            return yiAnLianOpenApiClient.post(YiAnLianConstants.deptUpdatePath + "/" + request.getId(), request, Boolean.class);
+            return openApiClient.post(appId, YiAnLianConstants.deptUpdatePath + "/" + request.getId(), request, Boolean.class);
         }
         catch (Exception e){
             log.info(e.getMessage());
@@ -70,17 +76,26 @@ public class YiAnLianDeptServiceImpl implements YiAnLianDeptService
     }
 
     @Override
-    public Boolean delete(List<String> ids) {
+    public Boolean delete(String appId, List<String> ids) {
         if (StringUtils.isNull(ids) || ids.isEmpty()) {
             log.error("删除部门参数错误 {}", ids);
             return false;
         }
         try {
-            return yiAnLianOpenApiClient.post(YiAnLianConstants.deptDeletePath, ids, Boolean.class);
+            return openApiClient.post(appId, YiAnLianConstants.deptDeletePath, ids, Boolean.class);
         }
         catch (Exception e){
             log.info(e.getMessage());
         }
         return false;
+    }
+
+    private String GetDeptPath(String appId){
+        LineApp lineApp = lineAppService.selectLineAppById(appId);
+        if(lineApp == null || StringUtils.isNull(lineApp.getUrl()) || StringUtils.isEmpty(lineApp.getUrl())){
+            log.error("获取部门列表参数错误: 线路不存在{}", appId);
+            return null;
+        }
+        return lineApp.getUrl() + YiAnLianConstants.deptListPath ;
     }
 }

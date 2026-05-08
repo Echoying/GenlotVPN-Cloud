@@ -1,11 +1,13 @@
-package com.ruoyi.yianlian.service.impl;
+package com.ruoyi.yianlian.service.vpn.impl;
 
 
+import com.ruoyi.common.core.constant.CacheConstants;
 import com.ruoyi.common.core.exception.ServiceException;
 
+import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.yianlian.domain.LineApp;
 import com.ruoyi.yianlian.mapper.LineAppMapper;
-import com.ruoyi.yianlian.service.ILineAppService;
+import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,12 +19,31 @@ import java.util.List;
  * @author ruoyi
  */
 @Service
-public class LineAppServiceImpl implements ILineAppService
+public class VpnLineAppServiceImpl implements IVpnLineAppService
 {
     @Autowired
     private LineAppMapper lineAppMapper;
 
+    @Autowired
+    private RedisService  redisService;
 
+
+
+    @Override
+    public LineApp getLineAppByAppId(String appId){
+
+        // 先redis获取
+        LineApp lineApp = redisService.getCacheObject(buildCacheKey(appId));
+        if(lineApp == null){
+            lineApp = lineAppMapper.selectLineAppById(appId);
+            if(lineApp == null){
+                throw new ServiceException("线路不存在");
+            }
+            redisService.setCacheObject(buildCacheKey(appId), lineApp);
+        }
+
+        return lineApp;
+    }
     /**
      * 查询线路信息
      * 
@@ -91,6 +112,11 @@ public class LineAppServiceImpl implements ILineAppService
         {
             lineAppMapper.deleteLineAppById(appId);
         }
+    }
+
+    private String buildCacheKey(String appId)
+    {
+        return CacheConstants.YIANLIAN_VPN_LINE_APP + appId;
     }
 
 }

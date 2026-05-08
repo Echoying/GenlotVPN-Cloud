@@ -1,15 +1,15 @@
-package com.ruoyi.yianlian.service;
+package com.ruoyi.yianlian.service.yianlian;
 
-import com.ruoyi.yianlian.api.domain.vo.YiAnLianDeptVO;
-import com.ruoyi.yianlian.client.dto.DeptListRequest;
-import com.ruoyi.yianlian.client.dto.DeptListResp;
+import com.ruoyi.yianlian.client.dto.vo.YiAnLianDeptVO;
+import com.ruoyi.yianlian.client.dto.YiAnLianDeptListRequest;
+import com.ruoyi.yianlian.client.dto.YiAnLianDeptListResp;
 
 import java.util.List;
 
 /**
  * 易安联token服务
  */
-public interface YiAnLianDeptService
+public interface IYiAnLianDeptService
 {
     /**
      * 获取易安联部门列表
@@ -17,7 +17,7 @@ public interface YiAnLianDeptService
      * @param request 请求参数
      * @return token数据
      */
-    DeptListResp getDeptList(DeptListRequest request);
+    YiAnLianDeptListResp getDeptList(YiAnLianDeptListRequest request);
 
     /**
      * 5.2.2创建部门接口
@@ -25,7 +25,7 @@ public interface YiAnLianDeptService
      * @param request 请求参数
      * @return token数据
      */
-    Boolean create(YiAnLianDeptVO request);
+    Boolean create(String appId, YiAnLianDeptVO request);
 
     /**
      * 5.2.3更新部门接口
@@ -33,7 +33,7 @@ public interface YiAnLianDeptService
      * @param request 请求参数
      * @return token数据
      */
-    Boolean update(YiAnLianDeptVO request);
+    Boolean update(String appId,YiAnLianDeptVO request);
 
     /**
      * 5.2.4删除部门接口
@@ -41,6 +41,6 @@ public interface YiAnLianDeptService
      * @param ids 请求参数
      * @return token数据
      */
-    Boolean delete(List<String> ids);
+    Boolean delete(String appId, List<String> ids);
 
 }

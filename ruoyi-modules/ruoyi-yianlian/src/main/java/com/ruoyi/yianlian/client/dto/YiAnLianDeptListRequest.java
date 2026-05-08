@@ -1,17 +1,18 @@
 package com.ruoyi.yianlian.client.dto;
 
+import com.ruoyi.yianlian.client.YiAnLianBase.YiAnLianRequest;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
-
-import java.io.Serializable;
+import lombok.EqualsAndHashCode;
 
 /**
  * 易安联获取token请求
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @ApiModel("获取部门列表接口")
-public class DeptListRequest implements Serializable
+public class YiAnLianDeptListRequest extends YiAnLianRequest
 {
 
     @ApiModelProperty(value = "第几页数据，默认从0开始", example = "0")

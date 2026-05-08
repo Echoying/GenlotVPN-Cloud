@@ -1,6 +1,6 @@
 package com.ruoyi.yianlian.client.dto;
 
-import com.ruoyi.yianlian.api.domain.vo.YiAnLianDeptVO;
+import com.ruoyi.yianlian.client.dto.vo.YiAnLianDeptVO;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -13,7 +13,7 @@ import java.util.Vector;
  */
 @Data
 @ApiModel("Yianlian Token请求实体")
-public class DeptListResp implements Serializable
+public class YiAnLianDeptListResp implements Serializable
 {
 
     @ApiModelProperty(value = "第几页数据，默认从0开始", example = "0")

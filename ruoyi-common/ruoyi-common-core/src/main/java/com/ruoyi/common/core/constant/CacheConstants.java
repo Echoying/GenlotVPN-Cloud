@@ -61,4 +61,10 @@ public class CacheConstants
      * 登录IP黑名单 cache key
      */
     public static final String SYS_LOGIN_BLACKIPLIST = SYS_CONFIG_KEY + "sys.login.blackIPList";
+
+
+    /**
+     * 易安联 token 缓存 key
+     */
+    public static final String YIANLIAN_VPN_LINE_APP = "yianlian_token:";
 }

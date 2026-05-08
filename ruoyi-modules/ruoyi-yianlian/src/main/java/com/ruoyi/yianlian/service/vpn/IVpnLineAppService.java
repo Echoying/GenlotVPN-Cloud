@@ -1,4 +1,4 @@
-package com.ruoyi.yianlian.service;
+package com.ruoyi.yianlian.service.vpn;
 import com.ruoyi.yianlian.domain.LineApp;
 
 import java.util.List;
@@ -8,15 +8,24 @@ import java.util.List;
  * 
  * @author ruoyi
  */
-public interface ILineAppService
+public interface IVpnLineAppService
 {
+
+    /**
+     * 查询线路信息
+     *
+     * @param appId 线路ID
+     * @return 线路信息
+     */
+    public LineApp getLineAppByAppId(String appId);
+
     /**
      * 查询线路信息
      * 
-     * @param configId 线路ID
+     * @param appId 线路ID
      * @return 线路信息
      */
-    public LineApp selectLineAppById(String configId);
+    public LineApp selectLineAppById(String appId);
 
 
     /**

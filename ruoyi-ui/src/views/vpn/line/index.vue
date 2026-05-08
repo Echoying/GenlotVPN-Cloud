@@ -97,6 +97,7 @@
       <el-table-column label="线路名称" align="center" prop="appName" :show-overflow-tooltip="true" />
       <el-table-column label="线路ID" align="center" prop="appId" :show-overflow-tooltip="true" />
       <el-table-column label="线路密钥" align="center" prop="appSecret" :show-overflow-tooltip="true" />
+      <el-table-column label="线路URL" align="center" prop="url" :show-overflow-tooltip="true" />
       <el-table-column label="线路状态" align="center" prop="status">
         <template slot-scope="scope">
           <dict-tag :options="dict.type.vpn_line_status" :value="scope.row.status"/>
@@ -147,6 +148,9 @@
         </el-form-item>
         <el-form-item label="密钥" prop="appSecret">
           <el-input v-model="form.appSecret" type="textarea" placeholder="请输入密钥" />
+        </el-form-item>
+        <el-form-item label="线路URL" prop="url">
+          <el-input v-model="form.url" placeholder="请输入线路URL" />
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
@@ -248,6 +252,7 @@ export default {
         appName: undefined,
         appId: undefined,
         appSecret: undefined,
+        url: undefined,
         status: undefined,
         remark: undefined
       }

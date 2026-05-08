@@ -14,7 +14,7 @@ import java.util.List;
 
 /**
  * 线路表 line_app
- * 
+ *
  * @author ruoyi
  */
 @Data
@@ -30,6 +30,9 @@ public class LineApp extends BaseEntity
 
     /** 线路密钥 */
     private String appSecret;
+
+    /** 线路URL */
+    private String url;
 
     /** 线路状态:0启用,1停用 */
     private String status;
@@ -47,7 +50,8 @@ public class LineApp extends BaseEntity
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
             .append("appId", getAppId())
             .append("appName", getAppName())
-            .append("appSecret", getAppId())
+            .append("appSecret", getAppSecret())
+            .append("url", getUrl())
             .append("status", getStatus())
             .toString();
     }
