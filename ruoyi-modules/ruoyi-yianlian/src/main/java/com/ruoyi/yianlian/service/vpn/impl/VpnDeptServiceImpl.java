@@ -4,15 +4,10 @@ import com.ruoyi.common.core.constant.UserConstants;
 import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.common.core.text.Convert;
 import com.ruoyi.common.core.utils.StringUtils;
-import com.ruoyi.yianlian.client.dto.YiAnLianDeptListRequest;
-import com.ruoyi.yianlian.client.dto.vo.YiAnLianDeptVO;
-import com.ruoyi.yianlian.domain.LineApp;
 import com.ruoyi.yianlian.domain.VpnDept;
 import com.ruoyi.yianlian.domain.vo.TreeSelect;
 import com.ruoyi.yianlian.mapper.VpnDeptMapper;
 import com.ruoyi.yianlian.service.vpn.IVpnDeptService;
-import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
-import com.ruoyi.yianlian.service.yianlian.IYiAnLianDeptService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -35,11 +30,6 @@ public class VpnDeptServiceImpl implements IVpnDeptService
     @Autowired
     private VpnDeptMapper deptMapper;
 
-    @Autowired
-    private IYiAnLianDeptService yiAnLianDeptService;
-
-    @Autowired
-    private IVpnLineAppService lineAppService;
 
     /**
      * 查询部门管理数据
@@ -50,25 +40,6 @@ public class VpnDeptServiceImpl implements IVpnDeptService
     @Override
     public List<VpnDept> selectDeptList(VpnDept dept)
     {
-        // 获取yianlian的所有的dept
-        List<LineApp> lineApps = lineAppService.getLineAppList();
-        if(lineApps != null){
-            log.debug("获取yianlian的dept列表:{}", lineApps);
-
-            for (LineApp lineApp : lineApps){
-                YiAnLianDeptListRequest request = new YiAnLianDeptListRequest();
-                request.setAppId(lineApp.getAppId());
-                try {
-                    List<YiAnLianDeptVO> depts = yiAnLianDeptService.getDeptList(request).getData();
-                    if(depts != null){
-                        log.debug("获取yianlian的dept列表:{}", depts);
-                    }
-                }catch (Exception e){
-                    log.error("获取部门列表异常:{}", e.getMessage());
-                }
-            }
-        }
-
         return deptMapper.selectDeptList(dept);
     }
 
