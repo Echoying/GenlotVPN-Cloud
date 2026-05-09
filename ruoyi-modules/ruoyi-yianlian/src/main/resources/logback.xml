@@ -13,6 +13,25 @@
 	</appender>
 
     <!-- 系统日志输出 -->
+    <appender name="file_debug" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.path}/debug.log</file>
+        <!-- 循环政策：基于时间创建日志文件 -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- 日志文件名格式 -->
+            <fileNamePattern>${log.path}/debug.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- 日志最大的历史 60天 -->
+            <maxHistory>60</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${log.pattern}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <!-- 过滤的级别 -->
+            <level>DEBUG</level>
+        </filter>
+    </appender>
+
+    <!-- 系统日志输出 -->
 	<appender name="file_info" class="ch.qos.logback.core.rolling.RollingFileAppender">
 	    <file>${log.path}/info.log</file>
         <!-- 循环政策：基于时间创建日志文件 -->
@@ -58,17 +77,18 @@
     </appender>
 
     <!-- YiAnLian模块日志级别控制 - DEBUG级别 -->
-	<logger name="com.ruoyi.yianlian" level="debug" />
+	<logger name="com.ruoyi.yianlian" level="debug" additivity="false">
+		<appender-ref ref="console" />
+		<appender-ref ref="file_debug" />
+		<appender-ref ref="file_info" />
+		<appender-ref ref="file_error" />
+	</logger>
 	<!-- Spring日志级别控制  -->
 	<logger name="org.springframework" level="warn" />
 
 	<root level="info">
 		<appender-ref ref="console" />
+		<appender-ref ref="file_info" />
+		<appender-ref ref="file_error" />
 	</root>
-
-	<!--系统操作日志-->
-    <root level="info">
-        <appender-ref ref="file_info" />
-        <appender-ref ref="file_error" />
-    </root>
 </configuration>

@@ -35,7 +35,7 @@ public class YiAnLianDeptServiceImpl implements IYiAnLianDeptService
             return openApiClient.post(request.getAppId(), YiAnLianConstants.deptListPath, request, YiAnLianDeptListResp.class);
         }
         catch (Exception e){
-            log.info(e.getMessage());
+            log.error("获取易安联部门列表失败, appId: {}, 错误: ", request.getAppId(), e);
             return null;
         }
 
@@ -53,7 +53,7 @@ public class YiAnLianDeptServiceImpl implements IYiAnLianDeptService
             return openApiClient.post(appId,YiAnLianConstants.deptCreatePath, request, Boolean.class);
         }
         catch (Exception e){
-            log.info(e.getMessage());
+            log.error("创建易安联部门失败, appId: {}, request: {}, 错误: ", appId, request, e);
         }
         return false;
     }
@@ -70,7 +70,7 @@ public class YiAnLianDeptServiceImpl implements IYiAnLianDeptService
             return openApiClient.post(appId, YiAnLianConstants.deptUpdatePath + "/" + request.getId(), request, Boolean.class);
         }
         catch (Exception e){
-            log.info(e.getMessage());
+            log.error("更新易安联部门失败, appId: {}, request: {}, 错误: ", appId, request, e);
         }
         return false;
     }
@@ -85,7 +85,7 @@ public class YiAnLianDeptServiceImpl implements IYiAnLianDeptService
             return openApiClient.post(appId, YiAnLianConstants.deptDeletePath, ids, Boolean.class);
         }
         catch (Exception e){
-            log.info(e.getMessage());
+            log.error("删除易安联部门失败, appId: {}, ids: {}, 错误: ", appId, ids, e);
         }
         return false;
     }

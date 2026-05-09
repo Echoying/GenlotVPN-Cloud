@@ -28,6 +28,10 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
     private RedisService  redisService;
 
 
+    @Override
+    public List<LineApp> getLineAppList(){
+        return lineAppMapper.selectLineAppList(new LineApp());
+    }
 
     @Override
     public LineApp getLineAppByAppId(String appId){
@@ -80,7 +84,11 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
     @Override
     public int insertLineApp(LineApp lineApp)
     {
-        return lineAppMapper.insertLineApp(lineApp);
+        int ret = lineAppMapper.insertLineApp(lineApp);
+        if(ret > 0){
+            redisService.setCacheObject(buildCacheKey(lineApp.getAppId()), lineApp);
+        }
+        return ret;
     }
 
     /**
@@ -97,7 +105,12 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
         {
             throw new ServiceException("线路不存在");
         }
-        return lineAppMapper.updateLineApp(lineApp);
+        int ret = lineAppMapper.updateLineApp(lineApp);
+        if(ret > 0){
+            // 删除缓存
+            redisService.deleteObject(buildCacheKey(lineApp.getAppId()));
+        }
+        return ret;
     }
 
     /**
@@ -110,6 +123,7 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
     {
         for (String appId : appIds)
         {
+            redisService.deleteObject(buildCacheKey(appId));
             lineAppMapper.deleteLineAppById(appId);
         }
     }

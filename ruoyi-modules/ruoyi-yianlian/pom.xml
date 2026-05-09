@@ -92,6 +92,12 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Apache HttpClient for HTTPS support -->
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

@@ -64,7 +64,7 @@ public class CacheConstants
 
 
     /**
-     * 易安联 token 缓存 key
+     * 易安联 VPN线路应用 缓存 key
      */
-    public static final String YIANLIAN_VPN_LINE_APP = "yianlian_token:";
+    public static final String YIANLIAN_VPN_LINE_APP = "yianlian_line_app:";
 }

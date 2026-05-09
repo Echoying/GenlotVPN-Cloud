@@ -14,6 +14,13 @@ public interface IVpnLineAppService
     /**
      * 查询线路信息
      *
+     * @return 线路信息
+     */
+    public List<LineApp> getLineAppList();
+
+    /**
+     * 查询线路信息
+     *
      * @param appId 线路ID
      * @return 线路信息
      */
