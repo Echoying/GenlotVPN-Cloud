@@ -112,6 +112,14 @@ python bin/upload_and_extract_docker.py --password "<服务器密码>"
 - **Service layer**: Business logic with validation, calls `OpenApiClient` for third-party integration.
 - **DTO pattern**: Request/Response DTOs in `client.dto` package, VOs in `api.domain.vo` package.
 - **Constants**: API paths centralized in `YiAnLianConstants.java`.
+- **VPN module**: Separate user/role/dept management for VPN users (independent from system module):
+  - Controllers: `VpnUserController`, `VpnRoleController`, `VpnDeptController` at `/vpn/user`, `/vpn/role`, `/vpn/dept`
+  - Accessed via `/yianlian/vpn/*` through gateway
+  - Database tables: `vpn_user`, `vpn_role`, `vpn_dept`, `vpn_user_role`, `vpn_role_dept`
+  - SQL schema in `sql/vpn/vpn_dept.sql`
+  - Frontend views in `ruoyi-ui/src/views/vpn/` with API calls in `ruoyi-ui/src/api/vpn/`
+  - Permissions use `yianlian:user:*`, `yianlian:role:*`, `yianlian:dept:*` prefix
+  - No menu/post management (simplified compared to system module)
 
 ### Cross-module dependencies
 - `ruoyi-yianlian` can call `ruoyi-system` via `RemoteDeptService` and `RemoteRoleService` (Feign).
@@ -124,6 +132,7 @@ python bin/upload_and_extract_docker.py --password "<服务器密码>"
 - `deploy.sh modules` starts only nginx/gateway/auth/system (not gen/job/file/monitor/yianlian).
 - `docker/copy.sh` expects yianlian jar name `ruoyi-modules-yianlian.jar`, which matches `ruoyi-yianlian` module `artifactId`/`finalName`.
 - Recommended deployment sequence from current project practice: frontend build → backend build → `docker/copy.sh` → upload/extract → remote `deploy.sh stop` → `deploy.sh base` → `deploy.sh modules` → health checks.
+- **CRITICAL**: After adding new controllers or modifying backend code, you MUST rebuild the jar (`mvn -pl :ruoyi-modules-yianlian -am clean package -DskipTests`) and redeploy the service. The 404 errors often indicate the service is running an old jar without the new endpoints.
 
 ## Environment/config gotchas
 - Root `pom.xml` profiles define Nacos addresses (`10.9.2.177:8848`) and namespaces (`dev`/`test`); service bootstrap files may point to in-network hostnames (e.g. `ruoyi-nacos:8848`) when running in Docker.
@@ -154,5 +163,19 @@ python bin/upload_and_extract_docker.py --password "<服务器密码>"
 
 ### Database migrations
 - SQL update scripts go in `sql/update/` directory.
+- New module schemas go in `sql/<module>/` directory (e.g., `sql/vpn/vpn_dept.sql`).
 - Use descriptive filenames (e.g., `add_line_app_url.sql`).
 - Include comments explaining the change purpose.
+
+## Troubleshooting
+
+### 404 errors on new endpoints
+1. Verify the controller is compiled: `jar -tf ruoyi-modules/ruoyi-yianlian/target/ruoyi-modules-yianlian.jar | grep ControllerName`
+2. Check `@RequestMapping` path matches the URL (gateway strips `/yianlian` prefix before forwarding)
+3. Rebuild and redeploy: `mvn -pl :ruoyi-modules-yianlian -am clean package -DskipTests` then restart service
+4. Verify service registered with Nacos and gateway can route to it
+
+### Frontend build errors
+- Missing imports: Check if all imported components/files exist
+- API path mismatches: Frontend calls `/yianlian/path` → backend controller should have `@RequestMapping("/path")`
+- Permission directives: Ensure `v-hasPermi` values match backend `@RequiresPermissions` annotations

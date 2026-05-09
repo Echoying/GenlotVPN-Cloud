@@ -33,7 +33,7 @@
           icon="el-icon-plus"
           size="mini"
           @click="handleAdd"
-          v-hasPermi="['system:dept:add']"
+          v-hasPermi="['yianlian:dept:add']"
         >新增</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -43,7 +43,7 @@
           icon="el-icon-check"
           size="mini"
           @click="handleSaveSort"
-          v-hasPermi="['system:dept:edit']"
+          v-hasPermi="['yianlian:dept:edit']"
         >保存排序</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -89,14 +89,14 @@
             type="text"
             icon="el-icon-edit"
             @click="handleUpdate(scope.row)"
-            v-hasPermi="['system:dept:edit']"
+            v-hasPermi="['yianlian:dept:edit']"
           >修改</el-button>
           <el-button
             size="mini"
             type="text"
             icon="el-icon-plus"
             @click="handleAdd(scope.row)"
-            v-hasPermi="['system:dept:add']"
+            v-hasPermi="['yianlian:dept:add']"
           >新增</el-button>
           <el-button
             v-if="scope.row.parentId != 0"
@@ -104,7 +104,7 @@
             type="text"
             icon="el-icon-delete"
             @click="handleDelete(scope.row)"
-            v-hasPermi="['system:dept:remove']"
+            v-hasPermi="['yianlian:dept:remove']"
           >删除</el-button>
         </template>
       </el-table-column>
@@ -177,7 +177,7 @@ import Treeselect from "@riophae/vue-treeselect"
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
 
 export default {
-  name: "Dept",
+  name: "VpnDept",
   dicts: ['sys_normal_disable'],
   components: { Treeselect },
   data() {
@@ -295,7 +295,7 @@ export default {
         this.form.parentId = row.deptId
       }
       this.open = true
-      this.title = "添加部门"
+      this.title = "添加VPN部门"
       listDept().then(response => {
         this.deptOptions = this.handleTree(response.data, "deptId")
       })
@@ -314,7 +314,7 @@ export default {
       getDept(row.deptId).then(response => {
         this.form = response.data
         this.open = true
-        this.title = "修改部门"
+        this.title = "修改VPN部门"
         listDeptExcludeChild(row.deptId).then(response => {
           this.deptOptions = this.handleTree(response.data, "deptId")
           if (this.deptOptions.length == 0) {
