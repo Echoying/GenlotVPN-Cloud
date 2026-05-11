@@ -11,33 +11,22 @@ import java.util.List;
 public interface IYiAnLianServiceGroupService
 {
     /**
-     * 5.4.4 查询应用组列表
-     *
-     * @return 应用组列表数据
+     * 查询应用组列表
      */
     YiAnLianServiceGroupListResp getServiceGroupList(String appId);
 
     /**
-     * 5.4.1 创建应用组
-     *
-     * @param serviceGroup 应用组信息
-     * @return 是否成功
+     * 创建应用组，返回易安联的key
      */
-    Boolean create(String appId, YiAnLianServiceGroupVO serviceGroup);
+    String create(String appId, YiAnLianServiceGroupVO serviceGroup);
 
     /**
-     * 5.4.2 修改应用组
-     *
-     * @param serviceGroup 应用组信息
-     * @return 是否成功
+     * 修改应用组
      */
     Boolean update(String appId, YiAnLianServiceGroupVO serviceGroup);
 
     /**
-     * 5.4.3 删除应用组
-     *
-     * @param ids 应用组ID列表
-     * @return 是否成功
+     * 删除应用组
      */
     Boolean delete(String appId, List<String> ids);
 }

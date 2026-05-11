@@ -31,7 +31,8 @@ base(){
 
 # 启动程序模块（必须）
 modules(){
-	docker-compose up -d ruoyi-nginx ruoyi-gateway ruoyi-auth ruoyi-modules-system ruoyi-modules-gen ruoyi-modules-job ruoyi-modules-file ruoyi-visual-monitor ruoyi-modules-yianlian
+  	docker-compose rm ruoyi-nginx ruoyi-gateway ruoyi-auth ruoyi-modules-system ruoyi-modules-gen ruoyi-modules-job ruoyi-modules-file ruoyi-visual-monitor ruoyi-modules-yianlian
+	  docker-compose up -d --build ruoyi-nginx ruoyi-gateway ruoyi-auth ruoyi-modules-system ruoyi-modules-gen ruoyi-modules-job ruoyi-modules-file ruoyi-visual-monitor ruoyi-modules-yianlian
 }
 
 # 关闭所有环境/模块

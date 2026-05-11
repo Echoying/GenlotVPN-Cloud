@@ -5,6 +5,7 @@ import com.ruoyi.common.core.constant.UserConstants;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.system.api.domain.SysDept;
 import com.ruoyi.yianlian.domain.VpnDept;
+import com.ruoyi.yianlian.domain.VpnServiceGroup;
 
 import java.io.Serializable;
 import java.util.List;
@@ -43,6 +44,14 @@ public class TreeSelect implements Serializable
         this.label = dept.getDeptName();
         this.disabled = StringUtils.equals(UserConstants.DEPT_DISABLE, dept.getStatus());
         this.children = dept.getChildren().stream().map(TreeSelect::new).collect(Collectors.toList());
+    }
+
+    public TreeSelect(VpnServiceGroup group)
+    {
+        this.id = group.getId();
+        this.label = group.getGroupName();
+        this.disabled = StringUtils.equals("1", group.getStatus());
+        this.children = group.getChildren().stream().map(TreeSelect::new).collect(Collectors.toList());
     }
 
     public Long getId()

@@ -103,6 +103,21 @@ public class OpenApiClient
             String responseStr = post(url, body, tokenVO.getAccessToken(), String.class);
             log.debug("易安联业务接口原始响应 - URL: {}, 响应: {}", url, responseStr);
 
+            // Boolean 类型特殊处理：data 字段可能是 [] 或其他非布尔值，只需检查 code 即可
+            if(responseType == Boolean.class){
+                YiAnLianResponse<Object> response = objectMapper.readValue(
+                    responseStr,
+                    objectMapper.getTypeFactory().constructParametricType(YiAnLianResponse.class, Object.class)
+                );
+                if(response == null){
+                    throw new YiAnLianException("易安联接口返回结果为空");
+                }
+                if(YiAnLianResultCode.SUCCESS.getCode() != response.getCode()){
+                    throw new YiAnLianException(response.getMessages());
+                }
+                return (T) Boolean.TRUE;
+            }
+
             // 使用 ObjectMapper 手动反序列化泛型响应
             YiAnLianResponse<T> response = objectMapper.readValue(
                 responseStr,
@@ -114,9 +129,6 @@ public class OpenApiClient
             }
             if(YiAnLianResultCode.SUCCESS.getCode() != response.getCode()) {
                 throw new YiAnLianException(response.getMessages());
-            }
-            if(responseType == Boolean.class){
-                return (T) Boolean.TRUE;
             }
             return response.getData();
         }
@@ -224,6 +236,21 @@ public class OpenApiClient
             String responseStr = doGet(url, tokenVO.getAccessToken(), String.class);
             log.debug("易安联GET接口原始响应 - URL: {}, 响应: {}", url, responseStr);
 
+            // Boolean 类型特殊处理：data 字段可能是 [] 或其他非布尔值，只需检查 code 即可
+            if(responseType == Boolean.class){
+                YiAnLianResponse<Object> response = objectMapper.readValue(
+                    responseStr,
+                    objectMapper.getTypeFactory().constructParametricType(YiAnLianResponse.class, Object.class)
+                );
+                if(response == null){
+                    throw new YiAnLianException("易安联接口返回结果为空");
+                }
+                if(YiAnLianResultCode.SUCCESS.getCode() != response.getCode()){
+                    throw new YiAnLianException(response.getMessages());
+                }
+                return (T) Boolean.TRUE;
+            }
+
             // 使用 ObjectMapper 手动反序列化泛型响应
             YiAnLianResponse<T> response = objectMapper.readValue(
                 responseStr,
@@ -235,9 +262,6 @@ public class OpenApiClient
             }
             if(YiAnLianResultCode.SUCCESS.getCode() != response.getCode()) {
                 throw new YiAnLianException(response.getMessages());
-            }
-            if(responseType == Boolean.class){
-                return (T) Boolean.TRUE;
             }
             return response.getData();
         }

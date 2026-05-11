@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.yianlian.mapper.VpnServiceGroupMapper">
+
+    <resultMap type="com.ruoyi.yianlian.domain.VpnServiceGroup" id="VpnServiceGroupResult">
+        <id     property="id"      column="id"           />
+        <result property="parentId"     column="parent_id"    />
+        <result property="ancestors"    column="ancestors"    />
+        <result property="appId"        column="app_id"       />
+        <result property="yianlianKey"  column="yianlian_key" />
+        <result property="groupName"    column="group_name"   />
+        <result property="orderNum"     column="order_num"    />
+        <result property="description"  column="description"  />
+    <result property="status"       column="status"       />
+        <result property="delFlag"      column="del_flag"     />
+      <result property="createBy"     column="create_by"    />
+        <result property="createTime"   column="create_time"  />
+        <result property="updateBy"     column="update_by"    />
+        <result property="updateTime"   column="update_time"  />
+     <result property="appName"      column="app_name"     />
+        <result property="parentName"   column="parent_name"  />
+    </resultMap>
+
+    <sql id="selectServiceGroupVo">
+      select g.id, g.parent_id, g.ancestors, g.app_id, g.yianlian_key, g.group_name, g.order_num,
+          g.description, g.status, g.del_flag, g.create_by, g.create_time,
+               g.update_by, g.update_time,
+               a.app_name,
+               p.group_name as parent_name
+        from vpn_service_group g
+        left join line_app a on g.app_id = a.app_id
+        left join vpn_service_group p on g.parent_id = p.id
+    </sql>
+
+    <select id="selectServiceGroupList" parameterType="com.ruoyi.yianlian.domain.VpnServiceGroup" resultMap="VpnServiceGroupResult">
+        <include refid="selectServiceGroupVo"/>
+        <where>
+            g.del_flag = '0'
+            <if test="appId != null and appId != ''">
+             AND g.app_id = #{appId}
+            </if>
+         <if test="groupName != null and groupName != ''">
+                AND g.group_name like concat('%', #{groupName}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND g.status = #{status}
+            </if>
+        </where>
+        order by g.order_num
+    </select>
+
+    <select id="selectServiceGroupById" parameterType="Long" resultMap="VpnServiceGroupResult">
+        <include refid="selectServiceGroupVo"/>
+        where g.id = #{id} and g.del_flag = '0'
+    </select>
+
+    <select id="hasChildById" parameterType="Long" resultType="int">
+     select count(1) from vpn_service_group where parent_id = #{id} and del_flag = '0'
+    </select>
+
+    <select id="selectChildrenById" parameterType="Long" resultMap="VpnServiceGroupResult">
+        select g.id, g.parent_id, g.ancestors, g.app_id, g.yianlian_key, g.group_name, g.order_num,
+               g.description, g.status, g.del_flag, g.create_by, g.create_time,
+               g.update_by, g.update_time,
+          '' as app_name, '' as parent_name
+        from vpn_service_group g
+      where find_in_set(#{id}, ancestors) and del_flag = '0'
+    </select>
+
+    <insert id="insertServiceGroup" parameterType="com.ruoyi.yianlian.domain.VpnServiceGroup" useGeneratedKeys="true" keyProperty="id">
+        insert into vpn_service_group (
+        <if test="parentId != null">parent_id,</if>
+            <if test="ancestors != null and ancestors != ''">ancestors,</if>
+            <if test="appId != null and appId != ''">app_id,</if>
+            <if test="yianlianKey != null and yianlianKey != ''">yianlian_key,</if>
+            <if test="groupName != null and groupName != ''">group_name,</if>
+          <if test="orderNum != null">order_num,</if>
+      <if test="description != null and description != ''">description,</if>
+            <if test="status != null and status != ''">status,</if>
+          <if test="createBy != null and createBy != ''">create_by,</if>
+            create_time
+        )values(
+          <if test="parentId != null">#{parentId},</if>
+            <if test="ancestors != null and ancestors != ''">#{ancestors},</if>
+        <if test="appId != null and appId != ''">#{appId},</if>
+            <if test="yianlianKey != null and yianlianKey != ''">#{yianlianKey},</if>
+          <if test="groupName != null and groupName != ''">#{groupName},</if>
+        <if test="orderNum != null">#{orderNum},</if>
+            <if test="description != null and description != ''">#{description},</if>
+      <if test="status != null and status != ''">#{status},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateServiceGroup" parameterType="com.ruoyi.yianlian.domain.VpnServiceGroup">
+        update vpn_service_group
+        <set>
+       <if test="parentId != null">parent_id = #{parentId},</if>
+         <if test="ancestors != null and ancestors != ''">ancestors = #{ancestors},</if>
+             <if test="appId != null and appId != ''">app_id = #{appId},</if>
+            <if test="yianlianKey != null and yianlianKey != ''">yianlian_key = #{yianlianKey},</if>
+            <if test="groupName != null and groupName != ''">group_name = #{groupName},</if>
+            <if test="orderNum != null">order_num = #{orderNum},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+          update_time = sysdate()
+   </set>
+        where id = #{id}
+    </update>
+
+    <update id="updateServiceGroupChildren" parameterType="java.util.List">
+        update vpn_service_group set ancestors =
+        <foreach collection="list" item="item" index="index"
+        separator=" " open="case id" close="end">
+            when #{item.id} then #{item.ancestors}
+     </foreach>
+      where id in
+        <foreach collection="list" item="item" open="(" separator="," close=")">
+            #{item.id}
+        </foreach>
+    </update>
+
+    <delete id="deleteServiceGroupById" parameterType="Long">
+      update vpn_service_group set del_flag = '2' where id = #{id}
+    </delete>
+
+    <delete id="deleteServiceGroupByIds" parameterType="Long">
+        update vpn_service_group set del_flag = '2' where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

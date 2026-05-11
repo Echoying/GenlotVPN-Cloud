@@ -121,6 +121,15 @@ python bin/upload_and_extract_docker.py --password "<服务器密码>"
   - Permissions use `yianlian:user:*`, `yianlian:role:*`, `yianlian:dept:*` prefix
   - No menu/post management (simplified compared to system module)
 
+### OpenApiClient response handling
+- `OpenApiClient` is the single HTTP client for all YiAnLian external API calls.
+- Token is cached in Redis with key `yianlian_token:<appId>`, auto-refreshed on expiry.
+- YiAnLian API responses follow format: `{"code":"200","messages":"OK","data":...}`
+- **Important**: When `responseType == Boolean.class`, the client checks only the `code` field and returns `Boolean.TRUE` on success. It deserializes using `Object.class` for the `data` field because YiAnLian may return `"data":[]` (empty array) which cannot be deserialized as Boolean.
+- For non-Boolean response types, standard Jackson parametric deserialization is used.
+- YiAnLian create APIs (dept/user/role/service) expect **list format** request body: `[{...}]`, not a single object.
+- Multi-line (multiple lines on same API) support: the controller iterates over all `LineApp` records and calls the YiAnLian API for each line.
+
 ### Cross-module dependencies
 - `ruoyi-yianlian` can call `ruoyi-system` via `RemoteDeptService` and `RemoteRoleService` (Feign).
 - `ruoyi-system` exposes internal endpoints at `/dept/inner/list` and `/role/inner/list`.
