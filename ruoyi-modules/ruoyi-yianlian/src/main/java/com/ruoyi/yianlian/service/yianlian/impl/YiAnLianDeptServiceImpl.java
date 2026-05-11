@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -36,23 +37,26 @@ public class YiAnLianDeptServiceImpl implements IYiAnLianDeptService
         }
         catch (Exception e){
             log.error("获取易安联部门列表失败, appId: {}, 错误: ", request.getAppId(), e);
-            return null;
+          return null;
         }
 
     }
 
     @Override
     public Boolean create(String appId, YiAnLianDeptVO request) {
-        if(StringUtils.isNull(request.getId()) || StringUtils.isNull(request.getName())
-                || StringUtils.isNull(request.getPath())
-                || StringUtils.isNull(request.getType())  || StringUtils.isNull(request.getParentId())){
+        if(StringUtils.isNull(request.getName())
+                || StringUtils.isNull(request.getType()) || StringUtils.isNull(request.getParentId())){
             log.error("创建部门参数错误 {}", request);
             return false;
         }
         try {
-            return openApiClient.post(appId,YiAnLianConstants.deptCreatePath, request, Boolean.class);
+            // 易安联创建部门接口要求参数为列表格式 [{name, parentId, type, description}]
+          List<YiAnLianDeptVO> requestList = new ArrayList<>();
+            requestList.add(request);
+            List<YiAnLianDeptVO> response = openApiClient.post(appId, YiAnLianConstants.deptCreatePath, requestList, List.class);
+            return response != null;
         }
-        catch (Exception e){
+    catch (Exception e){
             log.error("创建易安联部门失败, appId: {}, request: {}, 错误: ", appId, request, e);
         }
         return false;
@@ -62,7 +66,7 @@ public class YiAnLianDeptServiceImpl implements IYiAnLianDeptService
     public Boolean update(String appId, YiAnLianDeptVO request) {
         if (StringUtils.isNull(request.getId()) || StringUtils.isNull(request.getName())
                 || StringUtils.isNull(request.getPath()) || StringUtils.isNull(request.getType())
-                || StringUtils.isNull(request.getParentId())) {
+              || StringUtils.isNull(request.getParentId())) {
             log.error("更新部门参数错误 {}", request);
             return false;
         }
@@ -83,7 +87,7 @@ public class YiAnLianDeptServiceImpl implements IYiAnLianDeptService
         }
         try {
             return openApiClient.post(appId, YiAnLianConstants.deptDeletePath, ids, Boolean.class);
-        }
+     }
         catch (Exception e){
             log.error("删除易安联部门失败, appId: {}, ids: {}, 错误: ", appId, ids, e);
         }
@@ -93,7 +97,7 @@ public class YiAnLianDeptServiceImpl implements IYiAnLianDeptService
     private String GetDeptPath(String appId){
         LineApp lineApp = lineAppService.selectLineAppById(appId);
         if(lineApp == null || StringUtils.isNull(lineApp.getUrl()) || StringUtils.isEmpty(lineApp.getUrl())){
-            log.error("获取部门列表参数错误: 线路不存在{}", appId);
+        log.error("获取部门列表参数错误: 线路不存在{}", appId);
             return null;
         }
         return lineApp.getUrl() + YiAnLianConstants.deptListPath ;

@@ -13,24 +13,59 @@ POST https://10.9.1.72:20203/enadmin/api/open/v1/contact/dept/list
 Content-Type: application/json
 # 编码方式
 Content-Encoding: utf-8
-accessToken:enaccess-e43d0a3bf309d53c73a81ced2234aeb5
+accessToken:enaccess-01268e01281a21e1b482916e6819cd61
 
 {
 
 }
 
 ###
-POST https://10.9.1.68:20203/enadmin/api/open/v1/contact/dept/create
+POST https://10.9.1.72:20203/enadmin/api/open/v1/contact/dept/create
 Content-Type: application/json
 # 编码方式
 Content-Encoding: utf-8
-accessToken:enaccess-b8e6853e95a5a8f89d5566a5e7dd3010
+accessToken:enaccess-d2973f8c548832817d3c5f03f493ed45
 
 {
 
-  "name": "站点用户",
-  "parentId": "0",
-  "path": "/站点用户",
+  "name": "财务中心",
+  "parentId": "202604101320332042472784878279126000",
   "type": "0",
   "description": ""
 }
+
+
+###
+POST https://10.9.1.72:20203/enadmin/api/open/v1/contact/dept/update/202604101320332042472784878279126000
+Content-Type: application/json
+# 编码方式
+Content-Encoding: utf-8
+accessToken:enaccess-01268e01281a21e1b482916e6819cd61
+
+{
+  "id": "202604101320332042472784878279126000",
+  "name": "深圳市穗彩科技开发有限公司",
+  "parentId": "0",
+  "type": "0",
+  "description": ""
+}
+
+###
+POST https://10.9.1.72:20203/enadmin/api/open/v1/contact//user/create
+Content-Type: application/json
+# 编码方式
+Content-Encoding: utf-8
+accessToken:enaccess-e7b0bdca4760c5dd41594ac761c17522
+
+[{
+  "username":"ying",
+  "name":"test",
+  "password":"123456",
+  "mobile":"18634358909",
+  "email":"echoying@genlot.com",
+  "groups":["0"],
+  "description":"",
+  "gender":"",
+  "birthDay":"",
+  "idCard":""
+}]
