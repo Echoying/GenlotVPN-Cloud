@@ -20,6 +20,17 @@ accessToken:enaccess-01268e01281a21e1b482916e6819cd61
 }
 
 ###
+POST https://10.9.1.72:20203/enadmin/api/open/v1/contact/servicegroup/list
+Content-Type: application/json
+# 编码方式
+Content-Encoding: utf-8
+accessToken:enaccess-d97d1046dd8dd727d834c5b4fe0d05da
+
+{
+
+}
+
+###
 POST https://10.9.1.72:20203/enadmin/api/open/v1/contact/dept/create
 Content-Type: application/json
 # 编码方式

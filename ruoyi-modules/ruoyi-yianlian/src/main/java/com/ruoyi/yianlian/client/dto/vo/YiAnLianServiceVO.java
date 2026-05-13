@@ -1,5 +1,6 @@
 package com.ruoyi.yianlian.client.dto.vo;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -12,6 +13,7 @@ import java.util.List;
  */
 @Data
 @ApiModel("应用实体")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class YiAnLianServiceVO implements Serializable
 {
     @ApiModelProperty(value = "应用ID")

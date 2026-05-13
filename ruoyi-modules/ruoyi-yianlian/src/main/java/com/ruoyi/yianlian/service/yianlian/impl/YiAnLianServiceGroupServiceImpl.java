@@ -3,6 +3,7 @@ package com.ruoyi.yianlian.service.yianlian.impl;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.yianlian.client.dto.vo.YiAnLianServiceGroupVO;
 import com.ruoyi.yianlian.client.OpenApiClient;
+import com.ruoyi.yianlian.client.dto.YiAnLianDeleteRequest;
 import com.ruoyi.yianlian.client.dto.YiAnLianServiceGroupListResp;
 import com.ruoyi.yianlian.constant.YiAnLianConstants;
 import com.ruoyi.yianlian.service.yianlian.IYiAnLianServiceGroupService;
@@ -60,15 +61,15 @@ public class YiAnLianServiceGroupServiceImpl implements IYiAnLianServiceGroupSer
     @Override
     public Boolean update(String appId, YiAnLianServiceGroupVO serviceGroup)
     {
-        if (StringUtils.isNull(serviceGroup.getKey()) || StringUtils.isNull(serviceGroup.getName())) {
+      if (StringUtils.isNull(serviceGroup.getId()) || StringUtils.isNull(serviceGroup.getName())) {
             log.error("更新应用组参数错误: {}", serviceGroup);
-         return false;
+            return false;
         }
         try {
-            return openApiClient.post(appId, YiAnLianConstants.serviceGroupUpdatePath, serviceGroup, Boolean.class);
-      }
+          return openApiClient.post(appId, YiAnLianConstants.serviceGroupUpdatePath, serviceGroup, Boolean.class);
+        }
         catch (Exception e) {
-         log.error("更新应用组失败: {}", e.getMessage());
+            log.error("更新应用组失败: {}", e.getMessage());
         }
         return false;
     }
@@ -81,7 +82,8 @@ public class YiAnLianServiceGroupServiceImpl implements IYiAnLianServiceGroupSer
             return false;
      }
         try {
-            return openApiClient.post(appId, YiAnLianConstants.serviceGroupDeletePath, ids, Boolean.class);
+            YiAnLianDeleteRequest request = new YiAnLianDeleteRequest(ids);
+            return openApiClient.post(appId, YiAnLianConstants.serviceGroupDeletePath, request, Boolean.class);
         }
         catch (Exception e) {
           log.error("删除应用组失败: {}", e.getMessage());

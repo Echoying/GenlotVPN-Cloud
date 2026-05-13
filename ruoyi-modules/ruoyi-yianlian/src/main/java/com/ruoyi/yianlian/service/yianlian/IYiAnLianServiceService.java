@@ -12,34 +12,22 @@ import java.util.List;
 public interface IYiAnLianServiceService
 {
     /**
-     * 5.4.5 根据应用组查询应用列表
-     *
-     * @param request 请求参数
-     * @return 应用列表数据
+     * 根据应用组查询应用列表
      */
-    YiAnLianServiceListResp getServiceList(YiAnLianServiceListRequest request);
+    List<YiAnLianServiceVO> getServiceList(YiAnLianServiceListRequest request);
 
     /**
-     * 5.4.6 创建应用
-     *
-     * @param service 应用信息
-     * @return 是否成功
+     * 创建应用
      */
     Boolean create(String appId, YiAnLianServiceVO service);
 
     /**
-     * 5.4.7 修改应用
-     *
-     * @param service 应用信息
-     * @return 是否成功
+     * 修改应用
      */
     Boolean update(String appId, YiAnLianServiceVO service);
 
     /**
-     * 5.4.8 删除应用
-     *
-     * @param ids 应用ID列表
-     * @return 是否成功
+     * 删除应用
      */
     Boolean delete(String appId, List<String> ids);
 }

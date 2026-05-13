@@ -27,7 +27,10 @@ public class TreeSelect implements Serializable
     private String label;
 
     /** 节点禁用 */
-    private boolean disabled = false;
+  private boolean disabled = false;
+
+    /** 线路ID（应用组专用） */
+    private String appId;
 
     /** 子节点 */
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
@@ -51,6 +54,7 @@ public class TreeSelect implements Serializable
         this.id = group.getId();
         this.label = group.getGroupName();
         this.disabled = StringUtils.equals("1", group.getStatus());
+        this.appId = group.getAppId();
         this.children = group.getChildren().stream().map(TreeSelect::new).collect(Collectors.toList());
     }
 
@@ -92,5 +96,15 @@ public class TreeSelect implements Serializable
     public void setChildren(List<TreeSelect> children)
     {
         this.children = children;
+    }
+
+    public String getAppId()
+    {
+        return appId;
+    }
+
+    public void setAppId(String appId)
+    {
+        this.appId = appId;
     }
 }

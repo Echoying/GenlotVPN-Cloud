@@ -11,7 +11,7 @@ import java.util.List;
  * 易安联应用组实体
  * 列表返回字段: key, title, path, parentKey, description, children, nodeKey, nodeParentKey
  * 创建请求字段: name, parentId, path, description
- * 修改请求字段: key, name, description
+ * 修改请求字段: id, name, description
  * 删除请求: List<String> ids (key值列表)
  */
 @Data
@@ -56,4 +56,7 @@ public class YiAnLianServiceGroupVO implements Serializable
 
     @ApiModelProperty(value = "上级应用组id(创建请求用)")
     private String parentId;
+
+    @ApiModelProperty(value = "应用组id(修改请求用)")
+    private String id;
 }

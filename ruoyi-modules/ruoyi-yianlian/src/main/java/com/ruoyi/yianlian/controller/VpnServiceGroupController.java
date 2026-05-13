@@ -138,7 +138,7 @@ public class VpnServiceGroupController extends BaseController
         {
             String appId = serviceGroup.getAppId() != null ? serviceGroup.getAppId() : oldGroup.getAppId();
             YiAnLianServiceGroupVO updateVO = new YiAnLianServiceGroupVO();
-       updateVO.setKey(oldGroup.getYianlianKey());
+            updateVO.setId(oldGroup.getYianlianKey());
             updateVO.setName(serviceGroup.getGroupName());
             updateVO.setDescription(serviceGroup.getDescription());
             Boolean syncResult = yiAnLianServiceGroupService.update(appId, updateVO);

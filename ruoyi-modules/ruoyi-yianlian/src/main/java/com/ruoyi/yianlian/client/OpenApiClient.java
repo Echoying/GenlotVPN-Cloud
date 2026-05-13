@@ -143,6 +143,97 @@ public class OpenApiClient
         }
     }
 
+    /**
+     * POST 请求封装（返回 List 类型）
+     *
+     * @param appId 应用ID
+     * @param path 接口路径
+     * @param body 请求体
+     * @param elementType List 元素类型
+     * @param <T> 泛型类型
+     * @return List 响应数据
+   * @throws YiAnLianException 易安联异常
+     */
+    public <T> java.util.List<T> postForList(String appId, String path, Object body, Class<T> elementType)
+        throws YiAnLianException
+    {
+        try
+        {
+            LineApp lineApp = vpnLineAppService.getLineAppByAppId(appId);
+            if(lineApp == null){
+        throw new YiAnLianException("未找到该线路");
+      }
+            // 先redis获取token
+            String cacheKey = buildCacheKey(lineApp.getAppId());
+         TokenVO tokenVO = redisService.getCacheObject(cacheKey);
+            if(tokenVO == null || StringUtils.isEmpty(tokenVO.getAccessToken())){
+                YiAnLianTokenRequest request = new YiAnLianTokenRequest();
+
+                request.setAppId(lineApp.getAppId());
+                request.setAppSecret(lineApp.getAppSecret());
+                log.debug("获取易安联token, appId: {}", lineApp.getAppId());
+
+              // 获取 token 也需要通过 YiAnLianResponse 包装
+         String tokenResponseStr = post(lineApp.getUrl() + YiAnLianConstants.tokenPath, request, null, String.class);
+          log.debug("易安联token接口原始响应: {}", tokenResponseStr);
+
+                YiAnLianResponse<TokenVO> tokenResponse = objectMapper.readValue(
+               tokenResponseStr,
+                    new TypeReference<YiAnLianResponse<TokenVO>>() {}
+              );
+
+                if(tokenResponse == null || tokenResponse.getData() == null){
+                    throw new YiAnLianException("获取易安联token失败：响应为空");
+            }
+            if(YiAnLianResultCode.SUCCESS.getCode() != tokenResponse.getCode()) {
+             throw new YiAnLianException("获取易安联token失败：" + tokenResponse.getMessages());
+             }
+
+      tokenVO = tokenResponse.getData();
+            if(tokenVO == null || StringUtils.isEmpty(tokenVO.getAccessToken())){
+             throw new YiAnLianException("获取易安联token失败：accessToken为空");
+                }
+                log.debug("易安联token获取成功, accessToken: {}, expireTime: {}秒", tokenVO.getAccessToken(), tokenVO.getExpireTime());
+                // 使用 token 的过期时间设置缓存，提前 60 秒过期以避免边界问题
+                Long expireTime = tokenVO.getExpireTime() != null && tokenVO.getExpireTime() > 60
+             ? Long.valueOf(tokenVO.getExpireTime() - 60)
+               : 7200L;
+                redisService.setCacheObject(cacheKey, tokenVO, expireTime, java.util.concurrent.TimeUnit.SECONDS);
+            }
+
+          // 调用业务接口
+            String url = lineApp.getUrl() + path;
+            String responseStr = post(url, body, tokenVO.getAccessToken(), String.class);
+            log.debug("易安联业务接口原始响应 - URL: {}, 响应: {}", url, responseStr);
+
+            // 使用 TypeReference 反序列化 List 类型
+            YiAnLianResponse<java.util.List<T>> response = objectMapper.readValue(
+             responseStr,
+          objectMapper.getTypeFactory().constructParametricType(
+                    YiAnLianResponse.class,
+                  objectMapper.getTypeFactory().constructCollectionType(java.util.List.class, elementType)
+           )
+            );
+
+            if(response == null ){
+                throw new YiAnLianException("易安联接口返回结果为空");
+            }
+         if(YiAnLianResultCode.SUCCESS.getCode() != response.getCode()) {
+              throw new YiAnLianException(response.getMessages());
+          }
+            return response.getData();
+     }
+     catch (YiAnLianException e)
+        {
+            throw e;
+        }
+        catch (Exception e)
+      {
+            log.error("调用易安联接口异常, appId: {}, path: {}, 错误: ", appId, path, e);
+            throw new YiAnLianException(e.getMessage());
+      }
+    }
+
     public <T> T post(String path, Object body, String accessToken, Class<T> responseType)
     {
         if (StringUtils.isEmpty(path))

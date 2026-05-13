@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.yianlian.mapper.VpnServiceMapper">
+
+    <resultMap type="com.ruoyi.yianlian.domain.VpnService" id="VpnServiceResult">
+        <id     property="id"                column="id" />
+    <result property="appId"                column="app_id" />
+        <result property="serviceGroupId"       column="service_group_id" />
+    <result property="yianlianKey"          column="yianlian_key" />
+        <result property="name"           column="name" />
+      <result property="type"               column="type" />
+        <result property="url"                  column="url" />
+        <result property="browserType"          column="browser_type" />
+        <result property="webPort"              column="web_port" />
+        <result property="creditLevelId"        column="credit_level_id" />
+        <result property="icon"                 column="icon" />
+        <result property="ifShow"               column="if_show" />
+        <result property="secondAuthEnable"     column="second_auth_enable" />
+        <result property="ifSelfApply"          column="if_self_apply" />
+        <result property="ifSAlarmTip"          column="if_s_alarm_tip" />
+        <result property="ifCustomAlarmContent" column="if_custom_alarm_content" />
+      <result property="customAlarmContent"   column="custom_alarm_content" />
+        <result property="createType"           column="create_type" />
+        <result property="description"          column="description" />
+        <result property="status"            column="status" />
+        <result property="delFlag"            column="del_flag" />
+        <result property="createBy"          column="create_by" />
+        <result property="createTime"           column="create_time" />
+        <result property="updateBy"             column="update_by" />
+        <result property="updateTime"           column="update_time" />
+        <result property="appName"              column="app_name" />
+        <result property="serviceGroupName"     column="service_group_name" />
+        <result property="reqCsServerVosJson"   column="req_cs_server_vos" />
+    </resultMap>
+
+    <sql id="selectServiceVo">
+        select s.id, s.app_id, s.service_group_id, s.yianlian_key, s.name, s.type, s.url,
+           s.browser_type, s.web_port, s.credit_level_id, s.icon, s.if_show,
+               s.second_auth_enable, s.if_self_apply, s.if_s_alarm_tip,
+           s.if_custom_alarm_content, s.custom_alarm_content, s.create_type,
+           s.description, s.status, s.del_flag, s.create_by, s.create_time,
+               s.update_by, s.update_time, s.req_cs_server_vos,
+             a.app_name,
+            g.group_name as service_group_name
+        from vpn_service s
+        left join line_app a on s.app_id = a.app_id
+        left join vpn_service_group g on s.service_group_id = g.id
+    </sql>
+
+    <select id="selectServiceList" parameterType="com.ruoyi.yianlian.domain.VpnService" resultMap="VpnServiceResult">
+        <include refid="selectServiceVo"/>
+     <where>
+            s.del_flag = '0'
+            <if test="appId != null and appId != ''">AND s.app_id = #{appId}</if>
+            <if test="serviceGroupId != null">AND s.service_group_id = #{serviceGroupId}</if>
+            <if test="name != null and name != ''">AND s.name like concat('%', #{name}, '%')</if>
+            <if test="type != null and type != ''">AND s.type = #{type}</if>
+       <if test="status != null and status != ''">AND s.status = #{status}</if>
+    </where>
+        order by s.create_time desc
+    </select>
+
+    <select id="selectServiceById" parameterType="Long" resultMap="VpnServiceResult">
+        <include refid="selectServiceVo"/>
+        where s.id = #{id} and s.del_flag = '0'
+    </select>
+
+    <insert id="insertService" parameterType="com.ruoyi.yianlian.domain.VpnService" useGeneratedKeys="true" keyProperty="id">
+        insert into vpn_service (
+            <if test="appId != null and appId != ''">app_id,</if>
+            <if test="serviceGroupId != null">service_group_id,</if>
+            <if test="yianlianKey != null and yianlianKey != ''">yianlian_key,</if>
+            <if test="name != null and name != ''">name,</if>
+            <if test="type != null and type != ''">type,</if>
+            <if test="url != null and url != ''">url,</if>
+            <if test="browserType != null and browserType != ''">browser_type,</if>
+         <if test="webPort != null and webPort != ''">web_port,</if>
+         <if test="creditLevelId != null and creditLevelId != ''">credit_level_id,</if>
+         <if test="icon != null and icon != ''">icon,</if>
+          <if test="ifShow != null">if_show,</if>
+            <if test="secondAuthEnable != null and secondAuthEnable != ''">second_auth_enable,</if>
+         <if test="ifSelfApply != null">if_self_apply,</if>
+            <if test="ifSAlarmTip != null">if_s_alarm_tip,</if>
+          <if test="ifCustomAlarmContent != null">if_custom_alarm_content,</if>
+         <if test="customAlarmContent != null and customAlarmContent != ''">custom_alarm_content,</if>
+            <if test="createType != null and createType != ''">create_type,</if>
+            <if test="description != null and description != ''">description,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="reqCsServerVosJson != null and reqCsServerVosJson != ''">req_cs_server_vos,</if>
+            create_time
+     )values(
+            <if test="appId != null and appId != ''">#{appId},</if>
+         <if test="serviceGroupId != null">#{serviceGroupId},</if>
+            <if test="yianlianKey != null and yianlianKey != ''">#{yianlianKey},</if>
+         <if test="name != null and name != ''">#{name},</if>
+            <if test="type != null and type != ''">#{type},</if>
+            <if test="url != null and url != ''">#{url},</if>
+       <if test="browserType != null and browserType != ''">#{browserType},</if>
+            <if test="webPort != null and webPort != ''">#{webPort},</if>
+          <if test="creditLevelId != null and creditLevelId != ''">#{creditLevelId},</if>
+            <if test="icon != null and icon != ''">#{icon},</if>
+            <if test="ifShow != null">#{ifShow},</if>
+            <if test="secondAuthEnable != null and secondAuthEnable != ''">#{secondAuthEnable},</if>
+            <if test="ifSelfApply != null">#{ifSelfApply},</if>
+          <if test="ifSAlarmTip != null">#{ifSAlarmTip},</if>
+            <if test="ifCustomAlarmContent != null">#{ifCustomAlarmContent},</if>
+            <if test="customAlarmContent != null and customAlarmContent != ''">#{customAlarmContent},</if>
+            <if test="createType != null and createType != ''">#{createType},</if>
+            <if test="description != null and description != ''">#{description},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="reqCsServerVosJson != null and reqCsServerVosJson != ''">#{reqCsServerVosJson},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateService" parameterType="com.ruoyi.yianlian.domain.VpnService">
+        update vpn_service
+        <set>
+            <if test="appId != null and appId != ''">app_id = #{appId},</if>
+            <if test="serviceGroupId != null">service_group_id = #{serviceGroupId},</if>
+            <if test="yianlianKey != null and yianlianKey != ''">yianlian_key = #{yianlianKey},</if>
+            <if test="name != null and name != ''">name = #{name},</if>
+        <if test="type != null and type != ''">type = #{type},</if>
+            <if test="url != null and url != ''">url = #{url},</if>
+            <if test="browserType != null and browserType != ''">browser_type = #{browserType},</if>
+            <if test="webPort != null and webPort != ''">web_port = #{webPort},</if>
+            <if test="creditLevelId != null and creditLevelId != ''">credit_level_id = #{creditLevelId},</if>
+            <if test="icon != null and icon != ''">icon = #{icon},</if>
+            <if test="ifShow != null">if_show = #{ifShow},</if>
+            <if test="secondAuthEnable != null and secondAuthEnable != ''">second_auth_enable = #{secondAuthEnable},</if>
+            <if test="ifSelfApply != null">if_self_apply = #{ifSelfApply},</if>
+         <if test="ifSAlarmTip != null">if_s_alarm_tip = #{ifSAlarmTip},</if>
+        <if test="ifCustomAlarmContent != null">if_custom_alarm_content = #{ifCustomAlarmContent},</if>
+          <if test="customAlarmContent != null">custom_alarm_content = #{customAlarmContent},</if>
+            <if test="createType != null and createType != ''">create_type = #{createType},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="reqCsServerVosJson != null">req_cs_server_vos = #{reqCsServerVosJson},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="deleteServiceById" parameterType="Long">
+        update vpn_service set del_flag = '2' where id = #{id}
+    </update>
+
+    <update id="deleteServiceByIds" parameterType="Long">
+        update vpn_service set del_flag = '2' where id in
+      <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+</mapper>
