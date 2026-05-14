@@ -1,9 +1,12 @@
 package com.ruoyi.yianlian.service.yianlian;
 
 import com.ruoyi.yianlian.client.dto.vo.YiAnLianUserVO;
+import com.ruoyi.yianlian.client.dto.YiAnLianUserCreateResultItem;
 import com.ruoyi.yianlian.client.dto.YiAnLianUserListRequest;
 import com.ruoyi.yianlian.client.dto.YiAnLianUserListResp;
 import com.ruoyi.yianlian.client.dto.YiAnLianUserPasswordResetRequest;
+import com.ruoyi.yianlian.client.dto.YiAnLianUserSessionRequest;
+import com.ruoyi.yianlian.client.dto.YiAnLianUserSessionResponse;
 
 import java.util.List;
 
@@ -26,7 +29,7 @@ public interface IYiAnLianUserService
      * @param users 人员列表
      * @return 是否成功
      */
-    Boolean create(String appId, List<YiAnLianUserVO> users);
+    List<YiAnLianUserCreateResultItem> create(String appId, List<YiAnLianUserVO> users);
 
     /**
      * 5.3.2 更新人员接口
@@ -51,4 +54,12 @@ public interface IYiAnLianUserService
      * @return 是否成功
      */
     Boolean resetPassword(String appId, YiAnLianUserPasswordResetRequest request);
+
+    /**
+     * 5.3.6 获取用户会话信息
+     *
+     * @param request 请求参数
+     * @return 用户会话列表
+     */
+    List<YiAnLianUserSessionResponse> getUserSession(YiAnLianUserSessionRequest request);
 }

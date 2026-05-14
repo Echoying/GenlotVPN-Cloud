@@ -96,6 +96,9 @@ public class VpnUser extends BaseEntity
     /** 角色ID */
     private Long roleId;
 
+    /** 易安联用户ID */
+    private String yianlianId;
+
     public VpnUser()
     {
 

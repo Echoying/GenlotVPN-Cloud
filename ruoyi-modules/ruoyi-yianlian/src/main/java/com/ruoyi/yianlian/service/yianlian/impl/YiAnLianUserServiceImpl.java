@@ -3,9 +3,12 @@ package com.ruoyi.yianlian.service.yianlian.impl;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.yianlian.client.dto.vo.YiAnLianUserVO;
 import com.ruoyi.yianlian.client.OpenApiClient;
+import com.ruoyi.yianlian.client.dto.YiAnLianUserCreateResultItem;
 import com.ruoyi.yianlian.client.dto.YiAnLianUserListRequest;
 import com.ruoyi.yianlian.client.dto.YiAnLianUserListResp;
 import com.ruoyi.yianlian.client.dto.YiAnLianUserPasswordResetRequest;
+import com.ruoyi.yianlian.client.dto.YiAnLianUserSessionRequest;
+import com.ruoyi.yianlian.client.dto.YiAnLianUserSessionResponse;
 import com.ruoyi.yianlian.constant.YiAnLianConstants;
 import com.ruoyi.yianlian.service.yianlian.IYiAnLianUserService;
 import lombok.extern.slf4j.Slf4j;
@@ -37,28 +40,28 @@ public class YiAnLianUserServiceImpl implements IYiAnLianUserService
     }
 
     @Override
-    public Boolean create(String appId, List<YiAnLianUserVO> users)
+    public List<YiAnLianUserCreateResultItem> create(String appId, List<YiAnLianUserVO> users)
     {
         if (StringUtils.isNull(users) || users.isEmpty()) {
             log.error("创建人员参数错误: users为空");
-            return false;
+            return null;
         }
 
         for (YiAnLianUserVO user : users) {
             if (StringUtils.isNull(user.getUsername()) || StringUtils.isNull(user.getName())
                     || StringUtils.isNull(user.getGroups()) || user.getGroups().isEmpty()) {
                 log.error("创建人员参数错误: {}", user);
-                return false;
+                return null;
             }
         }
 
         try {
-            return openApiClient.post(appId, YiAnLianConstants.userCreatePath, users, Boolean.class);
+            return openApiClient.postForList(appId, YiAnLianConstants.userCreatePath, users, YiAnLianUserCreateResultItem.class);
         }
         catch (Exception e) {
             log.error("创建人员失败: {}", e.getMessage());
         }
-        return false;
+        return null;
     }
 
     @Override
@@ -112,5 +115,17 @@ public class YiAnLianUserServiceImpl implements IYiAnLianUserService
             log.error("重置密码失败: {}", e.getMessage());
         }
         return false;
+    }
+
+    @Override
+    public List<YiAnLianUserSessionResponse> getUserSession(YiAnLianUserSessionRequest request)
+    {
+        try {
+            return openApiClient.postForList(request.getAppId(), YiAnLianConstants.userSessionPath, request, YiAnLianUserSessionResponse.class);
+        }
+        catch (Exception e) {
+            log.error("获取用户会话失败: {}", e.getMessage());
+            return null;
+        }
     }
 }

@@ -19,7 +19,7 @@ public class YiAnLianDeptListRequest extends YiAnLianRequest
     private String pageIndex;
 
     @ApiModelProperty(value="每页返回多少条数据，默认为20", example="20")
-    private String pageSize;
+    private String pageSize = "10000";
 
     @ApiModelProperty(value = "可查询某段时间戳内变动的数据，不传默认查全部，示例2023-06-17 15:37:22", example = "2023-06-17 15:37:22")
     private String beginTime;
