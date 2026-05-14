@@ -43,4 +43,5 @@ public interface IYiAnLianDeptService
      */
     Boolean delete(String appId, List<String> ids);
 
+
 }

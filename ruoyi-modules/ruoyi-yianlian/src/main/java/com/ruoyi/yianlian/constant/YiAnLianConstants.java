@@ -121,4 +121,9 @@ public class YiAnLianConstants
      * 查询角色列表接口路径
      */
     public static final String roleListPath = "/enadmin/api/open/v1/contact/role/list";
+
+    /**
+     * 授予组织权限接口路径
+     */
+    public static final String authorityGroupPath = "/enadmin/api/open/v1/contact/authority/group";
 }

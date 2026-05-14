@@ -2,189 +2,135 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Tech stack and scope
-- This repo is **RuoYi-Cloud springboot2**: Spring Boot **2.7.18**, Spring Cloud **2021.0.9**, Spring Cloud Alibaba **2021.0.6.1**, Java **8**.
-- Frontend is Vue 2 + Element UI in `ruoyi-ui`.
-- Multi-module Maven project (root `pom.xml`): gateway/auth/business modules/visual + shared `ruoyi-api` and `ruoyi-common`.
-- This branch also includes custom 易安联 modules:
-  - `ruoyi-modules/ruoyi-yianlian` (`artifactId: ruoyi-modules-yianlian`)
-  - `ruoyi-api/ruoyi-api-yianlian`
+## Tech Stack
 
-## Common commands
+- **RuoYi-Cloud**: Spring Boot **2.7.18**, Spring Cloud **2021.0.9**, Spring Cloud Alibaba **2021.0.6.1**, Java **8**
+- **Frontend**: Vue 2 + Element UI in `ruoyi-ui/`
+- **Infrastructure**: Nacos (config + discovery), MySQL, Redis, Nginx, Docker Compose
+- Custom 易安联 VPN integration modules: `ruoyi-modules/ruoyi-yianlian` and `ruoyi-api/ruoyi-api-yianlian`
+
+## Common Commands
 
 ### Backend (repo root)
 ```bash
-# Full backend build (used by docker packaging flow)
+# Full build
 mvn clean package -DskipTests
 
-# Build one service with dependent modules
-mvn -pl ruoyi-gateway -am clean package -DskipTests
-mvn -pl ruoyi-auth -am clean package -DskipTests
-mvn -pl ruoyi-modules/ruoyi-system -am clean package -DskipTests
-mvn -pl ruoyi-modules/ruoyi-yianlian -am clean package -DskipTests
-
-# Compile only (faster for development)
+# Compile single module (fast dev cycle)
 mvn -pl ruoyi-modules/ruoyi-yianlian -am clean compile
 
-# Run tests for one module
-mvn -pl ruoyi-auth -am test
+# Package single module
+mvn -pl ruoyi-modules/ruoyi-yianlian -am clean package -DskipTests
+
+# Run tests for a module
 mvn -pl ruoyi-modules/ruoyi-yianlian -am test
 
-# Run a single test / single test method
-mvn -pl ruoyi-auth -am -Dtest=TokenControllerTest test
-mvn -pl ruoyi-auth -am -Dtest=TokenControllerTest#login test
-mvn -pl ruoyi-modules/ruoyi-yianlian -am -Dtest=YiAnLianTokenServiceImplTest test
-mvn -pl ruoyi-modules/ruoyi-yianlian -am -Dtest=InnerYiAnLianControllerTest#getToken_success test
+# Single test class / method
+mvn -pl ruoyi-modules/ruoyi-yianlian -am -Dtest=SomeTest test
+mvn -pl ruoyi-modules/ruoyi-yianlian -am -Dtest=SomeTest#methodName test
 ```
 
-### Frontend (`ruoyi-ui`)
+### Frontend (`ruoyi-ui/`)
 ```bash
 npm install
 npm run dev
 npm run build:prod
-npm run build:stage
-npm run preview
 ```
 
-### Docker deployment (`docker`)
+### Docker Deployment (`docker/`)
 ```bash
-# Copy SQL + frontend dist + backend jars into docker build context
-sh copy.sh
-
-# Start all containers
+sh copy.sh          # copies jars + dist into build context
 docker compose up -d --build
-
-# Check status / logs
-docker compose ps
-docker compose logs -f ruoyi-gateway
-docker compose logs -f ruoyi-auth
-
-# Stop / remove
-docker compose stop
-docker compose down
+sh deploy.sh base   # start infra (nacos, mysql, redis, nginx)
+sh deploy.sh modules # start services (gateway, auth, system)
 ```
 
-Alternative script entrypoints in `docker/deploy.sh`:
-```bash
-sh deploy.sh base
-sh deploy.sh modules
-sh deploy.sh stop
-sh deploy.sh rm
+## Architecture
+
+### Request Flow
+Browser → Nginx (:80) → `/prod-api/` → Gateway (:8080) → downstream services via Nacos discovery
+
+### Module Boundaries
+| Module | Purpose |
+|--------|--------|
+| `ruoyi-gateway` | Route forwarding, filters, captcha endpoint |
+| `ruoyi-auth` | Login/token/logout |
+| `ruoyi-modules/ruoyi-system` | Core system APIs (user/role/dept/menu) |
+| `ruoyi-modules/ruoyi-yianlian` | 易安联 VPN integration + VPN user/role/dept/service management |
+| `ruoyi-api/*` | Feign client contracts for inter-service calls |
+| `ruoyi-common/*` | Shared libs (core, security, redis, log, swagger, etc.) |
+
+### Internal Service Calls
+- Feign clients in `ruoyi-api/` with `FallbackFactory` for circuit breaking
+- Internal-only endpoints guarded by `@InnerAuth` + `from-source: inner` header
+- Response wrapper: `R<T>` for internal, `AjaxResult` for external
+
+### YiAnLian Module Structure
+```
+ruoyi-modules/ruoyi-yianlian/src/main/java/com/ruoyi/yianlian/
+├── client/             # OpenApiClient (HTTP client with Redis-cached tokens)
+│   ├── dto/            # Request/Response DTOs (extend YiAnLianRequest base)
+│   └── dto/vo/         # Value objects for YiAnLian entities
+├── constant/           # YiAnLianConstants (all API paths)
+├── controller/         # REST controllers (VPN user/role/dept/service/line)
+├── domain/             # Database entities
+├── mapper/             # MyBatis mapper interfaces
+├── service/
+│   ├── vpn/            # Local CRUD services (IVpnUserService, etc.)
+│   └── yianlian/       # YiAnLian API integration services
+│       └── impl/       # Implementations
+└── resources/mapper/   # MyBatis XML mappings
 ```
 
-### 177 packaging/upload helper (from repo root)
-```bash
-python bin/upload_and_extract_docker.py --password "<服务器密码>"
-```
+### Key Patterns
 
-## High-level architecture
+**OpenApiClient**:
+- Single HTTP client for all YiAnLian API calls
+- Token cached in Redis key `yianlian_token:<appId>`, auto-refreshed
+- When `responseType == Boolean.class`, checks only `code` field (because `data` may be `[]`)
+- Create APIs expect **list format**: `[{...}]`, not single object
 
-### Request path
-- Browser hits `ruoyi-nginx` on port 80.
-- Nginx forwards `/prod-api/` to `ruoyi-gateway:8080` (`docker/nginx/conf/nginx.conf`).
-- Gateway routes to downstream services through Spring Cloud Gateway + Nacos discovery.
-- `GET /code` is handled directly in gateway functional routing (`ruoyi-gateway/src/main/java/com/ruoyi/gateway/config/RouterFunctionConfiguration.java`) via `ValidateCodeHandler`.
+**Multi-line support**:
+- Controllers iterate all `LineApp` records and call YiAnLian API for each line
+- Roles use `vpn_role_yianlian_mapping` table to track IDs across lines
+- Users/depts use name-matching to find corresponding YiAnLian entities
 
-### Config and service discovery model
-- Each service has `bootstrap.yml` with `spring.application.name` and profile `dev`.
-- Nacos is used for both discovery and config center.
-- Services typically load config from Nacos `*-dev.yml` DataIds (datasource, redis, gateway routes, etc.).
-- Container deployment must ensure service-side Nacos address points to reachable host (usually `ruoyi-nacos:8848` inside compose network).
+**DTO base class**:
+- `com.ruoyi.yianlian.client.YiAnLianBase.YiAnLianRequest` (it's a package, not inner class)
+- Has `@JsonIgnore String appId` field
 
-### Module boundaries
-- `ruoyi-gateway`: unified entry, filters, captcha endpoint, route forwarding.
-- `ruoyi-auth`: login/token/logout/auth endpoints.
-- `ruoyi-modules/ruoyi-system`: core business/system APIs.
-- `ruoyi-modules/ruoyi-gen`, `ruoyi-job`, `ruoyi-file`: generator/scheduler/file services.
-- `ruoyi-modules/ruoyi-yianlian`: 易安联 integration endpoints and service logic.
-- `ruoyi-api/ruoyi-api-yianlian`: Feign/internal API contracts for 易安联.
-- `ruoyi-common/*`: shared security, datasource, redis, logging, core helpers.
+**Permissions**: VPN controllers use `yianlian:*` prefix (e.g., `yianlian:user:list`, `yianlian:dept:edit`)
 
-### Internal service call pattern
-- Internal APIs generally use `R<T>` as response wrapper.
-- Internal-only endpoints are guarded via `@InnerAuth` and `from-source: inner` header convention.
-- Feign clients in `ruoyi-api/*` modules define service-to-service contracts.
-- Each Feign interface has a corresponding `FallbackFactory` for circuit breaking.
+## YiAnLian API Paths
 
-### YiAnLian module architecture
-- **External endpoints** (`/yianlian/*`): Public REST APIs returning `AjaxResult`.
-- **Internal endpoints** (`/yianlian/inner/*`): Feign-accessible APIs with `@InnerAuth`, returning `R<T>`.
-- **Service layer**: Business logic with validation, calls `OpenApiClient` for third-party integration.
-- **DTO pattern**: Request/Response DTOs in `client.dto` package, VOs in `api.domain.vo` package.
-- **Constants**: API paths centralized in `YiAnLianConstants.java`.
-- **VPN module**: Separate user/role/dept management for VPN users (independent from system module):
-  - Controllers: `VpnUserController`, `VpnRoleController`, `VpnDeptController` at `/vpn/user`, `/vpn/role`, `/vpn/dept`
-  - Accessed via `/yianlian/vpn/*` through gateway
-  - Database tables: `vpn_user`, `vpn_role`, `vpn_dept`, `vpn_user_role`, `vpn_role_dept`
-  - SQL schema in `sql/vpn/vpn_dept.sql`
-  - Frontend views in `ruoyi-ui/src/views/vpn/` with API calls in `ruoyi-ui/src/api/vpn/`
-  - Permissions use `yianlian:user:*`, `yianlian:role:*`, `yianlian:dept:*` prefix
-  - No menu/post management (simplified compared to system module)
+All defined in `YiAnLianConstants.java`, base: `/enadmin/api/open/v1/`
 
-### OpenApiClient response handling
-- `OpenApiClient` is the single HTTP client for all YiAnLian external API calls.
-- Token is cached in Redis with key `yianlian_token:<appId>`, auto-refreshed on expiry.
-- YiAnLian API responses follow format: `{"code":"200","messages":"OK","data":...}`
-- **Important**: When `responseType == Boolean.class`, the client checks only the `code` field and returns `Boolean.TRUE` on success. It deserializes using `Object.class` for the `data` field because YiAnLian may return `"data":[]` (empty array) which cannot be deserialized as Boolean.
-- For non-Boolean response types, standard Jackson parametric deserialization is used.
-- YiAnLian create APIs (dept/user/role/service) expect **list format** request body: `[{...}]`, not a single object.
-- Multi-line (multiple lines on same API) support: the controller iterates over all `LineApp` records and calls the YiAnLian API for each line.
+| Category | Operations |
+|----------|----------|
+| Token | `GET /enadmin/api/open/getToken` |
+| Dept | list, create, update, delete under `.../contact/dept/` |
+| User | list, create, update/{id}, delete, resetpassword, session under `.../contact/user/` |
+| Role | list, create, update, delete under `.../role/` |
+| Service Group | list, create, update, delete under `.../service/group/` |
+| Service | list, create, update, delete under `.../service/` |
+| Authority | grant group permissions: `.../contact/authority/group` |
 
-### Cross-module dependencies
-- `ruoyi-yianlian` can call `ruoyi-system` via `RemoteDeptService` and `RemoteRoleService` (Feign).
-- `ruoyi-system` exposes internal endpoints at `/dept/inner/list` and `/role/inner/list`.
-- All internal calls require `SecurityConstants.FROM_SOURCE` header with value "inner".
+## Database
 
-## Deployment-specific notes
-- `docker/docker-compose.yml` defines exposed ports and all core containers.
-- `docker/copy.sh` is mandatory before image build when jars/dist change.
-- `deploy.sh modules` starts only nginx/gateway/auth/system (not gen/job/file/monitor/yianlian).
-- `docker/copy.sh` expects yianlian jar name `ruoyi-modules-yianlian.jar`, which matches `ruoyi-yianlian` module `artifactId`/`finalName`.
-- Recommended deployment sequence from current project practice: frontend build → backend build → `docker/copy.sh` → upload/extract → remote `deploy.sh stop` → `deploy.sh base` → `deploy.sh modules` → health checks.
-- **CRITICAL**: After adding new controllers or modifying backend code, you MUST rebuild the jar (`mvn -pl :ruoyi-modules-yianlian -am clean package -DskipTests`) and redeploy the service. The 404 errors often indicate the service is running an old jar without the new endpoints.
+VPN tables: `vpn_user`, `vpn_role`, `vpn_dept`, `vpn_user_role`, `vpn_role_dept`, `vpn_service_group`, `vpn_service`, `vpn_role_yianlian_mapping`
 
-## Environment/config gotchas
-- Root `pom.xml` profiles define Nacos addresses (`10.9.2.177:8848`) and namespaces (`dev`/`test`); service bootstrap files may point to in-network hostnames (e.g. `ruoyi-nacos:8848`) when running in Docker.
-- For module startup issues, prioritize validating Nacos DataId/Group/namespace alignment (especially `*-dev.yml`) before changing code.
-- Yianlian service is not included in `deploy.sh modules`; if deploying it, build/copy/upload and start that container explicitly.
+SQL schemas in `sql/vpn/`.
 
-## Code patterns and conventions
+## Deployment Notes
 
-### Adding new business modules
-1. Create module structure following existing pattern (controller/service/mapper/domain).
-2. Add module to root `pom.xml` and `ruoyi-modules/pom.xml`.
-3. Create corresponding API module in `ruoyi-api/` if cross-service calls are needed.
-4. Use `@InnerAuth` for internal-only endpoints.
-5. Follow DTO/VO separation: DTOs for transport, VOs for domain entities.
+- Gateway strips service prefix before forwarding (e.g., `/yianlian/vpn/dept` → `/vpn/dept`)
+- YiAnLian service is NOT included in `deploy.sh modules`; deploy separately
+- `docker/copy.sh` expects jar name `ruoyi-modules-yianlian.jar`
+- Nacos addresses configured in root `pom.xml` profiles (`10.9.2.177:8848`); Docker uses `ruoyi-nacos:8848`
 
-### MyBatis mapper conventions
-- ResultMap ID matches entity name (e.g., `LineAppResult` for `LineApp`).
-- Common SQL fragments use `<sql id="selectXxxVo">` pattern.
-- Dynamic SQL uses `<if test="field != null and field != ''">` for string fields.
-- Insert/Update use dynamic columns with `<if>` tags.
+## Testing & CI
 
-### Frontend conventions
-- API calls in `src/api/` directory, organized by module.
-- Views in `src/views/` follow module structure.
-- Use `dict.type.xxx` for dictionary data binding.
-- Form validation rules defined in component `rules` data property.
-- Use `v-hasPermi` directive for permission control on buttons.
-
-### Database migrations
-- SQL update scripts go in `sql/update/` directory.
-- New module schemas go in `sql/<module>/` directory (e.g., `sql/vpn/vpn_dept.sql`).
-- Use descriptive filenames (e.g., `add_line_app_url.sql`).
-- Include comments explaining the change purpose.
-
-## Troubleshooting
-
-### 404 errors on new endpoints
-1. Verify the controller is compiled: `jar -tf ruoyi-modules/ruoyi-yianlian/target/ruoyi-modules-yianlian.jar | grep ControllerName`
-2. Check `@RequestMapping` path matches the URL (gateway strips `/yianlian` prefix before forwarding)
-3. Rebuild and redeploy: `mvn -pl :ruoyi-modules-yianlian -am clean package -DskipTests` then restart service
-4. Verify service registered with Nacos and gateway can route to it
-
-### Frontend build errors
-- Missing imports: Check if all imported components/files exist
-- API path mismatches: Frontend calls `/yianlian/path` → backend controller should have `@RequestMapping("/path")`
-- Permission directives: Ensure `v-hasPermi` values match backend `@RequiresPermissions` annotations
+- No test infrastructure exists (no `src/test/java` in any module)
+- No CI/CD pipelines configured
+- No linting configuration
+- Deployment is manual via docker scripts and `bin/upload_and_extract_docker.py`
