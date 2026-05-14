@@ -67,13 +67,6 @@ public interface IVpnRoleService
      */
     public boolean checkRoleNameUnique(VpnRole role);
 
-    /**
-     * 校验角色权限是否唯一
-     *
-     * @param role 角色信息
-     * @return 结果
-     */
-    public boolean checkRoleKeyUnique(VpnRole role);
 
     /**
      * 通过角色ID查询角色使用数量
@@ -106,14 +99,6 @@ public interface IVpnRoleService
      * @return 结果
      */
     public int updateRoleStatus(VpnRole role);
-
-    /**
-     * 修改数据权限信息
-     *
-     * @param role 角色信息
-     * @return 结果
-     */
-    public int authDataScope(VpnRole role);
 
     /**
      * 通过角色ID删除角色

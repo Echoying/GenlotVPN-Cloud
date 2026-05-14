@@ -7,11 +7,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	<resultMap type="VpnRole" id="VpnRoleResult">
 		<id     property="roleId"             column="role_id"               />
 		<result property="roleName"           column="role_name"             />
-		<result property="roleKey"            column="role_key"              />
 		<result property="roleSort"           column="role_sort"             />
-		<result property="dataScope"          column="data_scope"            />
 		<result property="menuCheckStrictly"  column="menu_check_strictly"   />
-		<result property="deptCheckStrictly"  column="dept_check_strictly"   />
 		<result property="status"             column="status"                />
 		<result property="delFlag"            column="del_flag"              />
 		<result property="createBy"           column="create_by"             />
@@ -22,12 +19,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	</resultMap>
 
 	<sql id="selectRoleVo">
-	    select distinct r.role_id, r.role_name, r.role_key, r.role_sort, r.data_scope, r.menu_check_strictly, r.dept_check_strictly,
+	    select distinct r.role_id, r.role_name, r.role_sort, r.menu_check_strictly,
             r.status, r.del_flag, r.create_time, r.remark
         from vpn_role r
 	        left join vpn_user_role ur on ur.role_id = r.role_id
 	        left join vpn_user u on u.user_id = ur.user_id
-	        left join vpn_dept d on u.dept_id = d.dept_id
     </sql>
 
     <select id="selectRoleList" parameterType="VpnRole" resultMap="VpnRoleResult">
@@ -41,9 +37,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		</if>
 		<if test="status != null and status != ''">
 			AND r.status = #{status}
-		</if>
-		<if test="roleKey != null and roleKey != ''">
-			AND r.role_key like concat('%', #{roleKey}, '%')
 		</if>
 		<if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
 			and date_format(r.create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
@@ -87,20 +80,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		 where r.role_name=#{roleName} and r.del_flag = '0' limit 1
 	</select>
 
-	<select id="checkRoleKeyUnique" parameterType="String" resultMap="VpnRoleResult">
-		<include refid="selectRoleVo"/>
-		 where r.role_key=#{roleKey} and r.del_flag = '0' limit 1
-	</select>
 
  	<insert id="insertRole" parameterType="VpnRole" useGeneratedKeys="true" keyProperty="roleId">
  		insert into vpn_role(
  			<if test="roleId != null and roleId != 0">role_id,</if>
  			<if test="roleName != null and roleName != ''">role_name,</if>
- 			<if test="roleKey != null and roleKey != ''">role_key,</if>
  			<if test="roleSort != null">role_sort,</if>
- 			<if test="dataScope != null and dataScope != ''">data_scope,</if>
  			<if test="menuCheckStrictly != null">menu_check_strictly,</if>
- 			<if test="deptCheckStrictly != null">dept_check_strictly,</if>
  			<if test="status != null and status != ''">status,</if>
  			<if test="remark != null and remark != ''">remark,</if>
  			<if test="createBy != null and createBy != ''">create_by,</if>
@@ -108,11 +94,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  		)values(
  			<if test="roleId != null and roleId != 0">#{roleId},</if>
  			<if test="roleName != null and roleName != ''">#{roleName},</if>
- 			<if test="roleKey != null and roleKey != ''">#{roleKey},</if>
  			<if test="roleSort != null">#{roleSort},</if>
- 			<if test="dataScope != null and dataScope != ''">#{dataScope},</if>
  			<if test="menuCheckStrictly != null">#{menuCheckStrictly},</if>
- 			<if test="deptCheckStrictly != null">#{deptCheckStrictly},</if>
  			<if test="status != null and status != ''">#{status},</if>
  			<if test="remark != null and remark != ''">#{remark},</if>
  			<if test="createBy != null and createBy != ''">#{createBy},</if>
@@ -124,11 +107,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  		update vpn_role
  		<set>
  			<if test="roleName != null and roleName != ''">role_name = #{roleName},</if>
- 			<if test="roleKey != null and roleKey != ''">role_key = #{roleKey},</if>
  			<if test="roleSort != null">role_sort = #{roleSort},</if>
- 			<if test="dataScope != null and dataScope != ''">data_scope = #{dataScope},</if>
  			<if test="menuCheckStrictly != null">menu_check_strictly = #{menuCheckStrictly},</if>
- 			<if test="deptCheckStrictly != null">dept_check_strictly = #{deptCheckStrictly},</if>
  			<if test="status != null and status != ''">status = #{status},</if>
  			<if test="remark != null">remark = #{remark},</if>
  			<if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>

@@ -5,7 +5,6 @@ import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.yianlian.domain.VpnRole;
 import com.ruoyi.yianlian.mapper.VpnRoleMapper;
-import com.ruoyi.yianlian.mapper.VpnRoleDeptMapper;
 import com.ruoyi.yianlian.mapper.VpnUserRoleMapper;
 import com.ruoyi.yianlian.service.vpn.IVpnRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,9 +23,6 @@ public class VpnRoleServiceImpl implements IVpnRoleService
 {
     @Autowired
     private VpnRoleMapper roleMapper;
-
-    @Autowired
-    private VpnRoleDeptMapper roleDeptMapper;
 
     @Autowired
     private VpnUserRoleMapper userRoleMapper;
@@ -83,7 +79,7 @@ public class VpnRoleServiceImpl implements IVpnRoleService
         {
             if (StringUtils.isNotNull(perm))
             {
-                permsSet.addAll(Arrays.asList(perm.getRoleKey().trim().split(",")));
+                permsSet.add(perm.getRoleName());
             }
         }
         return permsSet;
@@ -142,23 +138,6 @@ public class VpnRoleServiceImpl implements IVpnRoleService
         return UserConstants.UNIQUE;
     }
 
-    /**
-     * 校验角色权限是否唯一
-     *
-     * @param role 角色信息
-     * @return 结果
-     */
-    @Override
-    public boolean checkRoleKeyUnique(VpnRole role)
-    {
-        Long roleId = StringUtils.isNull(role.getRoleId()) ? -1L : role.getRoleId();
-        VpnRole info = roleMapper.checkRoleKeyUnique(role.getRoleKey());
-        if (StringUtils.isNotNull(info) && info.getRoleId().longValue() != roleId.longValue())
-        {
-            return UserConstants.NOT_UNIQUE;
-        }
-        return UserConstants.UNIQUE;
-    }
 
     /**
      * 通过角色ID查询角色使用数量
@@ -182,10 +161,7 @@ public class VpnRoleServiceImpl implements IVpnRoleService
     @Transactional(rollbackFor = Exception.class)
     public int insertRole(VpnRole role)
     {
-        // 新增角色信息
-        roleMapper.insertRole(role);
-        // 新增角色与部门关联
-        return insertRoleDept(role);
+        return roleMapper.insertRole(role);
     }
 
     /**
@@ -198,12 +174,7 @@ public class VpnRoleServiceImpl implements IVpnRoleService
     @Transactional(rollbackFor = Exception.class)
     public int updateRole(VpnRole role)
     {
-        // 修改角色信息
-        roleMapper.updateRole(role);
-        // 删除角色与部门关联
-        roleDeptMapper.deleteRoleDeptByRoleId(role.getRoleId());
-        // 新增角色和部门信息（数据权限）
-        return insertRoleDept(role);
+        return roleMapper.updateRole(role);
     }
 
     /**
@@ -219,48 +190,6 @@ public class VpnRoleServiceImpl implements IVpnRoleService
     }
 
     /**
-     * 修改数据权限信息
-     *
-     * @param role 角色信息
-     * @return 结果
-     */
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public int authDataScope(VpnRole role)
-    {
-        // 修改角色信息
-        roleMapper.updateRole(role);
-        // 删除角色与部门关联
-        roleDeptMapper.deleteRoleDeptByRoleId(role.getRoleId());
-        // 新增角色和部门信息（数据权限）
-        return insertRoleDept(role);
-    }
-
-    /**
-     * 新增角色部门信息(数据权限)
-     *
-     * @param role 角色对象
-     */
-    public int insertRoleDept(VpnRole role)
-    {
-        int rows = 1;
-        // 新增角色与部门（数据权限）管理
-        List<com.ruoyi.yianlian.domain.VpnRoleDept> list = new ArrayList<com.ruoyi.yianlian.domain.VpnRoleDept>();
-        for (Long deptId : role.getDeptIds())
-        {
-            com.ruoyi.yianlian.domain.VpnRoleDept rd = new com.ruoyi.yianlian.domain.VpnRoleDept();
-            rd.setRoleId(role.getRoleId());
-            rd.setDeptId(deptId);
-            list.add(rd);
-        }
-        if (list.size() > 0)
-        {
-            rows = roleDeptMapper.batchRoleDept(list);
-        }
-        return rows;
-    }
-
-    /**
      * 通过角色ID删除角色
      *
      * @param roleId 角色ID
@@ -270,8 +199,6 @@ public class VpnRoleServiceImpl implements IVpnRoleService
     @Transactional(rollbackFor = Exception.class)
     public int deleteRoleById(Long roleId)
     {
-        // 删除角色与部门关联
-        roleDeptMapper.deleteRoleDeptByRoleId(roleId);
         return roleMapper.deleteRoleById(roleId);
     }
 
@@ -293,8 +220,6 @@ public class VpnRoleServiceImpl implements IVpnRoleService
                 throw new ServiceException(String.format("%1$s已分配,不能删除", role.getRoleName()));
             }
         }
-        // 删除角色与部门关联
-        roleDeptMapper.deleteRoleDept(roleIds);
         return roleMapper.deleteRoleByIds(roleIds);
     }
 }

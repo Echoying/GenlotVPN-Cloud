@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.yianlian.mapper.VpnRoleYianlianMappingMapper">
+
+    <resultMap type="com.ruoyi.yianlian.domain.VpnRoleYianlianMapping" id="MappingResult">
+        <result property="id"          column="id"          />
+        <result property="roleId"      column="role_id"     />
+        <result property="appId"       column="app_id"      />
+        <result property="yianlianId"  column="yianlian_id" />
+        <result property="createTime"  column="create_time" />
+    </resultMap>
+
+    <select id="selectByRoleId" parameterType="Long" resultMap="MappingResult">
+        select id, role_id, app_id, yianlian_id, create_time
+        from vpn_role_yianlian_mapping
+        where role_id = #{roleId}
+    </select>
+
+    <select id="selectByRoleIdAndAppId" resultMap="MappingResult">
+        select id, role_id, app_id, yianlian_id, create_time
+        from vpn_role_yianlian_mapping
+        where role_id = #{roleId} and app_id = #{appId}
+    </select>
+
+    <insert id="insert" parameterType="com.ruoyi.yianlian.domain.VpnRoleYianlianMapping" useGeneratedKeys="true" keyProperty="id">
+        insert into vpn_role_yianlian_mapping (role_id, app_id, yianlian_id, create_time)
+        values (#{roleId}, #{appId}, #{yianlianId}, #{createTime})
+    </insert>
+
+    <delete id="deleteByRoleId" parameterType="Long">
+        delete from vpn_role_yianlian_mapping where role_id = #{roleId}
+    </delete>
+
+    <delete id="deleteByRoleIds">
+        delete from vpn_role_yianlian_mapping where role_id in
+        <foreach item="roleId" collection="array" open="(" separator="," close=")">
+            #{roleId}
+        </foreach>
+    </delete>
+</mapper>
