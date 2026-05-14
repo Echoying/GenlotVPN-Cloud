@@ -123,6 +123,16 @@ public class YiAnLianConstants
     public static final String roleListPath = "/enadmin/api/open/v1/contact/role/list";
 
     /**
+     * 权限列表接口路径
+     */
+    public static final String authorityListPath = "/enadmin/api/open/v1/contact/authority/list";
+
+    /**
+     * 授予用户权限接口路径
+     */
+    public static final String authorityUserPath = "/enadmin/api/open/v1/contact/authority/user";
+
+    /**
      * 授予组织权限接口路径
      */
     public static final String authorityGroupPath = "/enadmin/api/open/v1/contact/authority/group";

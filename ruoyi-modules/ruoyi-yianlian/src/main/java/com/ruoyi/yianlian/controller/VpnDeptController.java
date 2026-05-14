@@ -9,7 +9,6 @@ import com.ruoyi.common.log.annotation.Log;
 import com.ruoyi.common.log.enums.BusinessType;
 import com.ruoyi.common.security.annotation.RequiresPermissions;
 import com.ruoyi.common.security.utils.SecurityUtils;
-import com.ruoyi.yianlian.client.dto.YiAnLianDeptAuthRequest;
 import com.ruoyi.yianlian.client.dto.YiAnLianDeptListRequest;
 import com.ruoyi.yianlian.client.dto.YiAnLianDeptListResp;
 import com.ruoyi.yianlian.client.dto.vo.YiAnLianDeptVO;
@@ -17,7 +16,6 @@ import com.ruoyi.yianlian.domain.LineApp;
 import com.ruoyi.yianlian.domain.VpnDept;
 import com.ruoyi.yianlian.service.vpn.IVpnDeptService;
 import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
-import com.ruoyi.yianlian.service.yianlian.IYiAnLianAuthorityService;
 import com.ruoyi.yianlian.service.yianlian.IYiAnLianDeptService;
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,9 +43,6 @@ public class VpnDeptController extends BaseController
 
     @Autowired
     private IYiAnLianDeptService yiAnLianDeptService;
-
-    @Autowired
-    private IYiAnLianAuthorityService yiAnLianAuthorityService;
 
     /**
      * 获取部门列表
@@ -335,20 +330,5 @@ public class VpnDeptController extends BaseController
             }
         }
         return toAjax(ret);
-    }
-
-    /**
-     * 授予组织权限
-     */
-    @RequiresPermissions("yianlian:dept:edit")
-    @Log(title = "VPN部门授权", businessType = BusinessType.UPDATE)
-    @PostMapping("/authority")
-    public AjaxResult grantAuthority(@Validated @RequestBody YiAnLianDeptAuthRequest request)
-    {
-        List<LineApp> lineApps = lineAppService.selectLineAppList(new LineApp());
-        for (LineApp lineApp : lineApps) {
-            yiAnLianAuthorityService.grantAuthority(lineApp.getAppId(), request);
-        }
-        return success();
     }
 }
