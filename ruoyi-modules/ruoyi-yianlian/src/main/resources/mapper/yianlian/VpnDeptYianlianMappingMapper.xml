@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.yianlian.mapper.VpnDeptYianlianMappingMapper">
+
+    <resultMap type="com.ruoyi.yianlian.domain.VpnDeptYianlianMapping" id="MappingResult">
+        <id     property="id"                column="id"                 />
+        <result property="vpnDeptId"         column="vpn_dept_id"        />
+        <result property="yianlianDeptId"    column="yianlian_dept_id"   />
+        <result property="yianlianDeptName"  column="yianlian_dept_name" />
+        <result property="delFlag"           column="del_flag"           />
+        <result property="createBy"          column="create_by"          />
+        <result property="createTime"        column="create_time"        />
+        <result property="updateBy"          column="update_by"          />
+        <result property="updateTime"        column="update_time"        />
+    </resultMap>
+
+    <sql id="selectColumns">
+        select id, vpn_dept_id, app_id, yianlian_dept_id, yianlian_dept_name, del_flag, create_by, create_time, update_by, update_time
+        from vpn_dept_yianlian_mapping
+    </sql>
+
+    <select id="selectVpnDeptYianlianMappingById" parameterType="Long" resultMap="MappingResult">
+        <include refid="selectColumns"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectVpnDeptYianlianMappingList" parameterType="com.ruoyi.yianlian.domain.VpnDeptYianlianMapping" resultMap="MappingResult">
+        <include refid="selectColumns"/>
+        <where>
+            <if test="vpnDeptId != null">and vpn_dept_id = #{vpnDeptId}</if>
+            <if test="yianlianDeptId != null and yianlianDeptId != ''">and yianlian_dept_id = #{yianlianDeptId}</if>
+            <if test="yianlianDeptName != null and yianlianDeptName != ''">and yianlian_dept_name like concat('%', #{yianlianDeptName}, '%')</if>
+            <if test="delFlag != null and delFlag != ''">and del_flag = #{delFlag}</if>
+        </where>
+    </select>
+
+    <select id="selectByVpnDeptId" parameterType="Long" resultMap="MappingResult">
+        <include refid="selectColumns"/>
+        where vpn_dept_id = #{vpnDeptId} and del_flag = '0'
+    </select>
+
+    <select id="selectByYianlianDeptId" parameterType="String" resultMap="MappingResult">
+        <include refid="selectColumns"/>
+        where yianlian_dept_id = #{yianlianDeptId} and del_flag = '0'
+    </select>
+
+    <select id="selectByDeptId" parameterType="Long" resultMap="MappingResult">
+        <include refid="selectColumns"/>
+        where vpn_dept_id = #{deptId}
+    </select>
+
+    <select id="selectByDeptIdAndAppId" resultMap="MappingResult">
+        <include refid="selectColumns"/>
+        where vpn_dept_id = #{deptId} and app_id = #{appId}
+    </select>
+
+    <insert id="insertVpnDeptYianlianMapping" parameterType="com.ruoyi.yianlian.domain.VpnDeptYianlianMapping" useGeneratedKeys="true" keyProperty="id">
+        insert into vpn_dept_yianlian_mapping (
+            <if test="vpnDeptId != null">vpn_dept_id,</if>
+            <if test="yianlianDeptId != null and yianlianDeptId != ''">yianlian_dept_id,</if>
+            <if test="yianlianDeptName != null and yianlianDeptName != ''">yianlian_dept_name,</if>
+            <if test="delFlag != null and delFlag != ''">del_flag,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            create_time
+        ) values (
+            <if test="vpnDeptId != null">#{vpnDeptId},</if>
+            <if test="yianlianDeptId != null and yianlianDeptId != ''">#{yianlianDeptId},</if>
+            <if test="yianlianDeptName != null and yianlianDeptName != ''">#{yianlianDeptName},</if>
+            <if test="delFlag != null and delFlag != ''">#{delFlag},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate()
+        )
+    </insert>
+
+    <insert id="insert" parameterType="com.ruoyi.yianlian.domain.VpnDeptYianlianMapping" useGeneratedKeys="true" keyProperty="id">
+        insert into vpn_dept_yianlian_mapping (vpn_dept_id, app_id, yianlian_dept_id, yianlian_dept_name, create_time)
+        values (#{vpnDeptId}, #{appId, jdbcType=VARCHAR}, #{yianlianDeptId}, #{yianlianDeptName}, sysdate())
+    </insert>
+
+    <update id="updateVpnDeptYianlianMapping" parameterType="com.ruoyi.yianlian.domain.VpnDeptYianlianMapping">
+        update vpn_dept_yianlian_mapping
+        <set>
+            <if test="vpnDeptId != null">vpn_dept_id = #{vpnDeptId},</if>
+            <if test="yianlianDeptId != null and yianlianDeptId != ''">yianlian_dept_id = #{yianlianDeptId},</if>
+            <if test="yianlianDeptName != null and yianlianDeptName != ''">yianlian_dept_name = #{yianlianDeptName},</if>
+            <if test="delFlag != null and delFlag != ''">del_flag = #{delFlag},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteVpnDeptYianlianMappingById" parameterType="Long">
+        delete from vpn_dept_yianlian_mapping where id = #{id}
+    </delete>
+
+    <delete id="deleteVpnDeptYianlianMappingByIds">
+        delete from vpn_dept_yianlian_mapping where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <update id="deleteByVpnDeptId" parameterType="Long">
+        update vpn_dept_yianlian_mapping set del_flag = '2' where vpn_dept_id = #{vpnDeptId}
+    </update>
+
+    <delete id="deleteByDeptId" parameterType="Long">
+        delete from vpn_dept_yianlian_mapping where vpn_dept_id = #{deptId}
+    </delete>
+
+    <delete id="deleteByDeptIds">
+        delete from vpn_dept_yianlian_mapping where vpn_dept_id in
+        <foreach item="deptId" collection="array" open="(" separator="," close=")">
+            #{deptId}
+        </foreach>
+    </delete>
+
+</mapper>
