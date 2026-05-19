@@ -1,54 +1,49 @@
 package com.ruoyi.yianlian.domain;
 
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.commons.lang3.builder.ToStringStyle;
-import com.ruoyi.common.core.annotation.Excel;
-import com.ruoyi.common.core.web.domain.BaseEntity;
+import java.util.Date;
 
 /**
  * VPN用户与易安联用户映射对象 vpn_user_yianlian_mapping
  *
  * @author ruoyi
  */
-public class VpnUserYianlianMapping extends BaseEntity
+public class VpnUserYianlianMapping
 {
     private static final long serialVersionUID = 1L;
 
-    /** 主键ID */
+    /** 主键 */
     private Long id;
 
-    /** 应用ID */
-    @Excel(name = "应用ID")
+    /** 本地用户ID */
+    private Long userId;
+
+    /** 线路appId */
     private String appId;
 
-    /** VPN用户ID */
-    @Excel(name = "VPN用户ID")
-    private Long vpnUserId;
-
     /** 易安联用户ID */
-    @Excel(name = "易安联用户ID")
-    private String yianlianUserId;
+    private String yianlianId;
 
-    /** 易安联用户名称 */
-    @Excel(name = "易安联用户名称")
-    private String yianlianUserName;
-
-    /** 删除标志（0代表存在 2代表删除） */
-    private String delFlag;
-
-    public void setId(Long id)
-    {
-        this.id = id;
-    }
+    /** 创建时间 */
+    private Date createTime;
 
     public Long getId()
     {
         return id;
     }
 
-    public void setAppId(String appId)
+    public void setId(Long id)
     {
-        this.appId = appId;
+        this.id = id;
+    }
+
+    public Long getUserId()
+    {
+        return userId;
+    }
+
+    public void setUserId(Long userId)
+    {
+        this.userId = userId;
     }
 
     public String getAppId()
@@ -56,59 +51,40 @@ public class VpnUserYianlianMapping extends BaseEntity
         return appId;
     }
 
-    public void setVpnUserId(Long vpnUserId)
+    public void setAppId(String appId)
     {
-        this.vpnUserId = vpnUserId;
+        this.appId = appId;
     }
 
-    public Long getVpnUserId()
+    public String getYianlianId()
     {
-        return vpnUserId;
+        return yianlianId;
     }
 
-    public void setYianlianUserId(String yianlianUserId)
+    public void setYianlianId(String yianlianId)
     {
-        this.yianlianUserId = yianlianUserId;
+        this.yianlianId = yianlianId;
     }
 
-    public String getYianlianUserId()
+    public Date getCreateTime()
     {
-        return yianlianUserId;
+        return createTime;
     }
 
-    public void setYianlianUserName(String yianlianUserName)
+    public void setCreateTime(Date createTime)
     {
-        this.yianlianUserName = yianlianUserName;
-    }
-
-    public String getYianlianUserName()
-    {
-        return yianlianUserName;
-    }
-
-    public void setDelFlag(String delFlag)
-    {
-        this.delFlag = delFlag;
-    }
-
-    public String getDelFlag()
-    {
-        return delFlag;
+        this.createTime = createTime;
     }
 
     @Override
-    public String toString() {
-        return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
-            .append("id", getId())
-            .append("appId", getAppId())
-            .append("vpnUserId", getVpnUserId())
-            .append("yianlianUserId", getYianlianUserId())
-            .append("yianlianUserName", getYianlianUserName())
-            .append("delFlag", getDelFlag())
-            .append("createBy", getCreateBy())
-            .append("createTime", getCreateTime())
-            .append("updateBy", getUpdateBy())
-            .append("updateTime", getUpdateTime())
-            .toString();
+    public String toString()
+    {
+        return "VpnUserYianlianMapping{" +
+                "id=" + id +
+                ", userId=" + userId +
+                ", appId='" + appId + '\'' +
+                ", yianlianId='" + yianlianId + '\'' +
+                ", createTime=" + createTime +
+                '}';
     }
 }

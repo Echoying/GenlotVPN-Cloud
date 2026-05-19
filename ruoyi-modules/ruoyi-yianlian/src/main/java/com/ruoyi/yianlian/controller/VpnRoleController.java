@@ -91,7 +91,61 @@ public class VpnRoleController extends BaseController {
         role.setCreateBy(SecurityUtils.getUsername());
         int rows = roleService.insertRole(role);
         if (rows > 0) {
-            syncCreateToAllLines(role);
+            // 获取所有线路
+            List<LineApp> lineApps = lineAppService.selectLineAppList(new LineApp());
+            for (LineApp lineApp : lineApps) {
+                // 获取所有yianlian角色数据
+                YiAnLianRoleListRequest request = new YiAnLianRoleListRequest();
+                request.setAppId(lineApp.getAppId());
+                request.setPageIndex("1");
+                request.setPageSize("10000");
+                YiAnLianRoleListResp resp = yiAnLianRoleService.getRoleList(request);
+                if (resp == null || resp.getData() == null) {
+                    continue;
+                }
+                // 根据名称匹配yianlian角色ID
+                String matchedYianlianId = null;
+                for (YiAnLianRoleVO vo : resp.getData()) {
+                    if (vo.getName().equals(role.getRoleName())) {
+                        matchedYianlianId = vo.getId();
+                        break;
+                    }
+                }
+                // 如果匹配到，保存映射关系
+                if (matchedYianlianId != null) {
+                    VpnRoleYianlianMapping mapping = new VpnRoleYianlianMapping();
+                    mapping.setRoleId(role.getRoleId());
+                    mapping.setAppId(lineApp.getAppId());
+                    mapping.setYianlianId(matchedYianlianId);
+                    mapping.setCreateTime(new Date());
+                    mappingService.insert(mapping);
+                    continue;
+                }
+                // 不存在则创建
+                YiAnLianRoleVO vo = new YiAnLianRoleVO();
+                vo.setName(role.getRoleName());
+                vo.setDescription(role.getRoleName());
+                Boolean ret = yiAnLianRoleService.create(lineApp.getAppId(), vo);
+                if (ret != null && ret) {
+                    // 创建成功后，重新获取角色列表以获取新创建角色的ID
+                    YiAnLianRoleListResp newResp = yiAnLianRoleService.getRoleList(request);
+                    if (newResp != null && newResp.getData() != null) {
+                        for (YiAnLianRoleVO newVo : newResp.getData()) {
+                            if (newVo.getName().equals(role.getRoleName())) {
+                                VpnRoleYianlianMapping mapping = new VpnRoleYianlianMapping();
+                                mapping.setRoleId(role.getRoleId());
+                                mapping.setAppId(lineApp.getAppId());
+                                mapping.setYianlianId(newVo.getId());
+                                mapping.setCreateTime(new Date());
+                                mappingService.insert(mapping);
+                                break;
+                            }
+                        }
+                    }
+                } else {
+                    log.error("创建角色失败, appId: {}, roleName: {}", lineApp.getAppId(), role.getRoleName());
+                }
+            }
         }
         return toAjax(rows);
     }
@@ -109,7 +163,52 @@ public class VpnRoleController extends BaseController {
         role.setUpdateBy(SecurityUtils.getUsername());
         int rows = roleService.updateRole(role);
         if (rows > 0) {
-            syncUpdateToAllLines(role);
+            // 获取所有线路
+            List<LineApp> lineApps = lineAppService.selectLineAppList(new LineApp());
+            for (LineApp lineApp : lineApps) {
+                // 查询映射表获取yianlian角色ID
+                VpnRoleYianlianMapping mapping = mappingService.selectByRoleIdAndAppId(role.getRoleId(), lineApp.getAppId());
+                if (mapping != null) {
+                    // 存在映射，使用映射表中的yianlian ID进行更新
+                    YiAnLianRoleVO vo = new YiAnLianRoleVO();
+                    vo.setId(mapping.getYianlianId());
+                    vo.setName(role.getRoleName());
+                    vo.setDescription(role.getRoleName());
+                    boolean ret = yiAnLianRoleService.update(lineApp.getAppId(), vo);
+                    if (!ret) {
+                        log.error("更新角色失败, appId: {}, yianlianId: {}", lineApp.getAppId(), mapping.getYianlianId());
+                    }
+                } else {
+                    // 不存在映射，创建新角色并保存映射
+                    YiAnLianRoleVO vo = new YiAnLianRoleVO();
+                    vo.setName(role.getRoleName());
+                    vo.setDescription(role.getRoleName());
+                    Boolean ret = yiAnLianRoleService.create(lineApp.getAppId(), vo);
+                    if (ret != null && ret) {
+                        // 创建成功后，重新获取角色列表以获取新创建角色的ID
+                        YiAnLianRoleListRequest request = new YiAnLianRoleListRequest();
+                        request.setAppId(lineApp.getAppId());
+                        request.setPageIndex("1");
+                        request.setPageSize("10000");
+                        YiAnLianRoleListResp newResp = yiAnLianRoleService.getRoleList(request);
+                        if (newResp != null && newResp.getData() != null) {
+                            for (YiAnLianRoleVO newVo : newResp.getData()) {
+                                if (newVo.getName().equals(role.getRoleName())) {
+                                    VpnRoleYianlianMapping newMapping = new VpnRoleYianlianMapping();
+                                    newMapping.setRoleId(role.getRoleId());
+                                    newMapping.setAppId(lineApp.getAppId());
+                                    newMapping.setYianlianId(newVo.getId());
+                                    newMapping.setCreateTime(new Date());
+                                    mappingService.insert(newMapping);
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        log.error("创建角色失败, appId: {}, roleName: {}", lineApp.getAppId(), role.getRoleName());
+                    }
+                }
+            }
         }
         return toAjax(rows);
     }
@@ -132,10 +231,22 @@ public class VpnRoleController extends BaseController {
     @Log(title = "VPN角色管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{roleIds}")
     public AjaxResult remove(@PathVariable Long[] roleIds) {
-        for (Long roleId : roleIds) {
-            syncDeleteToAllLines(roleId);
+        int rows = roleService.deleteRoleByIds(roleIds);
+        if (rows > 0) {
+            for (Long roleId : roleIds) {
+                // 通过映射表获取yianlianId进行删除
+                List<VpnRoleYianlianMapping> mappings = mappingService.selectByRoleId(roleId);
+                for (VpnRoleYianlianMapping mapping : mappings) {
+                    boolean ret = yiAnLianRoleService.delete(mapping.getAppId(), Collections.singletonList(mapping.getYianlianId()));
+                    if (!ret) {
+                        log.error("删除易安联角色失败, appId: {}, yianlianId: {}", mapping.getAppId(), mapping.getYianlianId());
+                    }
+                }
+                // 删除映射记录
+                mappingService.deleteByRoleId(roleId);
+            }
         }
-        return toAjax(roleService.deleteRoleByIds(roleIds));
+        return toAjax(rows);
     }
 
     /**
@@ -145,77 +256,5 @@ public class VpnRoleController extends BaseController {
     @GetMapping("/optionselect")
     public AjaxResult optionselect() {
         return success(roleService.selectRoleAll());
-    }
-
-    // ======================== 易安联同步方法 ========================
-
-    private void syncCreateToAllLines(VpnRole role) {
-        List<LineApp> lines = lineAppService.selectLineAppList(new LineApp());
-        for (LineApp line : lines) {
-            try {
-                YiAnLianRoleVO vo = buildYiAnLianRoleVO(role);
-                yiAnLianRoleService.create(line.getAppId(), vo);
-
-                String yianlianId = queryYianlianRoleIdByName(line.getAppId(), role.getRoleName());
-                if (yianlianId != null) {
-                    VpnRoleYianlianMapping mapping = new VpnRoleYianlianMapping();
-                    mapping.setRoleId(role.getRoleId());
-                    mapping.setAppId(line.getAppId());
-                    mapping.setYianlianId(yianlianId);
-                    mapping.setCreateTime(new Date());
-                    mappingService.insert(mapping);
-                }
-            } catch (Exception e) {
-                log.error("同步创建角色到线路[{}]失败: {}", line.getAppId(), e.getMessage(), e);
-            }
-        }
-    }
-
-    private void syncUpdateToAllLines(VpnRole role) {
-        List<VpnRoleYianlianMapping> mappings = mappingService.selectByRoleId(role.getRoleId());
-        for (VpnRoleYianlianMapping mapping : mappings) {
-            try {
-                YiAnLianRoleVO vo = buildYiAnLianRoleVO(role);
-                vo.setId(mapping.getYianlianId());
-                yiAnLianRoleService.update(mapping.getAppId(), vo);
-            } catch (Exception e) {
-                log.error("同步更新角色到线路[{}]失败: {}", mapping.getAppId(), e.getMessage(), e);
-            }
-        }
-    }
-
-    private void syncDeleteToAllLines(Long roleId) {
-        List<VpnRoleYianlianMapping> mappings = mappingService.selectByRoleId(roleId);
-        for (VpnRoleYianlianMapping mapping : mappings) {
-            try {
-                yiAnLianRoleService.delete(mapping.getAppId(), Collections.singletonList(mapping.getYianlianId()));
-            } catch (Exception e) {
-                log.error("同步删除角色到线路[{}]失败: {}", mapping.getAppId(), e.getMessage(), e);
-            }
-        }
-        mappingService.deleteByRoleId(roleId);
-    }
-
-    private String queryYianlianRoleIdByName(String appId, String roleName) {
-        YiAnLianRoleListRequest request = new YiAnLianRoleListRequest();
-        request.setAppId(appId);
-        request.setPageIndex("1");
-        request.setPageSize("100");
-        YiAnLianRoleListResp resp = yiAnLianRoleService.getRoleList(request);
-        if (resp != null && resp.getData() != null) {
-            for (YiAnLianRoleVO item : resp.getData()) {
-                if (roleName.equals(item.getName())) {
-                    return item.getId();
-                }
-            }
-        }
-        return null;
-    }
-
-    private YiAnLianRoleVO buildYiAnLianRoleVO(VpnRole role) {
-        YiAnLianRoleVO vo = new YiAnLianRoleVO();
-        vo.setName(role.getRoleName());
-        vo.setDescription(role.getRoleName());
-        return vo;
     }
 }

@@ -23,6 +23,11 @@ public class VpnRoleYianlianMappingServiceImpl implements IVpnRoleYianlianMappin
     }
 
     @Override
+    public VpnRoleYianlianMapping selectByRoleIdAndAppId(Long roleId, String appId) {
+        return mappingMapper.selectByRoleIdAndAppId(roleId, appId);
+    }
+
+    @Override
     public void insert(VpnRoleYianlianMapping mapping) {
         mappingMapper.insert(mapping);
     }

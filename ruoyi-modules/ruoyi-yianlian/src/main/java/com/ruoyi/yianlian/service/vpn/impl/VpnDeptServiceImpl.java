@@ -30,7 +30,6 @@ public class VpnDeptServiceImpl implements IVpnDeptService
     @Autowired
     private VpnDeptMapper deptMapper;
 
-
     /**
      * 查询部门管理数据
      *

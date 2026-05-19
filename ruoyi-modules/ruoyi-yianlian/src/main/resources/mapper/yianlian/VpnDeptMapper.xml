@@ -83,7 +83,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		where dept_name=#{deptName} and parent_id = #{parentId} and del_flag = '0' limit 1
 	</select>
 
-    <insert id="insertDept" parameterType="VpnDept">
+    <insert id="insertDept" parameterType="VpnDept" useGeneratedKeys="true" keyProperty="deptId">
  		insert into vpn_dept(
  			<if test="deptId != null and deptId != 0">dept_id,</if>
  			<if test="parentId != null and parentId != 0">parent_id,</if>

@@ -8,6 +8,7 @@ import com.ruoyi.common.core.annotation.Excels;
 import com.ruoyi.common.core.web.domain.BaseEntity;
 import com.ruoyi.common.core.xss.Xss;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
@@ -23,6 +24,7 @@ import java.util.List;
  * @author ruoyi
  */
 @Data
+@EqualsAndHashCode(callSuper = false)
 public class VpnUser extends BaseEntity
 {
     private static final long serialVersionUID = 1L;

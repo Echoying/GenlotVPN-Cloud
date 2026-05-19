@@ -2,116 +2,107 @@
 <!DOCTYPE mapper
 PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.ruoyi.system.mapper.SysConfigMapper">
-    
-    <resultMap type="SysConfig" id="SysConfigResult">
-    	<id     property="configId"      column="config_id"      />
-        <result property="configName"    column="config_name"    />
-        <result property="configKey"     column="config_key"     />
-        <result property="configValue"   column="config_value"   />
-        <result property="configType"    column="config_type"    />
-        <result property="createBy"      column="create_by"      />
-        <result property="createTime"    column="create_time"    />
-        <result property="updateBy"      column="update_by"      />
-        <result property="updateTime"    column="update_time"    />
+<mapper namespace="com.ruoyi.yianlian.mapper.YalDeptAuthMapper">
+
+    <resultMap type="YalDeptAuth" id="YalDeptAuthResult">
+        <result property="id"           column="id"            />
+        <result property="deptId"       column="dept_id"       />
+        <result property="lineId"       column="line_id"       />
+        <result property="appGroupIds"  column="app_group_ids" />
+        <result property="appIds"       column="app_ids"       />
+        <result property="createBy"     column="create_by"     />
+        <result property="createTime"   column="create_time"   />
+        <result property="updateBy"     column="update_by"     />
+        <result property="updateTime"   column="update_time"   />
+        <result property="deptName"     column="dept_name"     />
     </resultMap>
-    
-    <sql id="selectConfigVo">
-        select config_id, config_name, config_key, config_value, config_type, create_by, create_time, update_by, update_time, remark 
-		from sys_config
+
+    <sql id="selectYalDeptAuthVo">
+        select id, dept_id, line_id, app_group_ids, app_ids, create_by, create_time, update_by, update_time from yal_dept_auth
     </sql>
-    
-    <!-- 查询条件 -->
-	<sql id="sqlwhereSearch">
-		<where>
-			<if test="configId !=null">
-				and config_id = #{configId}
-			</if>
-			<if test="configKey !=null and configKey != ''">
-				and config_key = #{configKey}
-			</if>
-		</where>
-	</sql>
-    
-    <select id="selectConfig" parameterType="SysConfig" resultMap="SysConfigResult">
-        <include refid="selectConfigVo"/>
-        <include refid="sqlwhereSearch"/>
-    </select>
-    
-    <select id="selectConfigList" parameterType="SysConfig" resultMap="SysConfigResult">
-        <include refid="selectConfigVo"/>
+
+    <select id="selectYalDeptAuthList" parameterType="YalDeptAuth" resultMap="YalDeptAuthResult">
+        select a.id, a.dept_id, a.line_id, a.app_group_ids, a.app_ids, a.create_by, a.create_time, a.update_by, a.update_time, d.dept_name
+        from yal_dept_auth a
+        left join sys_dept d on a.dept_id = d.dept_id
         <where>
-			<if test="configName != null and configName != ''">
-				AND config_name like concat('%', #{configName}, '%')
-			</if>
-			<if test="configType != null and configType != ''">
-				AND config_type = #{configType}
-			</if>
-			<if test="configKey != null and configKey != ''">
-				AND config_key like concat('%', #{configKey}, '%')
-			</if>
-			<if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
-				and date_format(create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
-			</if>
-			<if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
-				and date_format(create_time,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
-			</if>
-		</where>
+            <if test="deptId != null">
+                and a.dept_id = #{deptId}
+            </if>
+            <if test="lineId != null and lineId != ''">
+                and a.line_id = #{lineId}
+            </if>
+        </where>
     </select>
-    
-    <select id="selectConfigById" parameterType="Long" resultMap="SysConfigResult">
-        <include refid="selectConfigVo"/>
-        where config_id = #{configId}
+
+    <select id="selectYalDeptAuthById" parameterType="Long" resultMap="YalDeptAuthResult">
+        <include refid="selectYalDeptAuthVo"/>
+        where id = #{id}
     </select>
-    
-    <select id="checkConfigKeyUnique" parameterType="String" resultMap="SysConfigResult">
-        <include refid="selectConfigVo"/>
-        where config_key = #{configKey} limit 1
+
+    <select id="selectYalDeptAuthByDeptId" parameterType="Long" resultMap="YalDeptAuthResult">
+        <include refid="selectYalDeptAuthVo"/>
+        where dept_id = #{deptId}
     </select>
-    
-    <insert id="insertConfig" parameterType="SysConfig">
-        insert into sys_config (
-			<if test="configName != null and configName != '' ">config_name,</if>
-			<if test="configKey != null and configKey != '' ">config_key,</if>
-			<if test="configValue != null and configValue != '' ">config_value,</if>
-			<if test="configType != null and configType != '' ">config_type,</if>
-			<if test="createBy != null and createBy != ''">create_by,</if>
-			<if test="remark != null and remark != ''">remark,</if>
- 			create_time
-        )values(
-			<if test="configName != null and configName != ''">#{configName},</if>
-			<if test="configKey != null and configKey != ''">#{configKey},</if>
-			<if test="configValue != null and configValue != ''">#{configValue},</if>
-			<if test="configType != null and configType != ''">#{configType},</if>
-			<if test="createBy != null and createBy != ''">#{createBy},</if>
-			<if test="remark != null and remark != ''">#{remark},</if>
- 			sysdate()
-		)
+
+    <insert id="insertYalDeptAuth" parameterType="YalDeptAuth" useGeneratedKeys="true" keyProperty="id">
+        insert into yal_dept_auth
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">dept_id,</if>
+            <if test="lineId != null and lineId != ''">line_id,</if>
+            <if test="appGroupIds != null and appGroupIds != ''">app_group_ids,</if>
+            <if test="appIds != null and appIds != ''">app_ids,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null and updateBy != ''">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">#{deptId},</if>
+            <if test="lineId != null and lineId != ''">#{lineId},</if>
+            <if test="appGroupIds != null and appGroupIds != ''">#{appGroupIds},</if>
+            <if test="appIds != null and appIds != ''">#{appIds},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null and updateBy != ''">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+        </trim>
     </insert>
-	 
-    <update id="updateConfig" parameterType="SysConfig">
-        update sys_config 
-        <set>
-            <if test="configName != null and configName != ''">config_name = #{configName},</if>
-            <if test="configKey != null and configKey != ''">config_key = #{configKey},</if>
-            <if test="configValue != null and configValue != ''">config_value = #{configValue},</if>
-            <if test="configType != null and configType != ''">config_type = #{configType},</if>
+
+    <insert id="batchInsertYalDeptAuth">
+        insert into yal_dept_auth(dept_id, line_id, app_group_ids, app_ids, create_by, create_time)
+        values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.deptId}, #{item.lineId}, #{item.appGroupIds}, #{item.appIds}, #{item.createBy}, #{item.createTime})
+        </foreach>
+    </insert>
+
+    <update id="updateYalDeptAuth" parameterType="YalDeptAuth">
+        update yal_dept_auth
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="lineId != null and lineId != ''">line_id = #{lineId},</if>
+            <if test="appGroupIds != null">app_group_ids = #{appGroupIds},</if>
+            <if test="appIds != null">app_ids = #{appIds},</if>
             <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
-            <if test="remark != null">remark = #{remark},</if>
- 			update_time = sysdate()
-        </set>
-        where config_id = #{configId}
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
     </update>
-	
-    <delete id="deleteConfigById" parameterType="Long">
-        delete from sys_config where config_id = #{configId}
+
+    <delete id="deleteYalDeptAuthById" parameterType="Long">
+        delete from yal_dept_auth where id = #{id}
     </delete>
-    
-    <delete id="deleteConfigByIds" parameterType="Long">
-        delete from sys_config where config_id in 
-        <foreach item="configId" collection="array" open="(" separator="," close=")">
-        	#{configId}
+
+    <delete id="deleteYalDeptAuthByIds" parameterType="Long">
+        delete from yal_dept_auth where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
         </foreach>
     </delete>
-    
+
+    <delete id="deleteYalDeptAuthByDeptId" parameterType="Long">
+        delete from yal_dept_auth where dept_id = #{deptId}
+    </delete>
+
 </mapper>

@@ -3,6 +3,7 @@ package com.ruoyi.yianlian.domain;
 import com.ruoyi.common.core.web.domain.BaseEntity;
 import com.ruoyi.yianlian.client.dto.vo.ReqCsServerVO;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
@@ -13,6 +14,7 @@ import java.util.List;
  * VPN应用表 vpn_service
  */
 @Data
+@EqualsAndHashCode(callSuper = false)
 public class VpnService extends BaseEntity
 {
     private static final long serialVersionUID = 1L;

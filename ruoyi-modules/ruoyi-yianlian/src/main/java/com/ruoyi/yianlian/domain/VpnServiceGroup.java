@@ -2,6 +2,7 @@ package com.ruoyi.yianlian.domain;
 
 import com.ruoyi.common.core.web.domain.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
@@ -11,6 +12,7 @@ import java.util.List;
  * VPN应用组表 vpn_service_group
  */
 @Data
+@EqualsAndHashCode(callSuper = false)
 public class VpnServiceGroup extends BaseEntity
 {
     private static final long serialVersionUID = 1L;

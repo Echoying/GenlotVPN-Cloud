@@ -11,6 +11,8 @@ public interface IVpnRoleYianlianMappingService {
 
     List<VpnRoleYianlianMapping> selectByRoleId(Long roleId);
 
+    VpnRoleYianlianMapping selectByRoleIdAndAppId(Long roleId, String appId);
+
     void insert(VpnRoleYianlianMapping mapping);
 
     void deleteByRoleId(Long roleId);

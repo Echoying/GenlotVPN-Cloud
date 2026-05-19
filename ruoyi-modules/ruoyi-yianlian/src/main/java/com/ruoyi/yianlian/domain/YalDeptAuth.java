@@ -1,9 +1,8 @@
 package com.ruoyi.yianlian.domain;
 
+import com.ruoyi.common.core.web.domain.BaseEntity;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
-import com.ruoyi.common.core.annotation.Excel;
-import com.ruoyi.common.core.web.domain.BaseEntity;
 
 /**
  * 部门授权对象 yal_dept_auth
@@ -18,31 +17,18 @@ public class YalDeptAuth extends BaseEntity
     private Long id;
 
     /** 部门ID */
-    @Excel(name = "部门ID")
     private Long deptId;
 
-    /** 应用组ID */
-    @Excel(name = "应用组ID")
-    private Long groupId;
+    /** 线路ID */
+    private String lineId;
 
-    /** 应用ID */
-    @Excel(name = "应用ID")
-    private Long serviceId;
+    /** 应用组ID列表，逗号分隔 */
+    private String appGroupIds;
 
-    /** 授权类型（1-应用组 2-应用） */
-    @Excel(name = "授权类型", readConverterExp = "1=应用组,2=应用")
-    private String authType;
+    /** 应用ID列表，逗号分隔 */
+    private String appIds;
 
-    /** 删除标志（0代表存在 2代表删除） */
-    private String delFlag;
-
-    /** 应用组名称 */
-    private String groupName;
-
-    /** 应用名称 */
-    private String serviceName;
-
-    /** 部门名称 */
+    /** 部门名称（关联查询） */
     private String deptName;
 
     public void setId(Long id)
@@ -65,64 +51,34 @@ public class YalDeptAuth extends BaseEntity
         return deptId;
     }
 
-    public void setGroupId(Long groupId)
+    public void setLineId(String lineId)
     {
-        this.groupId = groupId;
+        this.lineId = lineId;
     }
 
-    public Long getGroupId()
+    public String getLineId()
     {
-        return groupId;
+        return lineId;
     }
 
-    public void setServiceId(Long serviceId)
+    public void setAppGroupIds(String appGroupIds)
     {
-        this.serviceId = serviceId;
+        this.appGroupIds = appGroupIds;
     }
 
-    public Long getServiceId()
+    public String getAppGroupIds()
     {
-        return serviceId;
+        return appGroupIds;
     }
 
-    public void setAuthType(String authType)
+    public void setAppIds(String appIds)
     {
-        this.authType = authType;
+        this.appIds = appIds;
     }
 
-    public String getAuthType()
+    public String getAppIds()
     {
-        return authType;
-    }
-
-    public void setDelFlag(String delFlag)
-    {
-        this.delFlag = delFlag;
-    }
-
-    public String getDelFlag()
-    {
-        return delFlag;
-    }
-
-    public void setGroupName(String groupName)
-    {
-        this.groupName = groupName;
-    }
-
-    public String getGroupName()
-    {
-        return groupName;
-    }
-
-    public void setServiceName(String serviceName)
-    {
-        this.serviceName = serviceName;
-    }
-
-    public String getServiceName()
-    {
-        return serviceName;
+        return appIds;
     }
 
     public void setDeptName(String deptName)
@@ -137,13 +93,12 @@ public class YalDeptAuth extends BaseEntity
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
+        return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
             .append("id", getId())
             .append("deptId", getDeptId())
-            .append("groupId", getGroupId())
-            .append("serviceId", getServiceId())
-            .append("authType", getAuthType())
-            .append("delFlag", getDelFlag())
+            .append("lineId", getLineId())
+            .append("appGroupIds", getAppGroupIds())
+            .append("appIds", getAppIds())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())
             .append("updateBy", getUpdateBy())

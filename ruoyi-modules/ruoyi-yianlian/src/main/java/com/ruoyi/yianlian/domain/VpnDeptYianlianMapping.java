@@ -1,54 +1,49 @@
 package com.ruoyi.yianlian.domain;
 
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.commons.lang3.builder.ToStringStyle;
-import com.ruoyi.common.core.annotation.Excel;
-import com.ruoyi.common.core.web.domain.BaseEntity;
+import java.util.Date;
 
 /**
  * VPN部门与易安联部门映射对象 vpn_dept_yianlian_mapping
  *
  * @author ruoyi
  */
-public class VpnDeptYianlianMapping extends BaseEntity
+public class VpnDeptYianlianMapping
 {
     private static final long serialVersionUID = 1L;
 
-    /** 主键ID */
+    /** 主键 */
     private Long id;
 
-    /** 应用ID */
-    @Excel(name = "应用ID")
+    /** 本地部门ID */
+    private Long deptId;
+
+    /** 线路appId */
     private String appId;
 
-    /** VPN部门ID */
-    @Excel(name = "VPN部门ID")
-    private Long vpnDeptId;
-
     /** 易安联部门ID */
-    @Excel(name = "易安联部门ID")
-    private String yianlianDeptId;
+    private String yianlianId;
 
-    /** 易安联部门名称 */
-    @Excel(name = "易安联部门名称")
-    private String yianlianDeptName;
-
-    /** 删除标志（0代表存在 2代表删除） */
-    private String delFlag;
-
-    public void setId(Long id)
-    {
-        this.id = id;
-    }
+    /** 创建时间 */
+    private Date createTime;
 
     public Long getId()
     {
         return id;
     }
 
-    public void setAppId(String appId)
+    public void setId(Long id)
     {
-        this.appId = appId;
+        this.id = id;
+    }
+
+    public Long getDeptId()
+    {
+        return deptId;
+    }
+
+    public void setDeptId(Long deptId)
+    {
+        this.deptId = deptId;
     }
 
     public String getAppId()
@@ -56,59 +51,40 @@ public class VpnDeptYianlianMapping extends BaseEntity
         return appId;
     }
 
-    public void setVpnDeptId(Long vpnDeptId)
+    public void setAppId(String appId)
     {
-        this.vpnDeptId = vpnDeptId;
+        this.appId = appId;
     }
 
-    public Long getVpnDeptId()
+    public String getYianlianId()
     {
-        return vpnDeptId;
+        return yianlianId;
     }
 
-    public void setYianlianDeptId(String yianlianDeptId)
+    public void setYianlianId(String yianlianId)
     {
-        this.yianlianDeptId = yianlianDeptId;
+        this.yianlianId = yianlianId;
     }
 
-    public String getYianlianDeptId()
+    public Date getCreateTime()
     {
-        return yianlianDeptId;
+        return createTime;
     }
 
-    public void setYianlianDeptName(String yianlianDeptName)
+    public void setCreateTime(Date createTime)
     {
-        this.yianlianDeptName = yianlianDeptName;
-    }
-
-    public String getYianlianDeptName()
-    {
-        return yianlianDeptName;
-    }
-
-    public void setDelFlag(String delFlag)
-    {
-        this.delFlag = delFlag;
-    }
-
-    public String getDelFlag()
-    {
-        return delFlag;
+        this.createTime = createTime;
     }
 
     @Override
-    public String toString() {
-        return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
-            .append("id", getId())
-            .append("appId", getAppId())
-            .append("vpnDeptId", getVpnDeptId())
-            .append("yianlianDeptId", getYianlianDeptId())
-            .append("yianlianDeptName", getYianlianDeptName())
-            .append("delFlag", getDelFlag())
-            .append("createBy", getCreateBy())
-            .append("createTime", getCreateTime())
-            .append("updateBy", getUpdateBy())
-            .append("updateTime", getUpdateTime())
-            .toString();
+    public String toString()
+    {
+        return "VpnDeptYianlianMapping{" +
+                "id=" + id +
+                ", deptId=" + deptId +
+                ", appId='" + appId + '\'' +
+                ", yianlianId='" + yianlianId + '\'' +
+                ", createTime=" + createTime +
+                '}';
     }
 }

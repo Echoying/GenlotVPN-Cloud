@@ -14,6 +14,8 @@ import com.ruoyi.yianlian.client.dto.YiAnLianDeptListResp;
 import com.ruoyi.yianlian.client.dto.vo.YiAnLianDeptVO;
 import com.ruoyi.yianlian.domain.LineApp;
 import com.ruoyi.yianlian.domain.VpnDept;
+import com.ruoyi.yianlian.domain.VpnDeptYianlianMapping;
+import com.ruoyi.yianlian.service.IVpnDeptYianlianMappingService;
 import com.ruoyi.yianlian.service.vpn.IVpnDeptService;
 import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
 import com.ruoyi.yianlian.service.yianlian.IYiAnLianDeptService;
@@ -43,6 +45,9 @@ public class VpnDeptController extends BaseController
 
     @Autowired
     private IYiAnLianDeptService yiAnLianDeptService;
+
+    @Autowired
+    private IVpnDeptYianlianMappingService mappingService;
 
     /**
      * 获取部门列表
@@ -124,15 +129,21 @@ public class VpnDeptController extends BaseController
                 yiAnLianDeptListRequest.setAppId(lineApp.getAppId());
                 yiAnLianDeptListRequest.setPageSize("10000");
                 YiAnLianDeptListResp yiAnLianDeptListResp = yiAnLianDeptService.getDeptList(yiAnLianDeptListRequest);
-                // 根据名称看是否部门存在 存在就跳过
-                boolean isExist = false;
+                // 根据名称匹配yianlian部门ID
+                String matchedYianlianId = null;
                 for (YiAnLianDeptVO yiAnLianDeptVO : yiAnLianDeptListResp.getData()) {
                     if (yiAnLianDeptVO.getName().equals(dept.getDeptName())) {
-                        isExist = true;
+                        matchedYianlianId = yiAnLianDeptVO.getId();
                         break;
                     }
                 }
-                if (isExist){
+                // 如果匹配到，保存映射关系
+                if (matchedYianlianId != null) {
+                    VpnDeptYianlianMapping mapping = new VpnDeptYianlianMapping();
+                    mapping.setDeptId(dept.getDeptId());
+                    mapping.setAppId(lineApp.getAppId());
+                    mapping.setYianlianId(matchedYianlianId);
+                    mappingService.insert(mapping);
                     continue;
                 }
                 // 不存在则创建
@@ -155,10 +166,24 @@ public class VpnDeptController extends BaseController
                         }
                     }
                 }
-                if(yiAnLianDeptVO.getName() !=  null || yiAnLianDeptVO.getName().equals("")){
+                if(yiAnLianDeptVO.getName() !=  null && !yiAnLianDeptVO.getName().equals("")){
                     // 创建部门
                     Boolean ret2 = yiAnLianDeptService.create(lineApp.getAppId(),yiAnLianDeptVO);
-                    if(!ret2){
+                    if(ret2){
+                        // 创建成功后，重新获取部门列表以获取新创建部门的ID
+                        YiAnLianDeptListResp newListResp = yiAnLianDeptService.getDeptList(yiAnLianDeptListRequest);
+                        for (YiAnLianDeptVO newDeptVO : newListResp.getData()) {
+                            if (newDeptVO.getName().equals(dept.getDeptName())) {
+                                // 保存映射关系
+                                VpnDeptYianlianMapping mapping = new VpnDeptYianlianMapping();
+                                mapping.setDeptId(dept.getDeptId());
+                                mapping.setAppId(lineApp.getAppId());
+                                mapping.setYianlianId(newDeptVO.getId());
+                                mappingService.insert(mapping);
+                                break;
+                            }
+                        }
+                    } else {
                         logger.error("创建部门失败.｛｝", yiAnLianDeptVO);
                     }
                 }
@@ -209,60 +234,85 @@ public class VpnDeptController extends BaseController
             // 获取所有线路
             List<LineApp> lineApps = lineAppService.selectLineAppList(new LineApp());
             for (LineApp lineApp : lineApps) {
-                // 获取所有的yianlian部门数据
-                YiAnLianDeptListRequest yiAnLianDeptListRequest = new YiAnLianDeptListRequest();
-                yiAnLianDeptListRequest.setAppId(lineApp.getAppId());
-                yiAnLianDeptListRequest.setPageSize("10000");
-                YiAnLianDeptListResp yiAnLianDeptListResp = yiAnLianDeptService.getDeptList(yiAnLianDeptListRequest);
-                // 根据名称看是否部门存在
-                YiAnLianDeptVO yiAnLianDeptVO = new YiAnLianDeptVO();
-                boolean isExist = false;
-                for (int i =0; i < yiAnLianDeptListResp.getData().size(); i++) {
-                    if (yiAnLianDeptListResp.getData().get(i).getName().equals(oldDept.getDeptName())) {
-                        // 用属性拷贝的
-                        yiAnLianDeptVO.setId(yiAnLianDeptListResp.getData().get(i).getId());
-                        yiAnLianDeptVO.setName(dept.getDeptName());
-                        yiAnLianDeptVO.setParentId(yiAnLianDeptListResp.getData().get(i).getParentId());
-                        yiAnLianDeptVO.setType(yiAnLianDeptListResp.getData().get(i).getType());
-                        yiAnLianDeptVO.setPath(yiAnLianDeptListResp.getData().get(i).getPath());
-                        yiAnLianDeptVO.setDescription(yiAnLianDeptListResp.getData().get(i).getDescription());
-                        logger.debug("找到原始部门：yiAnLianDeptVO: {}",  yiAnLianDeptVO);
-                        isExist = true;
-                        break;
-                    }
-                }
-                //存在则更新
-                if (isExist){
-                    // 非跟部门找到父部门
-                    if(isRootDept){
-                        yiAnLianDeptVO.setParentId("0");
-                    }else{
-                        for (int i =0; i < yiAnLianDeptListResp.getData().size(); i++) {
-                            if (yiAnLianDeptListResp.getData().get(i).getName().equals(parentDept.getDeptName())) {
-                                yiAnLianDeptVO.setParentId(yiAnLianDeptListResp.getData().get(i).getId());
-                                break;
-                            }
+                // 查询映射表获取yianlian部门ID
+                VpnDeptYianlianMapping mapping = mappingService.selectByDeptIdAndAppId(deptId, lineApp.getAppId());
+                if (mapping != null) {
+                    // 存在映射，使用映射表中的yianlian ID进行更新
+                    YiAnLianDeptListRequest yiAnLianDeptListRequest = new YiAnLianDeptListRequest();
+                    yiAnLianDeptListRequest.setAppId(lineApp.getAppId());
+                    yiAnLianDeptListRequest.setPageSize("10000");
+                    YiAnLianDeptListResp yiAnLianDeptListResp = yiAnLianDeptService.getDeptList(yiAnLianDeptListRequest);
+
+                    YiAnLianDeptVO yiAnLianDeptVO = null;
+                    // 根据映射表中的yianlian ID查找部门详情
+                    for (YiAnLianDeptVO vo : yiAnLianDeptListResp.getData()) {
+                        if (vo.getId().equals(mapping.getYianlianId())) {
+                            yiAnLianDeptVO = new YiAnLianDeptVO();
+                            yiAnLianDeptVO.setId(vo.getId());
+                            yiAnLianDeptVO.setName(dept.getDeptName());
+                            yiAnLianDeptVO.setParentId(vo.getParentId());
+                            yiAnLianDeptVO.setType(vo.getType());
+                            yiAnLianDeptVO.setPath(vo.getPath());
+                            yiAnLianDeptVO.setDescription(vo.getDescription());
+                            break;
                         }
                     }
-                    yiAnLianDeptVO.setName(dept.getDeptName());
-                    boolean ret2 = yiAnLianDeptService.update(lineApp.getAppId(),yiAnLianDeptVO);
-                    if(!ret2){
-                        logger.error("更新部门失败.｛｝", yiAnLianDeptVO);
+
+                    if (yiAnLianDeptVO != null) {
+                        // 非根部门需要更新父部门ID
+                        if(!isRootDept){
+                            for (YiAnLianDeptVO vo : yiAnLianDeptListResp.getData()) {
+                                if (vo.getName().equals(parentDept.getDeptName())) {
+                                    yiAnLianDeptVO.setParentId(vo.getId());
+                                    break;
+                                }
+                            }
+                        } else {
+                            yiAnLianDeptVO.setParentId("0");
+                        }
+
+                        boolean ret2 = yiAnLianDeptService.update(lineApp.getAppId(), yiAnLianDeptVO);
+                        if(!ret2){
+                            logger.error("更新部门失败.｛｝", yiAnLianDeptVO);
+                        }
                     }
-                }else {
+                } else {
+                    // 不存在映射，创建新部门并保存映射
+                    YiAnLianDeptListRequest yiAnLianDeptListRequest = new YiAnLianDeptListRequest();
+                    yiAnLianDeptListRequest.setAppId(lineApp.getAppId());
+                    yiAnLianDeptListRequest.setPageSize("10000");
+                    YiAnLianDeptListResp yiAnLianDeptListResp = yiAnLianDeptService.getDeptList(yiAnLianDeptListRequest);
+
+                    YiAnLianDeptVO yiAnLianDeptVO = new YiAnLianDeptVO();
                     yiAnLianDeptVO.setName(dept.getDeptName());
                     yiAnLianDeptVO.setParentId("0");
                     yiAnLianDeptVO.setType("0");
                     // 找到父部门
-                    for (YiAnLianDeptVO yiAnLianDeptVO2 : yiAnLianDeptListResp.getData()) {
-                        if (yiAnLianDeptVO2.getName().equals(dept.getParentName())) {
-                            yiAnLianDeptVO.setParentId(yiAnLianDeptVO2.getId());
-                            break;
+                    if (!isRootDept) {
+                        for (YiAnLianDeptVO yiAnLianDeptVO2 : yiAnLianDeptListResp.getData()) {
+                            if (yiAnLianDeptVO2.getName().equals(parentDept.getDeptName())) {
+                                yiAnLianDeptVO.setParentId(yiAnLianDeptVO2.getId());
+                                break;
+                            }
                         }
                     }
-                    boolean ret2 = yiAnLianDeptService.create(lineApp.getAppId(),yiAnLianDeptVO);
-                    if(!ret2){
-                        logger.error("更新部门失败.｛｝", yiAnLianDeptVO);
+                    boolean ret2 = yiAnLianDeptService.create(lineApp.getAppId(), yiAnLianDeptVO);
+                    if(ret2){
+                        // 创建成功后，重新获取部门列表以获取新创建部门的ID
+                        YiAnLianDeptListResp newListResp = yiAnLianDeptService.getDeptList(yiAnLianDeptListRequest);
+                        for (YiAnLianDeptVO newDeptVO : newListResp.getData()) {
+                            if (newDeptVO.getName().equals(dept.getDeptName())) {
+                                // 保存映射关系
+                                VpnDeptYianlianMapping newMapping = new VpnDeptYianlianMapping();
+                                newMapping.setDeptId(deptId);
+                                newMapping.setAppId(lineApp.getAppId());
+                                newMapping.setYianlianId(newDeptVO.getId());
+                                mappingService.insert(newMapping);
+                                break;
+                            }
+                        }
+                    } else {
+                        logger.error("创建部门失败.｛｝", yiAnLianDeptVO);
                     }
                 }
             }
@@ -308,26 +358,18 @@ public class VpnDeptController extends BaseController
         }
         int ret = deptService.deleteDeptById(deptId);
         if (ret > 0){
-            // 获取所有线路
-            List<LineApp> lineApps = lineAppService.selectLineAppList(new LineApp());
-            for (LineApp lineApp : lineApps) {
-                // 获取所有的yianlian部门数据
-                YiAnLianDeptListRequest yiAnLianDeptListRequest = new YiAnLianDeptListRequest();
-                yiAnLianDeptListRequest.setAppId(lineApp.getAppId());
-                yiAnLianDeptListRequest.setPageSize("10000");
-                YiAnLianDeptListResp yiAnLianDeptListResp = yiAnLianDeptService.getDeptList(yiAnLianDeptListRequest);
-                for (YiAnLianDeptVO yiAnLianDeptVO : yiAnLianDeptListResp.getData()) {
-                    if (yiAnLianDeptVO.getName().equals(oldDept.getDeptName())) {
-                        List<String> ids = new ArrayList<>();
-                        ids.add(yiAnLianDeptVO.getId());
-                        boolean ret2 = yiAnLianDeptService.delete(lineApp.getAppId(),ids);
-                        if(!ret2){
-                            logger.error("删除部门失败.｛｝", yiAnLianDeptVO);
-                        }
-                        break;
-                    }
+            // 通过映射表获取yianlianId进行删除
+            List<VpnDeptYianlianMapping> mappings = mappingService.selectByDeptId(deptId);
+            for (VpnDeptYianlianMapping mapping : mappings) {
+                List<String> ids = new ArrayList<>();
+                ids.add(mapping.getYianlianId());
+                boolean ret2 = yiAnLianDeptService.delete(mapping.getAppId(), ids);
+                if(!ret2){
+                    logger.error("删除易安联部门失败, appId: {}, yianlianId: {}", mapping.getAppId(), mapping.getYianlianId());
                 }
             }
+            // 删除映射记录
+            mappingService.deleteByDeptId(deptId);
         }
         return toAjax(ret);
     }
