@@ -16,3 +16,12 @@ export function batchSave(data) {
     data: data
   })
 }
+
+// 获取应用服务树（应用组+应用，按线路）
+export function getServiceTree(appId) {
+  return request({
+    url: '/yianlian/deptAuth/serviceTree',
+    method: 'get',
+    params: { appId }
+  })
+}

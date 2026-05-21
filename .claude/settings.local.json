@@ -1,7 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mvn clean:*)"
+      "Bash(mvn clean:*)",
+      "Bash(cp:*)",
+      "Bash(python3:*)",
+      "Bash(sed -i.bak2 '519s/      }\\)/        /' index.vue)",
+      "Bash(sed -i '520d' index.vue)",
+      "Bash(sed -i '521s/      \\\\/\\\\/ 查询已有授权数据并回显/        \\\\/\\\\/ 查询已有授权数据并回显/' index.vue)",
+      "Bash(sed -i '544s/      }\\)/        }\\)\\\\n      }\\)/' index.vue)",
+      "Bash(node fix_handleAuth_v2.js)",
+      "Bash(npm run:*)",
+      "Bash(node fix_authOpen.js)",
+      "Bash(node fix_authOpen_if.js)",
+      "Bash(node fix_debug.js)",
+      "Bash(node fix_complete.js)",
+      "Bash(node fix_form_wrapper.js)",
+      "Bash(node fix_expand_btn.js)",
+      "Bash(node fix_expand_fields.js)"
     ]
   }
 }
