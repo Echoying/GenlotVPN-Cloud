@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.yianlian.mapper.YalUserAuthMapper">
+
+    <resultMap type="YalUserAuth" id="YalUserAuthResult">
+        <result property="id"           column="id"            />
+        <result property="userId"       column="user_id"       />
+        <result property="lineId"       column="line_id"       />
+        <result property="appGroupIds"  column="app_group_ids" />
+        <result property="appIds"       column="app_ids"       />
+        <result property="createBy"     column="create_by"     />
+        <result property="createTime"   column="create_time"   />
+        <result property="updateBy"   column="update_by"     />
+        <result property="updateTime"   column="update_time"   />
+        <result property="userName"     column="user_name"     />
+    </resultMap>
+
+    <sql id="selectYalUserAuthVo">
+        select id, user_id, line_id, app_group_ids, app_ids, create_by, create_time, update_by, update_time from yal_user_auth
+    </sql>
+
+    <select id="selectYalUserAuthList" parameterType="YalUserAuth" resultMap="YalUserAuthResult">
+        select a.id, a.user_id, a.line_id, a.app_group_ids, a.app_ids, a.create_by, a.create_time, a.update_by, a.update_time, u.user_name
+        from yal_user_auth a
+        left join vpn_user u on a.user_id = u.user_id
+      <where>
+          <if test="userId != null">
+                and a.user_id = #{userId}
+            </if>
+            <if test="lineId != null and lineId != ''">
+                and a.line_id = #{lineId}
+            </if>
+        </where>
+  </select>
+
+    <select id="selectYalUserAuthById" parameterType="Long" resultMap="YalUserAuthResult">
+        <include refid="selectYalUserAuthVo"/>
+        where id = #{id}
+    </select>
+    <select id="selectYalUserAuthByUserId" parameterType="Long" resultMap="YalUserAuthResult">
+        <include refid="selectYalUserAuthVo"/>
+        where user_id = #{userId}
+    </select>
+
+    <insert id="insertYalUserAuth" parameterType="YalUserAuth" useGeneratedKeys="true" keyProperty="id">
+        insert into yal_user_auth
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="lineId != null and lineId != ''">line_id,</if>
+            <if test="appGroupIds != null and appGroupIds != ''">app_group_ids,</if>
+        <if test="appIds != null and appIds != ''">app_ids,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null and updateBy != ''">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="lineId != null and lineId != ''">#{lineId},</if>
+            <if test="appGroupIds != null and appGroupIds != ''">#{appGroupIds},</if>
+            <if test="appIds != null and appIds != ''">#{appIds},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+       <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null and updateBy != ''">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+        </trim>
+    </insert>
+
+  <insert id="batchInsertYalUserAuth">
+        insert into yal_user_auth(user_id, line_id, app_group_ids, app_ids, create_by, create_time)
+        values
+      <foreach collection="list" item="item" separator=",">
+         (#{item.userId}, #{item.lineId}, #{item.appGroupIds}, #{item.appIds}, #{item.createBy}, #{item.createTime})
+        </foreach>
+    </insert>
+
+    <update id="updateYalUserAuth" parameterType="YalUserAuth">
+        update yal_user_auth
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="lineId != null and lineId != ''">line_id = #{lineId},</if>
+            <if test="appGroupIds != null">app_group_ids = #{appGroupIds},</if>
+            <if test="appIds != null">app_ids = #{appIds},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+      <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteYalUserAuthById" parameterType="Long">
+        delete from yal_user_auth where id = #{id}
+    </delete>
+
+    <delete id="deleteYalUserAuthByIds" parameterType="Long">
+      delete from yal_user_auth where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="deleteYalUserAuthByUserId" parameterType="Long">
+        delete from yal_user_auth where user_id = #{userId}
+    </delete>
+
+</mapper>

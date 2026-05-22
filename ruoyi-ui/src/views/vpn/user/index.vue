@@ -73,6 +73,7 @@
                 <el-dropdown-menu slot="dropdown">
                   <el-dropdown-item command="handleResetPwd" icon="el-icon-key" v-hasPermi="['yianlian:user:resetPwd']">重置密码</el-dropdown-item>
                   <el-dropdown-item command="handleAuthRole" icon="el-icon-circle-check" v-hasPermi="['yianlian:user:edit']">分配角色</el-dropdown-item>
+                  <el-dropdown-item command="handleAuth" icon="el-icon-setting" v-hasPermi="['yianlian:user:edit']">授权</el-dropdown-item>
                 </el-dropdown-menu>
               </el-dropdown>
             </template>
@@ -162,11 +163,131 @@
 
     <!-- 用户导入对话框 -->
     <excel-import-dialog ref="importUserRef" title="用户导入" action="/yianlian/vpn/user/importData" template-action="/yianlian/vpn/user/importTemplate" template-file-name="user_template" update-support-label="是否更新已经存在的用户数据" @success="getList" />
+
+    <!-- 用户授权对话框 -->
+    <el-dialog
+      :title="'用户授权 - ' + authUserName"
+      :visible.sync="authOpen"
+      width="900px"
+      append-to-body
+      @close="handleAuthClose"
+    >
+      <el-form>
+        <div class="auth-container">
+          <!-- 授权组列表 -->
+          <div v-for="(group, index) in authGroups" :key="index" class="auth-group">
+            <div class="auth-group-header">
+              <span class="auth-group-title">授权组 {{ index + 1 }}</span>
+              <el-button
+                type="danger"
+                icon="el-icon-delete"
+                size="mini"
+                circle
+                @click="removeAuthGroup(index)"
+              ></el-button>
+            </div>
+            <el-row :gutter="12">
+              <!-- 第1列：线路选择 -->
+              <el-col :span="8">
+                <el-form-item label="线路" label-width="50px">
+                  <el-select
+                    v-model="group.lineId"
+                    placeholder="请选择线路"
+                    style="width: 100%"
+                    @change="(val) => handleLineChange(val, index)"
+                  >
+                    <el-option
+                      v-for="line in lineOptions"
+                      :key="line.appId"
+                      :label="line.appName"
+                      :value="line.appId"
+                      :disabled="isLineUsed(line.appId, index)"
+                    />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <!-- 第2列：应用组选择（多选树） -->
+              <el-col :span="8">
+                <el-form-item label="应用组" label-width="60px">
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <treeselect
+                      v-model="group.appGroupIds"
+                      :options="group.appGroupOptions"
+                      :multiple="true"
+                      :flat="true"
+                      :normalizer="normalizerGroup"
+                      placeholder="请选择应用组"
+                      :disabled="!group.lineId"
+                      :loading="group.groupLoading"
+                      :default-expand-level="group.groupExpanded ? Infinity : 0"
+                      no-options-text="暂无数据"
+                      no-children-text="暂无子节点"
+                      style="flex:1"
+                    />
+                    <el-button
+                      v-if="group.lineId"
+                      size="mini"
+                      type="text"
+                      :icon="group.groupExpanded ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"
+                      :title="group.groupExpanded ? '折叠' : '展开全部'"
+                      style="padding:2px 4px;font-size:12px"
+                      @click="group.groupExpanded = !group.groupExpanded"
+                    />
+                  </div>
+                </el-form-item>
+              </el-col>
+              <!-- 第3列：应用服务选择（多选树，只能选叶子应用） -->
+              <el-col :span="8">
+                <el-form-item label="应用服务" label-width="70px">
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <treeselect
+                      v-model="group.appIds"
+                      :options="group.serviceTreeOptions"
+                      :multiple="true"
+                      :flat="true"
+                      :normalizer="normalizerService"
+                      placeholder="请选择应用服务"
+                      :disabled="!group.lineId"
+                      :loading="group.serviceLoading"
+                      :default-expand-level="group.serviceExpanded ? Infinity : 0"
+                      no-options-text="暂无数据"
+                      no-children-text="暂无子节点"
+                      style="flex:1"
+                    />
+                    <el-button
+                      v-if="group.lineId"
+                      size="mini"
+                      type="text"
+                      :icon="group.serviceExpanded ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"
+                      :title="group.serviceExpanded ? '折叠' : '展开全部'"
+                      style="padding:2px 4px;font-size:12px"
+                      @click="group.serviceExpanded = !group.serviceExpanded"
+                    />
+                  </div>
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </div>
+
+          <!-- 添加授权组按钮 -->
+          <div class="auth-add-btn">
+            <el-button type="primary" plain icon="el-icon-plus" @click="addAuthGroup">添加授权组</el-button>
+          </div>
+        </div>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="submitAuth" :loading="authSaving">确 定</el-button>
+        <el-button @click="authOpen = false">取 消</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect } from "@/api/vpn/user"
+import { listByUserId, batchSaveUserAuth, getServiceTree } from "@/api/vpn/userauth"
+import { listLineApp } from "@/api/vpn/line"
+import { serviceGroupTreeselect } from "@/api/vpn/serviceGroup"
 import { getConfigKey } from "@/api/system/config"
 import Treeselect from "@riophae/vue-treeselect"
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
@@ -256,7 +377,14 @@ export default {
             trigger: "blur"
           }
         ]
-      }
+      },
+      // ---- 授权相关 ----
+      authUserId: null,
+      authUserName: "",
+      authOpen: false,
+      authSaving: false,
+      lineOptions: [],
+      authGroups: []
     }
   },
   created() {
@@ -361,6 +489,9 @@ export default {
         case "handleAuthRole":
           this.handleAuthRole(row)
           break
+        case "handleAuth":
+          this.handleAuth(row)
+          break
         default:
           break
       }
@@ -451,7 +582,248 @@ export default {
     /** 导入按钮操作 */
     handleImport() {
       this.$refs.importUserRef.open()
+    },
+
+    // ==================== 用户授权 ====================
+
+    /** 授权按钮操作：先加载线路列表，再回显授权数据 */
+    handleAuth(row) {
+      this.authUserId = row.userId
+      this.authUserName = row.userName
+      this.authGroups = []
+      this.lineOptions = []
+
+      listLineApp({ pageSize: 1000, pageNum: 1 }).then(response => {
+        this.lineOptions = response.rows || []
+
+        listByUserId(row.userId).then(response => {
+          const list = response.data || []
+          if (list.length === 0) {
+            this.addAuthGroup()
+            this.authOpen = true
+          } else {
+            const promises = list.map(auth => {
+              const group = this.createEmptyGroup()
+              group.lineId = auth.lineId
+              group.appGroupIds = auth.appGroupIds
+                ? auth.appGroupIds.split(",").filter(Boolean).map(id => Number(id))
+                : []
+              group.appIds = auth.appIds
+                ? auth.appIds.split(",").filter(Boolean).map(id => 'service_' + id)
+                : []
+              this.authGroups.push(group)
+              return this.loadGroupOptions(group, auth.lineId)
+            })
+            Promise.all(promises).then(() => {
+              this.authOpen = true
+            })
+          }
+        }).catch(() => {
+          this.$modal.msgError('加载授权数据失败')
+        })
+      }).catch(() => {
+        this.$modal.msgError('加载线路列表失败')
+      })
+    },
+
+    /** 关闭授权弹窗时清理 */
+    handleAuthClose() {
+      this.authGroups = []
+      this.authUserId = null
+      this.authUserName = ""
+    },
+
+    /** 创建空授权组对象 */
+    createEmptyGroup() {
+      return {
+        lineId: null,
+        appGroupIds: [],
+        appIds: [],
+        appGroupOptions: [],
+        serviceTreeOptions: [],
+        groupLoading: false,
+        serviceLoading: false,
+        groupExpanded: false,
+        serviceExpanded: false
+      }
+    },
+
+    /** 添加授权组 */
+    addAuthGroup() {
+      this.authGroups.push(this.createEmptyGroup())
+    },
+
+    /** 移除授权组 */
+    removeAuthGroup(index) {
+      this.authGroups.splice(index, 1)
+    },
+
+    /** 线路变更时重新加载应用组和服务树 */
+    handleLineChange(lineId, index) {
+      const group = this.authGroups[index]
+      group.appGroupIds = []
+      group.appIds = []
+      group.appGroupOptions = []
+      group.serviceTreeOptions = []
+      if (lineId) {
+        this.loadGroupOptions(group, lineId)
+      }
+    },
+
+    /** 加载指定线路的应用组树和服务树 */
+    loadGroupOptions(group, lineId) {
+      group.groupLoading = true
+      group.serviceLoading = true
+
+      const p1 = serviceGroupTreeselect({ appId: lineId }).then(response => {
+        group.appGroupOptions = response.data || []
+      }).catch(() => {
+        group.appGroupOptions = []
+      }).finally(() => {
+        group.groupLoading = false
+      })
+
+      const p2 = getServiceTree(lineId).then(response => {
+        group.serviceTreeOptions = response.data || []
+      }).catch(() => {
+        group.serviceTreeOptions = []
+      }).finally(() => {
+        group.serviceLoading = false
+      })
+
+      return Promise.all([p1, p2])
+    },
+
+    /** 判断线路是否已被其他授权组占用 */
+    isLineUsed(lineId, currentIndex) {
+      return this.authGroups.some((g, i) => i !== currentIndex && g.lineId === lineId)
+    },
+
+    /** 应用组 treeselect normalizer */
+    normalizerGroup(node) {
+      return {
+        id: node.id,
+        label: node.label,
+        children: node.children && node.children.length ? node.children : undefined
+      }
+    },
+
+    /** 服务树 treeselect normalizer（应用组节点禁止选择） */
+    normalizerService(node) {
+      return {
+        id: node.id,
+        label: node.label,
+        children: node.children && node.children.length ? node.children : undefined,
+        isDisabled: node.type === 'group'
+      }
+    },
+
+    /** 递归提取叶子节点ID */
+    getLeafIds(options, selectedIds) {
+      const leafIds = []
+      const collectLeaf = (nodes) => {
+        nodes.forEach(node => {
+          if (!node.children || node.children.length === 0) {
+            if (selectedIds.includes(node.id)) {
+              leafIds.push(node.id)
+            }
+          } else {
+            if (selectedIds.includes(node.id)) {
+              const childLeafs = []
+              const findLeafs = (n) => {
+                if (!n.children || n.children.length === 0) {
+                  childLeafs.push(n.id)
+                } else {
+                  n.children.forEach(c => findLeafs(c))
+                }
+              }
+              findLeafs(node)
+              if (childLeafs.length === 0) {
+                leafIds.push(node.id)
+              } else {
+                childLeafs.forEach(id => leafIds.push(id))
+              }
+            } else {
+              collectLeaf(node.children)
+            }
+          }
+        })
+      }
+      collectLeaf(options)
+      return [...new Set(leafIds)]
+    },
+
+    /** 提交授权保存 */
+    submitAuth() {
+      for (let i = 0; i < this.authGroups.length; i++) {
+        if (!this.authGroups[i].lineId) {
+          this.$modal.msgWarning(`授权组 ${i + 1} 未选择线路`)
+          return
+        }
+      }
+
+      this.authSaving = true
+      const authList = this.authGroups.map(group => {
+        let finalGroupIds = []
+        if (group.appGroupIds && group.appGroupIds.length > 0) {
+          finalGroupIds = this.getLeafIds(group.appGroupOptions, group.appGroupIds)
+          if (finalGroupIds.length === 0) {
+            finalGroupIds = group.appGroupIds
+          }
+        }
+        const cleanGroupIds = finalGroupIds.map(id => String(id).replace('group_', ''))
+
+        let finalAppIds = []
+        if (group.appIds && group.appIds.length > 0) {
+          finalAppIds = group.appIds.map(id => String(id).replace('service_', ''))
+        }
+
+        return {
+          lineId: group.lineId,
+          appGroupIds: cleanGroupIds.join(","),
+          appIds: finalAppIds.join(",")
+        }
+      })
+
+      batchSaveUserAuth({
+        userId: this.authUserId,
+        authList: authList
+      }).then(() => {
+        this.$modal.msgSuccess("授权保存成功")
+        this.authOpen = false
+      }).catch(() => {
+        this.$modal.msgError("授权保存失败")
+      }).finally(() => {
+        this.authSaving = false
+      })
     }
   }
 }
 </script>
+
+<style scoped>
+.auth-container {
+  padding: 0 10px;
+}
+.auth-group {
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 16px 16px 8px;
+  margin-bottom: 12px;
+  background: #fafafa;
+}
+.auth-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.auth-group-title {
+  font-weight: bold;
+  color: #303133;
+}
+.auth-add-btn {
+  text-align: center;
+  padding: 8px 0;
+}
+</style>
