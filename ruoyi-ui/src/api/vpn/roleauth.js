@@ -1,0 +1,27 @@
+import request from '@/utils/request'
+
+// 根据角色ID查询授权列表
+export function listByRoleId(roleId) {
+  return request({
+    url: '/yianlian/roleAuth/listByRoleId/' + roleId,
+    method: 'get'
+  })
+}
+
+// 批量保存角色授权
+export function batchSaveRoleAuth(data) {
+  return request({
+    url: '/yianlian/roleAuth/batchSave',
+    method: 'post',
+    data: data
+  })
+}
+
+// 获取应用服务树（应用组+应用，按线路）
+export function getServiceTree(appId) {
+  return request({
+    url: '/yianlian/roleAuth/serviceTree',
+    method: 'get',
+    params: { appId }
+  })
+}

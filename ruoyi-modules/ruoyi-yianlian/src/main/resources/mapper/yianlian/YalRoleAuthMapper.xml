@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.yianlian.mapper.YalRoleAuthMapper">
+
+    <resultMap type="YalRoleAuth" id="YalRoleAuthResult">
+        <result property="id"           column="id"            />
+        <result property="roleId"       column="role_id"       />
+        <result property="lineId"       column="line_id"       />
+        <result property="appGroupIds"  column="app_group_ids" />
+        <result property="appIds"       column="app_ids"       />
+        <result property="createBy"     column="create_by"     />
+        <result property="createTime"   column="create_time"   />
+        <result property="updateBy"     column="update_by"     />
+        <result property="updateTime"   column="update_time"   />
+        <result property="roleName"     column="role_name"     />
+    </resultMap>
+
+    <sql id="selectYalRoleAuthVo">
+        select id, role_id, line_id, app_group_ids, app_ids, create_by, create_time, update_by, update_time from yal_role_auth
+    </sql>
+
+    <select id="selectYalRoleAuthList" parameterType="YalRoleAuth" resultMap="YalRoleAuthResult">
+        select a.id, a.role_id, a.line_id, a.app_group_ids, a.app_ids, a.create_by, a.create_time, a.update_by, a.update_time, r.role_name
+        from yal_role_auth a
+        left join vpn_role r on a.role_id = r.id
+        <where>
+            <if test="roleId != null">
+                and a.role_id = #{roleId}
+            </if>
+            <if test="lineId != null and lineId != ''">
+                and a.line_id = #{lineId}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectYalRoleAuthById" parameterType="Long" resultMap="YalRoleAuthResult">
+        <include refid="selectYalRoleAuthVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectYalRoleAuthByRoleId" parameterType="Long" resultMap="YalRoleAuthResult">
+        <include refid="selectYalRoleAuthVo"/>
+        where role_id = #{roleId}
+    </select>
+
+    <insert id="insertYalRoleAuth" parameterType="YalRoleAuth" useGeneratedKeys="true" keyProperty="id">
+        insert into yal_role_auth
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="roleId != null">role_id,</if>
+            <if test="lineId != null and lineId != ''">line_id,</if>
+            <if test="appGroupIds != null and appGroupIds != ''">app_group_ids,</if>
+            <if test="appIds != null and appIds != ''">app_ids,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null and updateBy != ''">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="roleId != null">#{roleId},</if>
+            <if test="lineId != null and lineId != ''">#{lineId},</if>
+            <if test="appGroupIds != null and appGroupIds != ''">#{appGroupIds},</if>
+            <if test="appIds != null and appIds != ''">#{appIds},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null and updateBy != ''">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+        </trim>
+    </insert>
+
+    <insert id="batchInsertYalRoleAuth">
+        insert into yal_role_auth(role_id, line_id, app_group_ids, app_ids, create_by, create_time)
+        values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.roleId}, #{item.lineId}, #{item.appGroupIds}, #{item.appIds}, #{item.createBy}, #{item.createTime})
+        </foreach>
+    </insert>
+
+    <update id="updateYalRoleAuth" parameterType="YalRoleAuth">
+        update yal_role_auth
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="roleId != null">role_id = #{roleId},</if>
+            <if test="lineId != null and lineId != ''">line_id = #{lineId},</if>
+            <if test="appGroupIds != null">app_group_ids = #{appGroupIds},</if>
+            <if test="appIds != null">app_ids = #{appIds},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteYalRoleAuthById" parameterType="Long">
+        delete from yal_role_auth where id = #{id}
+    </delete>
+
+    <delete id="deleteYalRoleAuthByIds" parameterType="Long">
+        delete from yal_role_auth where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="deleteYalRoleAuthByRoleId" parameterType="Long">
+        delete from yal_role_auth where role_id = #{roleId}
+    </delete>
+
+</mapper>

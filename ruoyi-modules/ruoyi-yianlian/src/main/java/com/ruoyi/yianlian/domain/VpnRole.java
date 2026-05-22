@@ -72,7 +72,6 @@ public class VpnRole extends BaseEntity
         return roleName;
     }
 
-    @NotNull(message = "显示顺序不能为空")
     public Integer getRoleSort()
     {
         return roleSort;
