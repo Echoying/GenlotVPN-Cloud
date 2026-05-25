@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import javax.servlet.http.HttpServletRequest;
+
+import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +48,32 @@ public class TokenService
      * 创建令牌
      */
     public Map<String, Object> createToken(LoginUser loginUser)
+    {
+        String token = IdUtils.fastUUID();
+        Long userId = loginUser.getSysUser().getUserId();
+        String userName = loginUser.getSysUser().getUserName();
+        loginUser.setToken(token);
+        loginUser.setUserid(userId);
+        loginUser.setUsername(userName);
+        loginUser.setIpaddr(IpUtils.getIpAddr());
+        refreshToken(loginUser);
+
+        // Jwt存储信息
+        Map<String, Object> claimsMap = new HashMap<String, Object>();
+        claimsMap.put(SecurityConstants.USER_KEY, token);
+        claimsMap.put(SecurityConstants.DETAILS_USER_ID, userId);
+        claimsMap.put(SecurityConstants.DETAILS_USERNAME, userName);
+
+        // 接口返回信息
+        Map<String, Object> rspMap = new HashMap<String, Object>();
+        rspMap.put("access_token", JwtUtils.createToken(claimsMap));
+        rspMap.put("expires_in", TOKEN_EXPIRE_TIME);
+        return rspMap;
+    }
+    /**
+     * 创建令牌
+     */
+    public Map<String, Object> createToken(VpnLoginUser loginUser)
     {
         String token = IdUtils.fastUUID();
         Long userId = loginUser.getSysUser().getUserId();
@@ -159,6 +187,19 @@ public class TokenService
      * @param loginUser 登录信息
      */
     public void refreshToken(LoginUser loginUser)
+    {
+        loginUser.setLoginTime(System.currentTimeMillis());
+        loginUser.setExpireTime(loginUser.getLoginTime() + TOKEN_EXPIRE_TIME * MILLIS_MINUTE);
+        // 根据uuid将loginUser缓存
+        String userKey = getTokenKey(loginUser.getToken());
+        redisService.setCacheObject(userKey, loginUser, TOKEN_EXPIRE_TIME, TimeUnit.MINUTES);
+    }
+    /**
+     * 刷新令牌有效期
+     *
+     * @param loginUser 登录信息
+     */
+    public void refreshToken(VpnLoginUser loginUser)
     {
         loginUser.setLoginTime(System.currentTimeMillis());
         loginUser.setExpireTime(loginUser.getLoginTime() + TOKEN_EXPIRE_TIME * MILLIS_MINUTE);

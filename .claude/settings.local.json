@@ -16,7 +16,9 @@
       "Bash(node fix_complete.js)",
       "Bash(node fix_form_wrapper.js)",
       "Bash(node fix_expand_btn.js)",
-      "Bash(node fix_expand_fields.js)"
+      "Bash(node fix_expand_fields.js)",
+      "Bash(xargs grep:*)",
+      "Bash(xargs cat:*)"
     ]
   }
 }

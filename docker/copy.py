@@ -39,6 +39,9 @@ def main() -> int:
     print("begin copy ruoyi-auth")
     copy_file(base.parent / "ruoyi-auth" / "target" / "ruoyi-auth.jar", base / "ruoyi" / "auth" / "jar")
 
+    print("begin copy ruoyi-vpn-auth")
+    copy_file(base.parent / "ruoyi-vpn-auth" / "target" / "ruoyi-vpn-auth.jar", base / "ruoyi" / "vpn" / "auth" / "jar")
+
     print("begin copy ruoyi-visual")
     copy_file(base.parent / "ruoyi-visual" / "ruoyi-monitor" / "target" / "ruoyi-visual-monitor.jar", base / "ruoyi" / "visual" / "monitor" / "jar")
 

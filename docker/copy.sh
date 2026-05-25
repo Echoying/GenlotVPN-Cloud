@@ -24,6 +24,9 @@ cp ../ruoyi-gateway/target/ruoyi-gateway.jar ./ruoyi/gateway/jar
 echo "begin copy ruoyi-auth "
 cp ../ruoyi-auth/target/ruoyi-auth.jar ./ruoyi/auth/jar
 
+echo "begin copy ruoyi-auth "
+cp ../ruoyi-auth/target/ruoyi-vpn-auth.jar ./ruoyi/vpn/auth/jar
+
 echo "begin copy ruoyi-visual "
 cp ../ruoyi-visual/ruoyi-monitor/target/ruoyi-visual-monitor.jar  ./ruoyi/visual/monitor/jar
 

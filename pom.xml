@@ -301,6 +301,7 @@
 
     <modules>
         <module>ruoyi-auth</module>
+        <module>ruoyi-vpn-auth</module>
         <module>ruoyi-gateway</module>
         <module>ruoyi-visual</module>
         <module>ruoyi-modules</module>

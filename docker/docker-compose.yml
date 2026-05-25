@@ -118,6 +118,19 @@ services:
       - ruoyi-redis
     networks:
       - ruoyi-network
+  ruoyi-vpn-auth:
+    container_name: ruoyi-vpn-auth
+    build:
+      context: ./ruoyi/vpn/auth
+      dockerfile: dockerfile
+    ports:
+      - "9400:9400"
+    depends_on:
+      - ruoyi-redis
+    links:
+      - ruoyi-redis
+    networks:
+      - ruoyi-network
   ruoyi-modules-system:
     container_name: ruoyi-modules-system
     build:
