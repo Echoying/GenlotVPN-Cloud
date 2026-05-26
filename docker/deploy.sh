@@ -10,6 +10,7 @@ usage() {
 port(){
 	firewall-cmd --add-port=80/tcp --permanent
 	firewall-cmd --add-port=8080/tcp --permanent
+	firewall-cmd --add-port=8090/tcp --permanent
 	firewall-cmd --add-port=8848/tcp --permanent
 	firewall-cmd --add-port=9848/tcp --permanent
 	firewall-cmd --add-port=9849/tcp --permanent
@@ -33,8 +34,8 @@ base(){
 
 # 启动程序模块（必须）
 modules(){
-  	docker-compose rm ruoyi-nginx ruoyi-gateway ruoyi-auth ruoyi-vpn-auth ruoyi-modules-system ruoyi-modules-gen ruoyi-modules-job ruoyi-modules-file ruoyi-visual-monitor ruoyi-modules-yianlian
-	  docker-compose up -d --build ruoyi-nginx ruoyi-gateway ruoyi-auth ruoyi-vpn-auth ruoyi-modules-system ruoyi-modules-gen ruoyi-modules-job ruoyi-modules-file ruoyi-visual-monitor ruoyi-modules-yianlian
+  	docker-compose rm ruoyi-nginx ruoyi-gateway ruoyi-vpn-gateway ruoyi-auth ruoyi-vpn-auth ruoyi-modules-system ruoyi-modules-gen ruoyi-modules-job ruoyi-modules-file ruoyi-visual-monitor ruoyi-modules-yianlian
+	  docker-compose up -d --build ruoyi-nginx ruoyi-gateway ruoyi-vpn-gateway ruoyi-auth ruoyi-vpn-auth ruoyi-modules-system ruoyi-modules-gen ruoyi-modules-job ruoyi-modules-file ruoyi-visual-monitor ruoyi-modules-yianlian
 }
 
 # 关闭所有环境/模块
@@ -43,7 +44,7 @@ stop(){
 }
 # 关闭所有环境/模块
 stopSub(){
-	docker-compose stop ruoyi-nginx ruoyi-gateway ruoyi-auth ruoyi-vpn-auth ruoyi-modules-system ruoyi-modules-gen ruoyi-modules-job ruoyi-modules-file ruoyi-visual-monitor ruoyi-modules-yianlian
+	docker-compose stop ruoyi-nginx ruoyi-gateway ruoyi-vpn-gateway ruoyi-auth ruoyi-vpn-auth ruoyi-modules-system ruoyi-modules-gen ruoyi-modules-job ruoyi-modules-file ruoyi-visual-monitor ruoyi-modules-yianlian
 }
 
 

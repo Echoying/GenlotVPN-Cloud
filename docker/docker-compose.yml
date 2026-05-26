@@ -105,6 +105,19 @@ services:
       - ruoyi-redis
     networks:
       - ruoyi-network
+  ruoyi-vpn-gateway:
+    container_name: ruoyi-vpn-gateway
+    build:
+      context: ./ruoyi/vpn/gateway
+      dockerfile: dockerfile
+    ports:
+      - "8090:8090"
+    depends_on:
+      - ruoyi-redis
+    links:
+      - ruoyi-redis
+    networks:
+      - ruoyi-network
   ruoyi-auth:
     container_name: ruoyi-auth
     build:

@@ -21,6 +21,9 @@ cp -r ../ruoyi-ui/dist/** ./nginx/html/dist
 echo "begin copy ruoyi-gateway "
 cp ../ruoyi-gateway/target/ruoyi-gateway.jar ./ruoyi/gateway/jar
 
+echo "begin copy ruoyi-vpn-gateway "
+cp ../ruoyi-vpn-gateway/target/ruoyi-vpn-gateway.jar ./ruoyi/vpn/gateway/jar
+
 echo "begin copy ruoyi-auth "
 cp ../ruoyi-auth/target/ruoyi-auth.jar ./ruoyi/auth/jar
 

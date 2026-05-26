@@ -62,8 +62,10 @@ Browser → Nginx (:80) → `/prod-api/` → Gateway (:8080) → downstream serv
 
 | Service | Port | Purpose |
 |---|---|---|
-| ruoyi-gateway | 8080 | API Gateway (Spring Cloud Gateway) |
-| ruoyi-auth | 9200 | Authentication & token management |
+| ruoyi-gateway | 8080 | API Gateway (Spring Cloud Gateway) for system admin |
+| ruoyi-vpn-gateway | 8081 | API Gateway for VPN users (separate gateway instance) |
+| ruoyi-auth | 9200 | Authentication & token management (system users) |
+| ruoyi-vpn-auth | 9400 | VPN user authentication (uses `ruoyi-api-yianlian`) |
 | ruoyi-modules-system | 9201 | System management (users, roles, menus) |
 | ruoyi-modules-yianlian | 9205 | **VPN business logic** (core custom module) |
 | ruoyi-modules-gen | 9202 | Code generator |
@@ -78,11 +80,13 @@ All services register with Nacos (namespace: `dev`). Application config is store
 
 - **ruoyi-api/**: Feign client interfaces and shared domain objects for inter-service calls
   - `ruoyi-api-system` — remote system service calls
-  - `ruoyi-api-yianlian` — Feign stub (currently empty, scaffold for future inter-service calls), shared DTOs/VOs
+  - `ruoyi-api-yianlian` — `RemoteVpnUserService` for VPN user authentication, shared DTOs (`VpnUser`, `VpnLoginUser`)
 - **ruoyi-common/**: 9 shared libraries (core, redis, security, log, swagger, datascope, datasource, sensitive, seata)
 - **ruoyi-modules/**: Service implementations — system, yianlian, gen, job, file
-- **ruoyi-gateway/**: Route definitions, filters, auth validation
-- **ruoyi-auth/**: Login, logout, token refresh
+- **ruoyi-gateway/**: Route definitions, filters, auth validation (system admin)
+- **ruoyi-vpn-gateway/**: Separate gateway for VPN users with captcha validation
+- **ruoyi-auth/**: Login, logout, token refresh (system users)
+- **ruoyi-vpn-auth/**: VPN user authentication service
 - **ruoyi-visual/**: Spring Boot Admin monitoring
 
 ### YianLian Module — Dual Service Layer
@@ -97,7 +101,7 @@ Controller
             └── client/      (OpenApiClient)          → RestTemplate HTTP calls
 ```
 
-**Controllers** (8): `VpnUserController`, `VpnDeptController`, `VpnRoleController`, `VpnServiceController`, `VpnServiceGroupController`, `LineAppController`, `YalDeptAuthController`, `YiAnLianAuthorityController`
+**Controllers** (11): `VpnUserController`, `VpnDeptController`, `VpnRoleController`, `VpnServiceController`, `VpnServiceGroupController`, `LineAppController`, `YalDeptAuthController`, `YalRoleAuthController`, `YalUserAuthController`, `YiAnLianAuthorityController`, `VpnLogininforController`
 
 **Multi-line sync pattern** — the core architectural pattern: every write operation follows this sequence:
 1. Persist to local DB via `IVpnXxxService`
@@ -122,7 +126,10 @@ Controller
 | `VpnService` | VPN-accessible applications/services |
 | `VpnServiceGroup` | Tree-structured grouping of services |
 | `YalDeptAuth` | Department-level authorization (which depts can access which services) |
+| `YalRoleAuth` | Role-level authorization (which roles can access which services) |
+| `YalUserAuth` | User-level authorization (which users can access which services) |
 | `VpnUserRole` | User-role join table |
+| `VpnLogininfor` | VPN user login logs (username, IP, status, access time) |
 | `VpnDeptYianlianMapping` | Local dept ID ↔ remote YianLian dept ID per LineApp |
 | `VpnRoleYianlianMapping` | Local role ID ↔ remote YianLian role ID per LineApp |
 | `VpnUserYianlianMapping` | Local user ID ↔ remote YianLian user ID per LineApp |
