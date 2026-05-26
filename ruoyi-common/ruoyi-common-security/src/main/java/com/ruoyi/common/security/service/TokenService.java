@@ -76,8 +76,8 @@ public class TokenService
     public Map<String, Object> createToken(VpnLoginUser loginUser)
     {
         String token = IdUtils.fastUUID();
-        Long userId = loginUser.getSysUser().getUserId();
-        String userName = loginUser.getSysUser().getUserName();
+        Long userId = loginUser.getVpnUser().getUserId();
+        String userName = loginUser.getVpnUser().getUserName();
         loginUser.setToken(token);
         loginUser.setUserid(userId);
         loginUser.setUsername(userName);

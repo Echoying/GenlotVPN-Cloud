@@ -33,6 +33,9 @@ def main() -> int:
     print("begin copy html")
     copy_tree_contents(base.parent / "ruoyi-ui" / "dist", base / "nginx" / "html" / "dist")
 
+    print("begin copy html")
+    copy_tree_contents(base.parent / "ruoyi-vpn-ui" / "dist", base / "vpn" / "nginx" / "html" / "dist")
+
     print("begin copy ruoyi-gateway")
     copy_file(base.parent / "ruoyi-gateway" / "target" / "ruoyi-gateway.jar", base / "ruoyi" / "gateway" / "jar")
 

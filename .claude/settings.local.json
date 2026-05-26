@@ -18,7 +18,12 @@
       "Bash(node fix_expand_btn.js)",
       "Bash(node fix_expand_fields.js)",
       "Bash(xargs grep:*)",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Bash(find . -name '*.java' -type f -exec grep -l '/code' {} \\\\;)",
+      "Bash(grep:*)",
+      "Bash(xargs ls:*)",
+      "Read(//d/claude/GenlotVPN-Cloud/**)",
+      "Bash(docker compose:*)"
     ]
   }
 }

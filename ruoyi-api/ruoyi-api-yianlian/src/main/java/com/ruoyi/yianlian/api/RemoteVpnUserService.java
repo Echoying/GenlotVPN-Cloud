@@ -3,7 +3,8 @@ package com.ruoyi.yianlian.api;
 import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.common.core.constant.ServiceNameConstants;
 import com.ruoyi.common.core.domain.R;
-import com.ruoyi.yianlian.api.domain.VpnUser;
+import com.ruoyi.yianlian.api.domain.VpnUserInfo;
+import com.ruoyi.yianlian.api.factory.RemoteVpnUserFallbackFactory;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
  *
  * @author ruoyi
  */
-@FeignClient(contextId = "remoteYiAnLianService", value = ServiceNameConstants.YIANLIAN_SERVICE, fallbackFactory = RemoteVpnUserService.class)
+@FeignClient(contextId = "remoteVpnUserService", value = ServiceNameConstants.YIANLIAN_SERVICE, fallbackFactory = RemoteVpnUserFallbackFactory.class)
 public interface RemoteVpnUserService {
     /**
      * 通过用户名查询用户信息
@@ -34,6 +35,6 @@ public interface RemoteVpnUserService {
      * @return 结果
      */
     @PutMapping("/vpn/user/recordlogin")
-    public R<Boolean> recordUserLogin(@RequestBody VpnUser vpnUser, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
+    public R<Boolean> recordUserLogin(@RequestBody VpnUserInfo vpnUser, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
 
 }

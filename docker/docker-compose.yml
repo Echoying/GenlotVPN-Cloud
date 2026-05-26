@@ -92,6 +92,28 @@ services:
       ruoyi-network:
         aliases:
           - ruoyi-nginx
+  ruoyi-vpn-nginx:
+    container_name: ruoyi-vpn-nginx
+    image: nginx
+    build:
+      context: ./nginx
+    ports:
+      - "8060:8060"
+    volumes:
+      - ./ruoyi/vpn/nginx/html/dist:/home/ruoyi/projects/ruoyi-vpn-ui
+      - ./ruoyi/vpn/nginx/conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./ruoyi/vpn/nginx/logs:/var/log/nginx
+      - ./ruoyi/vpn/nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - ruoyi-vpn-gateway
+    links:
+      - ruoyi-vpn-gateway
+    hostname:
+      ruoyi-vpn-nginx
+    networks:
+      ruoyi-network:
+        aliases:
+          - ruoyi-vpn-nginx
   ruoyi-gateway:
     container_name: ruoyi-gateway
     build:

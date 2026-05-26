@@ -2,7 +2,7 @@ package com.ruoyi.yianlian.api.factory;
 
 import com.ruoyi.common.core.domain.R;
 import com.ruoyi.yianlian.api.RemoteVpnUserService;
-import com.ruoyi.yianlian.api.domain.VpnUser;
+import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +33,7 @@ public class RemoteVpnUserFallbackFactory implements FallbackFactory<RemoteVpnUs
 
 
             @Override
-            public R<Boolean> recordUserLogin(VpnUser sysUser, String source)
+            public R<Boolean> recordUserLogin(VpnUserInfo sysUser, String source)
             {
                 return R.fail("记录用户登录信息失败:" + throwable.getMessage());
             }

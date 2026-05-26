@@ -3,14 +3,16 @@ package com.ruoyi.vpn.auth;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.context.annotation.ComponentScan;
 import com.ruoyi.common.security.annotation.EnableRyFeignClients;
 
 /**
  * 认证授权中心
- * 
+ *
  * @author ruoyi
  */
 @EnableRyFeignClients
+@ComponentScan(basePackages = {"com.ruoyi.vpn.auth", "com.ruoyi.yianlian.api"})
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class })
 public class RuoYiAuthApplication
 {

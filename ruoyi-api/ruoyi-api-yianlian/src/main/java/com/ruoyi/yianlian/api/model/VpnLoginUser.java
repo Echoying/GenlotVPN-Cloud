@@ -1,6 +1,6 @@
 package com.ruoyi.yianlian.api.model;
 
-import com.ruoyi.yianlian.api.domain.VpnUser;
+import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 
 import java.io.Serializable;
 import java.util.Set;
@@ -57,7 +57,7 @@ public class VpnLoginUser implements Serializable
     /**
      * 用户信息
      */
-    private VpnUser vpnUser;
+    private VpnUserInfo vpnUser;
 
     public String getToken()
     {
@@ -139,12 +139,12 @@ public class VpnLoginUser implements Serializable
         this.roles = roles;
     }
 
-    public VpnUser getSysUser()
+    public VpnUserInfo getVpnUser()
     {
         return vpnUser;
     }
 
-    public void setSysUser(VpnUser sysUser)
+    public void setVpnUser(VpnUserInfo sysUser)
     {
         this.vpnUser = sysUser;
     }

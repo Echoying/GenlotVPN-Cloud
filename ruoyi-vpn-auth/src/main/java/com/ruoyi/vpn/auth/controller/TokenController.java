@@ -33,7 +33,7 @@ public class TokenController
     @Autowired
     private VpnLoginService vpnLoginService;
 
-    @PostMapping("vpn/login")
+    @PostMapping("login")
     public R<?> login(@RequestBody VpnLoginBody form)
     {
         // 用户登录
@@ -42,7 +42,7 @@ public class TokenController
         return R.ok(tokenService.createToken(userInfo));
     }
 
-    @DeleteMapping("vpn/logout")
+    @DeleteMapping("logout")
     public R<?> logout(HttpServletRequest request)
     {
         String token = SecurityUtils.getToken(request);
@@ -57,7 +57,7 @@ public class TokenController
         return R.ok();
     }
 
-    @PostMapping("vpn/refresh")
+    @PostMapping("refresh")
     public R<?> refresh(HttpServletRequest request)
     {
         LoginUser loginUser = tokenService.getLoginUser(request);
@@ -73,7 +73,7 @@ public class TokenController
     /**
      * 解锁屏幕
      */
-    @PostMapping("/vpn/unlockscreen")
+    @PostMapping("/unlockscreen")
     public R<?> unlockScreen(@RequestBody VpnUnLockBody unLockBody)
     {
         vpnLoginService.unlock(unLockBody.getPassword());

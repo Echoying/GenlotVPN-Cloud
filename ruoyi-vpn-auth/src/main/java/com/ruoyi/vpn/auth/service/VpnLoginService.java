@@ -1,6 +1,6 @@
 package com.ruoyi.vpn.auth.service;
 
-import com.ruoyi.yianlian.api.domain.VpnUser;
+import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -80,7 +80,7 @@ public class VpnLoginService
         }
 
         VpnLoginUser userInfo = userResult.getData();
-        VpnUser user = userResult.getData().getSysUser();
+        VpnUserInfo user = userResult.getData().getVpnUser();
         if (UserStatus.DELETED.getCode().equals(user.getDelFlag()))
         {
             recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "对不起，您的账号已被删除");
@@ -104,7 +104,7 @@ public class VpnLoginService
      */
     public void recordLoginInfo(Long userId)
     {
-        VpnUser vpnUser = new VpnUser();
+        VpnUserInfo vpnUser = new VpnUserInfo();
         vpnUser.setUserId(userId);
         // 更新用户登录IP
         vpnUser.setLoginIp(IpUtils.getIpAddr());
@@ -140,7 +140,7 @@ public class VpnLoginService
             throw new ServiceException(userResult.getMsg());
         }
 
-        VpnUser user = userResult.getData().getSysUser();
+        VpnUserInfo user = userResult.getData().getVpnUser();
         if (!SecurityUtils.matchesPassword(password, user.getPassword()))
         {
             throw new ServiceException("密码错误，请重新输入");

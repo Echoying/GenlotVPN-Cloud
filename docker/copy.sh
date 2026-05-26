@@ -15,7 +15,7 @@ cp ../sql/ry_config_20250902.sql ./mysql/db
 # copy html
 echo "begin copy html "
 cp -r ../ruoyi-ui/dist/** ./nginx/html/dist
-
+cp -r ../ruoyi-vpn-ui/dist/** ./vpn/nginx/html/dist
 
 # copy jar
 echo "begin copy ruoyi-gateway "

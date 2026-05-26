@@ -2,7 +2,7 @@ package com.ruoyi.vpn.auth.service;
 
 import java.util.concurrent.TimeUnit;
 
-import com.ruoyi.yianlian.api.domain.VpnUser;
+import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.ruoyi.common.core.constant.CacheConstants;
@@ -10,7 +10,6 @@ import com.ruoyi.common.core.constant.Constants;
 import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.common.security.utils.SecurityUtils;
-import com.ruoyi.system.api.domain.SysUser;
 
 /**
  * 登录密码方法
@@ -41,7 +40,7 @@ public class VpnPasswordService
         return CacheConstants.PWD_ERR_CNT_KEY + username;
     }
 
-    public void validate(VpnUser user, String password)
+    public void validate(VpnUserInfo user, String password)
     {
         String username = user.getUserName();
 
@@ -72,7 +71,7 @@ public class VpnPasswordService
         }
     }
 
-    public boolean matches(VpnUser user, String rawPassword)
+    public boolean matches(VpnUserInfo user, String rawPassword)
     {
         return SecurityUtils.matchesPassword(rawPassword, user.getPassword());
     }

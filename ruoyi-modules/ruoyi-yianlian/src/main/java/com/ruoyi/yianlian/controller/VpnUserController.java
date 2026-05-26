@@ -1,13 +1,18 @@
 package com.ruoyi.yianlian.controller;
 
+import com.ruoyi.common.core.constant.SecurityConstants;
+import com.ruoyi.common.core.domain.R;
 import com.ruoyi.common.core.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.web.controller.BaseController;
 import com.ruoyi.common.core.web.domain.AjaxResult;
 import com.ruoyi.common.core.web.page.TableDataInfo;
 import com.ruoyi.common.log.annotation.Log;
 import com.ruoyi.common.log.enums.BusinessType;
+import com.ruoyi.common.security.annotation.InnerAuth;
 import com.ruoyi.common.security.annotation.RequiresPermissions;
 import com.ruoyi.common.security.utils.SecurityUtils;
+import com.ruoyi.yianlian.api.domain.VpnUserInfo;
+import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import com.ruoyi.yianlian.client.dto.YiAnLianUserPasswordResetRequest;
 import com.ruoyi.yianlian.client.dto.YiAnLianUserCreateResultItem;
 import com.ruoyi.yianlian.client.dto.vo.YiAnLianUserVO;
@@ -322,6 +327,72 @@ public class VpnUserController extends BaseController {
             vo.setGroups(Collections.singletonList(yiAnLianDeptId));
         }
         return vo;
+    }
+
+    /**
+     * 获取用户信息（供Feign调用）
+     *
+     * @param username 用户名
+     * @param source   请求来源
+     * @return 用户信息
+     */
+    @InnerAuth
+    @GetMapping("/info/{username}")
+    public R<VpnLoginUser> getUserInfo(@PathVariable("username") String username, @RequestHeader(SecurityConstants.FROM_SOURCE) String source) {
+        VpnUser vpnUser = userService.selectUserByUserName(username);
+        if (vpnUser == null) {
+            return R.fail("用户不存在");
+        }
+        // 转换为API层的VpnUser
+        VpnUserInfo apiUser = new VpnUserInfo();
+        apiUser.setUserId(vpnUser.getUserId());
+        apiUser.setUserName(vpnUser.getUserName());
+        apiUser.setNickName(vpnUser.getNickName());
+        apiUser.setEmail(vpnUser.getEmail());
+        apiUser.setPhonenumber(vpnUser.getPhonenumber());
+        apiUser.setSex(vpnUser.getSex());
+        apiUser.setAvatar(vpnUser.getAvatar());
+        apiUser.setPassword(vpnUser.getPassword());
+        apiUser.setStatus(vpnUser.getStatus());
+        apiUser.setDelFlag(vpnUser.getDelFlag());
+        apiUser.setLoginIp(vpnUser.getLoginIp());
+        apiUser.setLoginDate(vpnUser.getLoginDate());
+        apiUser.setDeptId(vpnUser.getDeptId());
+        apiUser.setCreateBy(vpnUser.getCreateBy());
+        apiUser.setCreateTime(vpnUser.getCreateTime());
+        apiUser.setUpdateBy(vpnUser.getUpdateBy());
+        apiUser.setUpdateTime(vpnUser.getUpdateTime());
+        apiUser.setRemark(vpnUser.getRemark());
+
+        // 构建VpnLoginUser
+        VpnLoginUser vpnLoginUser = new VpnLoginUser();
+        vpnLoginUser.setVpnUser(apiUser);
+        vpnLoginUser.setUserid(vpnUser.getUserId());
+        vpnLoginUser.setUsername(vpnUser.getUserName());
+
+        // 查询角色权限（如果需要）
+        // Set<String> roles = roleService.selectRolePermissionByUserId(vpnUser.getUserId());
+        // vpnLoginUser.setRoles(roles);
+
+        return R.ok(vpnLoginUser);
+    }
+
+    /**
+     * 记录用户登录信息（供Feign调用）
+     *
+     * @param vpnUser VPN用户信息
+     * @param source  请求来源
+     * @return 结果
+     */
+    @InnerAuth
+    @PutMapping("/recordlogin")
+    public R<Boolean> recordUserLogin(@RequestBody VpnUserInfo vpnUser, @RequestHeader(SecurityConstants.FROM_SOURCE) String source) {
+        VpnUser user = new VpnUser();
+        user.setUserId(vpnUser.getUserId());
+        user.setLoginIp(vpnUser.getLoginIp());
+        user.setLoginDate(vpnUser.getLoginDate());
+        userService.updateUser(user);
+        return R.ok(true);
     }
 
 }

@@ -14,14 +14,13 @@ import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 import java.util.Date;
-import java.util.List;
 
 /**
  * 用户对象 sys_user
- * 
+ *
  * @author ruoyi
  */
-public class VpnUser extends BaseEntity
+public class VpnUserInfo extends BaseEntity
 {
     private static final long serialVersionUID = 1L;
 
@@ -87,12 +86,12 @@ public class VpnUser extends BaseEntity
     /** 角色ID */
     private Long roleId;
 
-    public VpnUser()
+    public VpnUserInfo()
     {
 
     }
 
-    public VpnUser(Long userId)
+    public VpnUserInfo(Long userId)
     {
         this.userId = userId;
     }
