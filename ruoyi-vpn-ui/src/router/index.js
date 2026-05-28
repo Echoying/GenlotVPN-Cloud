@@ -10,6 +10,11 @@ export const constantRoutes = [
     hidden: true
   },
   {
+    path: '/select-line',
+    component: () => import('@/views/select-line'),
+    hidden: true
+  },
+  {
     path: '/',
     component: () => import('@/views/home'),
     hidden: true

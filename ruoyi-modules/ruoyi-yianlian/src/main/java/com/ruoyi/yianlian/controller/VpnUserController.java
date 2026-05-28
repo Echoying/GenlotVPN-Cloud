@@ -21,6 +21,12 @@ import com.ruoyi.yianlian.domain.VpnDept;
 import com.ruoyi.yianlian.domain.VpnDeptYianlianMapping;
 import com.ruoyi.yianlian.domain.VpnUser;
 import com.ruoyi.yianlian.domain.VpnUserYianlianMapping;
+import com.ruoyi.yianlian.domain.YalDeptAuth;
+import com.ruoyi.yianlian.domain.YalRoleAuth;
+import com.ruoyi.yianlian.domain.YalUserAuth;
+import com.ruoyi.yianlian.mapper.YalDeptAuthMapper;
+import com.ruoyi.yianlian.mapper.YalRoleAuthMapper;
+import com.ruoyi.yianlian.mapper.YalUserAuthMapper;
 import com.ruoyi.yianlian.service.IVpnDeptYianlianMappingService;
 import com.ruoyi.yianlian.service.vpn.IVpnDeptService;
 import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
@@ -36,8 +42,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -70,6 +75,86 @@ public class VpnUserController extends BaseController {
 
     @Autowired
     private IVpnDeptYianlianMappingService deptMappingService;
+
+    @Autowired
+    private YalDeptAuthMapper yalDeptAuthMapper;
+
+    @Autowired
+    private YalRoleAuthMapper yalRoleAuthMapper;
+
+    @Autowired
+    private YalUserAuthMapper yalUserAuthMapper;
+
+    /**
+     * 获取用户授权线路列表（供Feign调用）
+     *
+     * @param userId 用户ID
+     * @param source 请求来源
+     * @return 授权线路列表
+     */
+    @InnerAuth
+    @GetMapping("/authorized-lines/{userId}")
+    public R<List<Map<String, Object>>> getAuthorizedLines(
+            @PathVariable("userId") Long userId,
+            @RequestHeader(SecurityConstants.FROM_SOURCE) String source) {
+        VpnUser vpnUser = userService.selectUserById(userId);
+        if (vpnUser == null) {
+            return R.fail("用户不存在");
+        }
+
+        Set<String> lineIdSet = new LinkedHashSet<>();
+
+        // 1. 部门授权
+        if (vpnUser.getDeptId() != null) {
+            List<YalDeptAuth> deptAuths = yalDeptAuthMapper.selectYalDeptAuthByDeptId(vpnUser.getDeptId());
+            for (YalDeptAuth auth : deptAuths) {
+                if (auth.getLineId() != null) {
+                    lineIdSet.add(auth.getLineId());
+                }
+            }
+        }
+
+        // 2. 角色授权
+        if (vpnUser.getRoles() != null) {
+            for (com.ruoyi.yianlian.domain.VpnRole role : vpnUser.getRoles()) {
+                List<YalRoleAuth> roleAuths = yalRoleAuthMapper.selectYalRoleAuthByRoleId(role.getRoleId());
+                for (YalRoleAuth auth : roleAuths) {
+                    if (auth.getLineId() != null) {
+                        lineIdSet.add(auth.getLineId());
+                    }
+                }
+            }
+        }
+
+        // 3. 用户授权
+        List<YalUserAuth> userAuths = yalUserAuthMapper.selectYalUserAuthByUserId(userId);
+        for (YalUserAuth auth : userAuths) {
+            if (auth.getLineId() != null) {
+                lineIdSet.add(auth.getLineId());
+            }
+        }
+
+        if (lineIdSet.isEmpty()) {
+            return R.ok(Collections.emptyList());
+        }
+
+        // 查询线路详情，过滤状态正常的线路
+        List<LineApp> allLines = lineAppService.selectLineAppList(new LineApp());
+        List<Map<String, Object>> result = allLines.stream()
+            .filter(line -> lineIdSet.contains(line.getAppId()) && "0".equals(line.getStatus()))
+            .map(line -> {
+                Map<String, Object> vo = new LinkedHashMap<>();
+                vo.put("appId", line.getAppId());
+                vo.put("appName", line.getAppName());
+                vo.put("host", line.getHost());
+                vo.put("srvPort", line.getSrvPort());
+                vo.put("spaPort", line.getSpaPort());
+                return vo;
+            })
+            .collect(Collectors.toList());
+
+        return R.ok(result);
+    }
 
     /**
      * 获取用户列表

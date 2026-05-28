@@ -9,6 +9,12 @@ import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
+import java.util.List;
+import java.util.Map;
+
 
 /**
  * 易安联服务
@@ -36,5 +42,15 @@ public interface RemoteVpnUserService {
      */
     @PutMapping("/vpn/user/recordlogin")
     public R<Boolean> recordUserLogin(@RequestBody VpnUserInfo vpnUser, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
+
+    /**
+     * 获取用户授权线路列表
+     *
+     * @param userId 用户ID
+     * @param source 请求来源
+     * @return 授权线路列表
+     */
+    @GetMapping("/vpn/user/authorized-lines/{userId}")
+    public R<List<Map<String, Object>>> getAuthorizedLines(@PathVariable("userId") Long userId, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
 
 }

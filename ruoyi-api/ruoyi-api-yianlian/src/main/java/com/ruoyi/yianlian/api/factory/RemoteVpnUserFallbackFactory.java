@@ -9,6 +9,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.Map;
+
+import java.util.List;
+import java.util.Map;
+
 /**
  * 用户服务降级处理
  * 
@@ -36,6 +42,12 @@ public class RemoteVpnUserFallbackFactory implements FallbackFactory<RemoteVpnUs
             public R<Boolean> recordUserLogin(VpnUserInfo sysUser, String source)
             {
                 return R.fail("记录用户登录信息失败:" + throwable.getMessage());
+            }
+
+            @Override
+            public R<List<Map<String, Object>>> getAuthorizedLines(Long userId, String source)
+            {
+                return R.fail("获取授权线路失败:" + throwable.getMessage());
             }
         };
     }

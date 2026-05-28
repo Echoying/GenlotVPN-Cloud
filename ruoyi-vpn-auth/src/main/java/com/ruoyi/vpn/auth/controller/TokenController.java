@@ -2,12 +2,15 @@ package com.ruoyi.vpn.auth.controller;
 
 import javax.servlet.http.HttpServletRequest;
 
+import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.vpn.auth.form.VpnLoginBody;
 import com.ruoyi.vpn.auth.form.VpnUnLockBody;
 import com.ruoyi.vpn.auth.service.VpnLoginService;
+import com.ruoyi.yianlian.api.RemoteVpnUserService;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,6 +35,9 @@ public class TokenController
 
     @Autowired
     private VpnLoginService vpnLoginService;
+
+    @Autowired
+    private RemoteVpnUserService remoteVpnUserService;
 
     @PostMapping("login")
     public R<?> login(@RequestBody VpnLoginBody form)
@@ -78,5 +84,16 @@ public class TokenController
     {
         vpnLoginService.unlock(unLockBody.getPassword());
         return R.ok();
+    }
+
+    /**
+     * 获取当前用户的授权线路列表
+     */
+    @GetMapping("authorized-lines")
+    public R<?> getAuthorizedLines(HttpServletRequest request)
+    {
+        String token = SecurityUtils.getToken(request);
+        Long userId = Long.parseLong(JwtUtils.getUserId(token));
+        return remoteVpnUserService.getAuthorizedLines(userId, SecurityConstants.INNER);
     }
 }
