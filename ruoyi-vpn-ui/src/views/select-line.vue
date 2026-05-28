@@ -6,32 +6,64 @@
         <p class="subtitle">请选择要连接的线路</p>
       </div>
 
-      <div v-if="loading" class="loading-wrap">
-        <i class="el-icon-loading"></i>
-        <span>正在加载线路...</span>
-      </div>
-
-      <div v-else-if="lines.length === 0" class="empty-wrap">
-        <i class="el-icon-warning-outline"></i>
-        <p>暂无可用线路，请联系管理员</p>
-      </div>
-
-      <div v-else class="line-list">
-        <div
-          v-for="line in lines"
-          :key="line.appId"
-          class="line-item"
-          @click="selectLine(line)"
-        >
-          <div class="line-icon">
-            <i class="el-icon-connection"></i>
+      <div class="content-wrapper">
+        <!-- 左侧线路列表 -->
+        <div class="line-section">
+          <div v-if="loading" class="loading-wrap">
+            <i class="el-icon-loading"></i>
+            <span>正在加载线路...</span>
           </div>
-          <div class="line-info">
-            <div class="line-name">{{ line.appName }}</div>
-            <div class="line-detail">{{ line.host }}:{{ line.srvPort }}</div>
+
+          <div v-else-if="lines.length === 0" class="empty-wrap">
+            <i class="el-icon-warning-outline"></i>
+            <p>暂无可用线路，请联系管理员</p>
           </div>
-          <div class="line-arrow">
-            <i class="el-icon-arrow-right"></i>
+
+          <div v-else class="line-list">
+            <div
+              v-for="line in lines"
+              :key="line.appId"
+              class="line-item"
+              :class="{ 'detecting': detectingLineId === line.appId }"
+              @click="selectLine(line)"
+            >
+              <div class="line-icon">
+                <i class="el-icon-connection"></i>
+              </div>
+              <div class="line-info">
+                <div class="line-name">{{ line.appName }}</div>
+                <div class="line-detail">{{ line.host }}:{{ line.srvPort }}</div>
+              </div>
+              <div class="line-arrow">
+                <i v-if="detectingLineId === line.appId" class="el-icon-loading"></i>
+                <i v-else class="el-icon-arrow-right"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧日志面板 -->
+        <div class="log-section">
+          <div class="log-header">
+            <i class="el-icon-document"></i>
+            <span>日志信息</span>
+          </div>
+          <div class="log-content" ref="logContent">
+            <div v-if="logs.length === 0" class="log-empty">
+              <i class="el-icon-info"></i>
+              <p>点击线路开始检测</p>
+            </div>
+            <div v-else class="log-list">
+              <div
+                v-for="(log, index) in logs"
+                :key="index"
+                class="log-item"
+                :class="log.type"
+              >
+                <span class="log-time">{{ log.time }}</span>
+                <span class="log-message">{{ log.message }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -45,6 +77,7 @@
 
 <script>
 import { getAuthorizedLines } from '@/api/line'
+import { detectServer } from '@/api/controller'
 import { removeToken } from '@/utils/auth'
 
 export default {
@@ -53,6 +86,8 @@ export default {
     return {
       loading: true,
       lines: [],
+      logs: [],
+      detectingLineId: null,
       appTitle: process.env.VUE_APP_TITLE || 'Genlot VPN'
     }
   },
@@ -62,18 +97,85 @@ export default {
   methods: {
     loadLines() {
       this.loading = true
+      this.addLog('info', '正在加载授权线路...')
       getAuthorizedLines().then(res => {
         const data = res.data || []
         this.lines = data
-      }).catch(() => {
+        this.addLog('info', `成功加载 ${data.length} 条线路`)
+      }).catch(err => {
         this.lines = []
+        this.addLog('error', '加载线路失败: ' + (err.message || '未知错误'))
       }).finally(() => {
         this.loading = false
       })
     },
-    selectLine(line) {
-      this.$store.dispatch('SelectLine', line).then(() => {
-        this.$router.push('/')
+    async selectLine(line) {
+      if (this.detectingLineId) {
+        this.$message.warning('正在检测其他线路，请稍候')
+        return
+      }
+
+      this.detectingLineId = line.appId
+      this.addLog('info', `开始检测线路: ${line.appName}`)
+      this.addLog('info', `目标地址: ${line.host}:${line.srvPort}`)
+
+      try {
+        // 构建检测请求参数
+        const detectParams = {
+          host: line.host,
+          srvPort: line.srvPort,
+          spaPort: line.spaPort,
+          spaKey: line.spaKey
+        }
+
+        this.addLog('info', '正在发送探测请求...')
+        const serverData = await detectServer(detectParams)
+
+        // 检查响应
+        if (serverData && serverData.host && serverData.srvPort) {
+          // 检查 available 字段
+          if (serverData.available === true) {
+            this.addLog('info', `服务器连通性检测成功`)
+            this.addLog('info', `连接地址: ${serverData.host}:${serverData.srvPort}`)
+
+            // 保存选中的线路并跳转
+            this.$store.dispatch('SelectLine', line).then(() => {
+              this.addLog('info', '线路选择成功，正在跳转...')
+              setTimeout(() => {
+                this.$router.push('/')
+              }, 500)
+            })
+          } else {
+            this.addLog('error', `服务不可用 - ${serverData.host}:${serverData.srvPort}`)
+            this.$message.error('服务器不可用，请选择其他线路')
+          }
+        } else {
+          this.addLog('error', '服务器响应数据不完整')
+          this.$message.error('服务器连接失败，请稍后重试')
+        }
+      } catch (err) {
+        this.addLog('error', `检测失败: ${err.message || '未知错误'}`)
+        this.$message.error('服务器连接失败: ' + (err.message || '未知错误'))
+      } finally {
+        this.detectingLineId = null
+      }
+    },
+    addLog(type, message) {
+      const now = new Date()
+      const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
+
+      this.logs.push({
+        type,
+        time,
+        message
+      })
+
+      // 自动滚动到底部
+      this.$nextTick(() => {
+        const logContent = this.$refs.logContent
+        if (logContent) {
+          logContent.scrollTop = logContent.scrollHeight
+        }
       })
     },
     handleLogout() {
@@ -97,8 +199,8 @@ export default {
   background: #fff;
   border-radius: 12px;
   padding: 40px;
-  width: 460px;
-  max-width: 90vw;
+  width: 66vw;
+  max-width: 1400px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
@@ -118,6 +220,109 @@ export default {
   font-size: 14px;
   color: #909399;
   margin: 0;
+}
+
+.content-wrapper {
+  display: flex;
+  gap: 24px;
+}
+
+.line-section {
+  flex: 2;
+  min-width: 0;
+}
+
+.log-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+.log-header {
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-bottom: 1px solid #e4e7ed;
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.log-header i {
+  font-size: 16px;
+}
+
+.log-content {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 400px;
+  min-height: 300px;
+}
+
+.log-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #c0c4cc;
+  padding: 40px 20px;
+}
+
+.log-empty i {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.log-empty p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.log-list {
+  padding: 12px;
+}
+
+.log-item {
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  font-family: 'Consolas', 'Monaco', monospace;
+  display: flex;
+  gap: 8px;
+}
+
+.log-item.info {
+  background: #ecf5ff;
+  color: #409eff;
+}
+
+.log-item.success {
+  background: #f0f9ff;
+  color: #409eff;
+}
+
+.log-item.error {
+  background: #fef0f0;
+  color: #f56c6c;
+}
+
+.log-time {
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.log-message {
+  flex: 1;
+  word-break: break-all;
 }
 
 .loading-wrap,
@@ -156,6 +361,12 @@ export default {
   border-color: #409eff;
   background: #ecf5ff;
   box-shadow: 0 2px 12px rgba(64, 158, 255, 0.15);
+}
+
+.line-item.detecting {
+  border-color: #409eff;
+  background: #ecf5ff;
+  cursor: not-allowed;
 }
 
 .line-icon {

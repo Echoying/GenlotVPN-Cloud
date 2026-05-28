@@ -149,6 +149,7 @@ public class VpnUserController extends BaseController {
                 vo.put("host", line.getHost());
                 vo.put("srvPort", line.getSrvPort());
                 vo.put("spaPort", line.getSpaPort());
+                vo.put("spaKey", line.getSpaKey());
                 return vo;
             })
             .collect(Collectors.toList());
