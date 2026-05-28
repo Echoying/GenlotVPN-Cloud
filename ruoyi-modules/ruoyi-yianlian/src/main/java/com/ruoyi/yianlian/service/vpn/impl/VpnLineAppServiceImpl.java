@@ -3,14 +3,16 @@ package com.ruoyi.yianlian.service.vpn.impl;
 
 import com.ruoyi.common.core.constant.CacheConstants;
 import com.ruoyi.common.core.exception.ServiceException;
-
+import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.yianlian.domain.LineApp;
 import com.ruoyi.yianlian.mapper.LineAppMapper;
 import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.DigestUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -77,13 +79,21 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
 
     /**
      * 新增线路
-     * 
+     *
      * @param lineApp 线路信息
      * @return 结果
      */
     @Override
     public int insertLineApp(LineApp lineApp)
     {
+        // appSecret MD5加密
+        if (StringUtils.isNotEmpty(lineApp.getAppSecret())) {
+            lineApp.setAppSecret(encryptSpaKey(lineApp.getAppSecret()));
+        }
+        // spaKey MD5加密
+        if (StringUtils.isNotEmpty(lineApp.getSpaKey())) {
+            lineApp.setSpaKey(encryptSpaKey(lineApp.getSpaKey()));
+        }
         int ret = lineAppMapper.insertLineApp(lineApp);
         if(ret > 0){
             redisService.setCacheObject(buildCacheKey(lineApp.getAppId()), lineApp);
@@ -93,7 +103,7 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
 
     /**
      * 修改线路
-     * 
+     *
      * @param lineApp 线路信息
      * @return 结果
      */
@@ -104,6 +114,20 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
         if(temp == null)
         {
             throw new ServiceException("线路不存在");
+        }
+        // appSecret处理：如果为空则不修改，如果有值则MD5加密
+        if (StringUtils.isEmpty(lineApp.getAppSecret())) {
+            lineApp.setAppSecret(null);
+        } else {
+            lineApp.setAppSecret(encryptSpaKey(lineApp.getAppSecret()));
+        }
+        // spaKey处理：如果为空则不修改，如果有值则MD5加密
+        if (StringUtils.isEmpty(lineApp.getSpaKey())) {
+            // 留空则保持原值不变
+            lineApp.setSpaKey(null);
+        } else {
+            // 有值则MD5加密
+            lineApp.setSpaKey(encryptSpaKey(lineApp.getSpaKey()));
         }
         int ret = lineAppMapper.updateLineApp(lineApp);
         if(ret > 0){
@@ -131,6 +155,13 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
     private String buildCacheKey(String appId)
     {
         return CacheConstants.YIANLIAN_VPN_LINE_APP + appId;
+    }
+
+    /**
+     * spaKey MD5加密（32位小写）
+     */
+    private String encryptSpaKey(String spaKey) {
+        return DigestUtils.md5DigestAsHex(spaKey.getBytes(StandardCharsets.UTF_8));
     }
 
 }

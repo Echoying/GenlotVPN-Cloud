@@ -33,8 +33,20 @@ public class LineApp extends BaseEntity
     /** 线路密钥 */
     private String appSecret;
 
-    /** 线路URL */
+    /** 管理系统URL */
     private String url;
+
+    /** 服务器域名或IP */
+    private String host;
+
+    /** 服务器端口号 */
+    private Integer srvPort;
+
+    /** 敲门端口 */
+    private Integer spaPort;
+
+    /** 预共享秘钥（MD5加密32位小写存储） */
+    private String spaKey;
 
     /** 线路状态:0启用,1停用 */
     private String status;

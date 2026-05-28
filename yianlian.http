@@ -93,3 +93,40 @@ accessToken:enaccess-e7b0bdca4760c5dd41594ac761c17522
   "birthDay":"",
   "idCard":""
 }]
+
+
+###
+POST http://127.0.0.1:30303/api/v1/control/detect
+Content-Type: application/json
+# 编码方式
+Content-Encoding: utf-8
+
+[{
+  "host": "183.62.200.204",
+  "srvPort": "58679",
+  "spaPort": "62201",
+  "spaKey": "72dfdecddae215bfd2682203c9eda738",
+  "enablePortMapping": false,
+  "mappingPort": "58679",
+  "device_spa_enable": false
+}]
+
+
+###
+POST http://127.0.0.1:30303/api/v1/control/select
+Content-Type: application/json
+# 编码方式
+Content-Encoding: utf-8
+
+{
+  "host": "183.62.200.204",
+  "srvPort": "58679",
+  "spaPort": "62201",
+  "spaKey": "72dfdecddae215bfd2682203c9eda738",
+  "enablePortMapping": false,
+  "mappingPort": "58679",
+  "device_spa_enable": false
+}
+
+
+

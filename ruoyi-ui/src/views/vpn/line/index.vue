@@ -97,7 +97,11 @@
       <el-table-column label="线路名称" align="center" prop="appName" :show-overflow-tooltip="true" />
       <el-table-column label="线路ID" align="center" prop="appId" :show-overflow-tooltip="true" />
       <el-table-column label="线路密钥" align="center" prop="appSecret" :show-overflow-tooltip="true" />
-      <el-table-column label="线路URL" align="center" prop="url" :show-overflow-tooltip="true" />
+      <el-table-column label="管理系统URL" align="center" prop="url" :show-overflow-tooltip="true" />
+      <el-table-column label="服务器" align="center" prop="host" :show-overflow-tooltip="true" />
+      <el-table-column label="服务器端口" align="center" prop="srvPort" />
+      <el-table-column label="敲门端口" align="center" prop="spaPort" />
+      <el-table-column label="预共享秘钥" align="center" prop="spaKey" :show-overflow-tooltip="true" />
       <el-table-column label="线路状态" align="center" prop="status">
         <template slot-scope="scope">
           <dict-tag :options="dict.type.vpn_line_status" :value="scope.row.status"/>
@@ -138,32 +142,74 @@
     />
 
     <!-- 添加或修改参数配置对话框 -->
-    <el-dialog :title="title" :visible.sync="open" width="500px" append-to-body>
-      <el-form ref="form" :model="form" :rules="rules" label-width="80px">
-        <el-form-item label="线路名称" prop="appName">
-          <el-input v-model="form.appName" placeholder="请输入参数名称" :disabled="isEdit" />
-        </el-form-item>
-        <el-form-item label="线路ID" prop="appId">
-          <el-input v-model="form.appId" placeholder="请输入参数键名" :disabled="isEdit"  />
-        </el-form-item>
-        <el-form-item label="密钥" prop="appSecret">
-          <el-input v-model="form.appSecret" type="textarea" placeholder="请输入密钥" />
-        </el-form-item>
-        <el-form-item label="线路URL" prop="url">
-          <el-input v-model="form.url" placeholder="请输入线路URL" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="form.status">
-            <el-radio
-              v-for="dict in dict.type.vpn_line_status"
-              :key="dict.value"
-              :label="dict.value"
-            >{{dict.label}}</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" />
-        </el-form-item>
+    <el-dialog :title="title" :visible.sync="open" width="900px" append-to-body>
+      <el-form ref="form" :model="form" :rules="rules" label-width="120px">
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="线路名称" prop="appName">
+              <el-input v-model="form.appName" placeholder="请输入线路名称" :disabled="isEdit" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="线路ID" prop="appId">
+              <el-input v-model="form.appId" placeholder="请输入线路ID" :disabled="isEdit" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="密钥" prop="appSecret">
+              <el-input v-model="form.appSecret" type="password" :placeholder="isEdit ? '留空则不修改' : '请输入密钥'" show-password />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="管理系统URL" prop="url">
+              <el-input v-model="form.url" placeholder="请输入管理系统URL" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="服务器" prop="host">
+              <el-input v-model="form.host" placeholder="请输入服务器域名或IP" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="预共享秘钥" prop="spaKey">
+              <el-input v-model="form.spaKey" type="password" :placeholder="isEdit ? '留空则不修改' : '请输入预共享秘钥'" show-password />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="服务器端口" prop="srvPort">
+              <el-input v-model.number="form.srvPort" type="number" placeholder="范围：1 - 65535" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="敲门端口" prop="spaPort">
+              <el-input v-model.number="form.spaPort" type="number" placeholder="范围：1 - 65535" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="状态" prop="status">
+              <el-radio-group v-model="form.status">
+                <el-radio
+                  v-for="dict in dict.type.vpn_line_status"
+                  :key="dict.value"
+                  :label="dict.value"
+                >{{dict.label}}</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="备注" prop="remark">
+              <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" :rows="2" />
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button type="primary" @click="submitForm">确 定</el-button>
@@ -221,7 +267,24 @@ export default {
           {required: true, message: "线路ID不能为空", trigger: "blur"}
         ],
         appSecret: [
-          {required: true, message: "线路密钥不能为空", trigger: "blur"}
+          {validator: this.validateAppSecret, trigger: "blur"}
+        ],
+        url: [
+          {required: true, message: "管理系统URL不能为空", trigger: "blur"}
+        ],
+        host: [
+          {required: true, message: "服务器域名或IP不能为空", trigger: "blur"}
+        ],
+        srvPort: [
+          {required: true, message: "服务器端口号不能为空", trigger: "blur"},
+          {type: 'number', min: 1, max: 65535, message: "端口范围1-65535", trigger: "blur"}
+        ],
+        spaPort: [
+          {required: true, message: "敲门端口不能为空", trigger: "blur"},
+          {type: 'number', min: 1, max: 65535, message: "端口范围1-65535", trigger: "blur"}
+        ],
+        spaKey: [
+          {validator: this.validateSpaKey, trigger: "blur"}
         ]
       }
     }
@@ -230,6 +293,22 @@ export default {
     this.getList()
   },
   methods: {
+    /** appSecret校验：新增时必填，编辑时可选 */
+    validateAppSecret(rule, value, callback) {
+      if (!this.isEdit && !value) {
+        callback(new Error('线路密钥不能为空'))
+      } else {
+        callback()
+      }
+    },
+    /** spaKey校验：新增时必填，编辑时可选 */
+    validateSpaKey(rule, value, callback) {
+      if (!this.isEdit && !value) {
+        callback(new Error('预共享秘钥不能为空'))
+      } else {
+        callback()
+      }
+    },
     /** 查询线路列表 */
     getList() {
       this.loading = true
@@ -253,6 +332,10 @@ export default {
         appId: undefined,
         appSecret: undefined,
         url: undefined,
+        host: undefined,
+        srvPort: undefined,
+        spaPort: undefined,
+        spaKey: undefined,
         status: undefined,
         remark: undefined
       }
@@ -288,6 +371,9 @@ export default {
       const appId = row.appId || this.ids
       getLineApp(appId).then(response => {
         this.form = response.data
+        // 编辑时清空密钥字段，避免显示MD5密文
+        this.form.appSecret = ''
+        this.form.spaKey = ''
         this.open = true
         this.isEdit = true
         this.title = "修改线路"
@@ -298,7 +384,15 @@ export default {
       this.$refs["form"].validate(valid => {
         if (valid) {
           if (this.isEdit) {
-            updateLineApp(this.form).then(() => {
+            // 编辑时，如果密钥字段为空则从提交数据中移除（后端会保持原值）
+            const submitData = {...this.form}
+            if (!submitData.appSecret) {
+              delete submitData.appSecret
+            }
+            if (!submitData.spaKey) {
+              delete submitData.spaKey
+            }
+            updateLineApp(submitData).then(() => {
               this.$modal.msgSuccess("修改成功")
               this.open = false
               this.getList()
@@ -329,12 +423,6 @@ export default {
       this.download('yianlian/line/app/export', {
         ...this.queryParams
       }, `lineApp_${new Date().getTime()}.xlsx`)
-    },
-    /** 刷新缓存按钮操作 */
-    handleRefreshCache() {
-      refreshCache().then(() => {
-        this.$modal.msgSuccess("刷新成功")
-      })
     }
   }
 }
