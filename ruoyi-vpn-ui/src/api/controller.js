@@ -131,6 +131,66 @@ export function selectServer(server) {
       mappingPort: String(server.srvPort),
       device_spa_enable: server.device_spa_enable || false
     }
+  }).then(res => {
+    if (res.code === '200') {
+      if (!res.data || typeof res.data !== 'object' || !res.data.language) {
+        Message.error('服务器选择失败：返回数据无效')
+        return Promise.reject(new Error('服务器选择失败：返回数据缺少language字段'))
+      }
+    }
+    return res
+  })
+}
+
+/**
+ * 获取控制器信息版本号
+ * @param {Object} server - 服务器信息
+ * @param {string} server.host - 服务器的域名或IP
+ * @param {string} server.srvPort - 服务器端口号
+ * @param {string} server.spaPort - 敲门端口
+ * @param {string} server.spaKey - 预共享秘钥(MD5加密32位小写)
+ * @returns {Promise} 返回 { code, messages, data: { version, target, fullVersion } }
+ */
+export function getServerVersion(server) {
+  return controllerService({
+    url: '/api/v1/version/latestServer',
+    method: 'post',
+    data: {
+      host: server.host,
+      srvPort: String(server.srvPort),
+      spaPort: String(server.spaPort),
+      spaKey: server.spaKey,
+      enablePortMapping: server.enablePortMapping || false,
+      mappingPort: String(server.srvPort),
+      device_spa_enable: server.device_spa_enable || false
+    }
+  }).then(res => {
+    if (res.code === '200') {
+      if (!res.data || typeof res.data !== 'object' || !res.data.version) {
+        Message.error('获取服务器版本失败：返回数据无效')
+        return Promise.reject(new Error('获取服务器版本失败：返回数据缺少version字段'))
+      }
+    }
+    return res
+  })
+}
+
+/**
+ * 获取客户端版本号
+ * @returns {Promise} 返回 { code, messages, data: { clientName, localVersion, localMainVersion } }
+ */
+export function getClientVersion() {
+  return controllerService({
+    url: '/api/v1/version/current',
+    method: 'get'
+  }).then(res => {
+    if (res.code === '200') {
+      if (!res.data || typeof res.data !== 'object' || !res.data.localMainVersion) {
+        Message.error('获取客户端版本失败：返回数据无效')
+        return Promise.reject(new Error('获取客户端版本失败：返回数据缺少localMainVersion字段'))
+      }
+    }
+    return res
   })
 }
 

@@ -77,7 +77,7 @@
 
 <script>
 import { getAuthorizedLines } from '@/api/line'
-import { detectServer } from '@/api/controller'
+import { detectServer, selectServer, getServerVersion, getClientVersion } from '@/api/controller'
 import { removeToken } from '@/utils/auth'
 
 export default {
@@ -138,13 +138,61 @@ export default {
             this.addLog('info', `服务器连通性检测成功`)
             this.addLog('info', `连接地址: ${serverData.host}:${serverData.srvPort}`)
 
-            // 保存选中的线路并跳转
-            this.$store.dispatch('SelectLine', line).then(() => {
-              this.addLog('info', '线路选择成功，正在跳转...')
-              setTimeout(() => {
-                this.$router.push('/')
-              }, 500)
-            })
+            // 初始化选择服务器
+            this.addLog('info', '正在初始化选择服务器...')
+            try {
+              const selectResult = await selectServer({
+                host: line.host,
+                srvPort: line.srvPort,
+                spaPort: line.spaPort,
+                spaKey: line.spaKey
+              })
+
+              if (selectResult && selectResult.code === '200' && selectResult.data) {
+                this.addLog('info', `服务器初始化成功`)
+                this.addLog('info', `服务器名称: ${selectResult.data.name || 'N/A'}`)
+                this.addLog('info', `语言设置: ${selectResult.data.language?.desc || 'N/A'}`)
+
+                // 获取服务器和客户端版本号
+                this.addLog('info', '正在获取版本信息...')
+                try {
+                  // 并行获取服务器和客户端版本
+                  const [serverVersionRes, clientVersionRes] = await Promise.all([
+                    getServerVersion({
+                      host: line.host,
+                      srvPort: line.srvPort,
+                      spaPort: line.spaPort,
+                      spaKey: line.spaKey
+                    }),
+                    getClientVersion()
+                  ])
+
+                  // 打印服务器版本
+                  if (serverVersionRes && serverVersionRes.code === '200' && serverVersionRes.data) {
+                    this.addLog('info', `服务器版本: ${serverVersionRes.data.version || 'N/A'}`)
+                    this.addLog('info', `服务器目标: ${serverVersionRes.data.target || 'N/A'}`)
+                  }
+
+                  // 打印客户端版本
+                  if (clientVersionRes && clientVersionRes.code === '200' && clientVersionRes.data) {
+                    this.addLog('info', `客户端名称: ${clientVersionRes.data.clientName || 'N/A'}`)
+                    this.addLog('info', `客户端版本: ${clientVersionRes.data.localVersion || 'N/A'}`)
+                    this.addLog('info', `客户端主版本: ${clientVersionRes.data.localMainVersion || 'N/A'}`)
+                  }
+                } catch (versionErr) {
+                  this.addLog('error', `获取版本信息失败: ${versionErr.message || '未知错误'}`)
+                  // 版本获取失败不影响主流程，继续执行
+                }
+
+                this.addLog('info', '线路选择完成')
+              } else {
+                this.addLog('error', '服务器初始化失败：返回数据无效')
+                this.$message.error('服务器初始化失败，请重试')
+              }
+            } catch (selectErr) {
+              this.addLog('error', `服务器初始化失败: ${selectErr.message || '未知错误'}`)
+              this.$message.error('服务器初始化失败: ' + (selectErr.message || '未知错误'))
+            }
           } else {
             this.addLog('error', `服务不可用 - ${serverData.host}:${serverData.srvPort}`)
             this.$message.error('服务器不可用，请选择其他线路')
@@ -199,8 +247,8 @@ export default {
   background: #fff;
   border-radius: 12px;
   padding: 40px;
-  width: 66vw;
-  max-width: 1400px;
+  width: 50vw;
+  max-width: 1000px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
@@ -228,7 +276,7 @@ export default {
 }
 
 .line-section {
-  flex: 2;
+  flex: 1;
   min-width: 0;
 }
 
