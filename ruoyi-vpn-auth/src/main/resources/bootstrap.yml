@@ -1,6 +1,12 @@
 # Tomcat
-server: 
+server:
   port: 9400
+
+# VPN AES加密配置
+vpn:
+  aes:
+    key: EnSwordAgent@123
+    iv: 321@tnegAdrowSnE
 
 # Spring
 spring: 

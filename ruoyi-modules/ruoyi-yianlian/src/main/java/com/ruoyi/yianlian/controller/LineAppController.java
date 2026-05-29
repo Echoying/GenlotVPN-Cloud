@@ -9,6 +9,7 @@ import com.ruoyi.common.log.enums.BusinessType;
 import com.ruoyi.common.security.annotation.RequiresPermissions;
 import com.ruoyi.common.security.utils.SecurityUtils;
 import com.ruoyi.yianlian.domain.LineApp;
+import com.ruoyi.yianlian.utils.AesUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +30,9 @@ public class LineAppController extends BaseController
     @Autowired
     private IVpnLineAppService lineAppService;
 
+    @Autowired
+    private AesUtils aesUtils;
+
     /**
      * 获取线路列表
      */
@@ -38,6 +42,10 @@ public class LineAppController extends BaseController
     {
         startPage();
         List<LineApp> list = lineAppService.selectLineAppList(lineApp);
+        // 解密敏感字段用于前端展示
+        for (LineApp line : list) {
+            decryptLineAppForDisplay(line);
+        }
         return getDataTable(list);
     }
 
@@ -57,7 +65,9 @@ public class LineAppController extends BaseController
     @GetMapping(value = "/{appId}")
     public AjaxResult getInfo(@PathVariable String appId)
     {
-        return success(lineAppService.selectLineAppById(appId));
+        LineApp lineApp = lineAppService.selectLineAppById(appId);
+        decryptLineAppForDisplay(lineApp);
+        return success(lineApp);
     }
 
 
@@ -95,5 +105,21 @@ public class LineAppController extends BaseController
     {
         lineAppService.deleteLineAppByIds(appIds);
         return success();
+    }
+
+    /**
+     * 返回前端前解密敏感字段
+     * appSecret: AES解密后展示明文
+     * spaKey: AES解密后做MD5(32位小写)展示
+     */
+    private void decryptLineAppForDisplay(LineApp lineApp) {
+        if (lineApp == null) return;
+        if (lineApp.getAppSecret() != null && !lineApp.getAppSecret().isEmpty()) {
+            lineApp.setAppSecret(aesUtils.decrypt(lineApp.getAppSecret()));
+        }
+        if (lineApp.getSpaKey() != null && !lineApp.getSpaKey().isEmpty()) {
+            String plainSpaKey = aesUtils.decrypt(lineApp.getSpaKey());
+            lineApp.setSpaKey(AesUtils.md5(plainSpaKey));
+        }
     }
 }

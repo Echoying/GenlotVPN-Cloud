@@ -94,6 +94,8 @@ public class VpnLoginService
         passwordService.validate(user, password);
         recordLogService.recordLogininfor(username, Constants.LOGIN_SUCCESS, "登录成功");
         recordLoginInfo(user.getUserId());
+        // 缓存明文密码，用于后续控制器登录（有效期与token一致，30分钟）
+        redisService.setCacheObject("vpn_plain_pwd:" + user.getUserId(), password, 30L, java.util.concurrent.TimeUnit.MINUTES);
         return userInfo;
     }
 

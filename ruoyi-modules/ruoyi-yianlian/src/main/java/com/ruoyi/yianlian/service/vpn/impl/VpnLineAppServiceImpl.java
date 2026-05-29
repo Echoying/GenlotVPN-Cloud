@@ -8,11 +8,10 @@ import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.yianlian.domain.LineApp;
 import com.ruoyi.yianlian.mapper.LineAppMapper;
 import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
+import com.ruoyi.yianlian.utils.AesUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.DigestUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -28,6 +27,9 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
 
     @Autowired
     private RedisService  redisService;
+
+    @Autowired
+    private AesUtils aesUtils;
 
 
     @Override
@@ -86,11 +88,11 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
     @Override
     public int insertLineApp(LineApp lineApp)
     {
-        // appSecret MD5加密
+        // appSecret AES加密
         if (StringUtils.isNotEmpty(lineApp.getAppSecret())) {
             lineApp.setAppSecret(encryptSpaKey(lineApp.getAppSecret()));
         }
-        // spaKey MD5加密
+        // spaKey AES加密
         if (StringUtils.isNotEmpty(lineApp.getSpaKey())) {
             lineApp.setSpaKey(encryptSpaKey(lineApp.getSpaKey()));
         }
@@ -115,18 +117,18 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
         {
             throw new ServiceException("线路不存在");
         }
-        // appSecret处理：如果为空则不修改，如果有值则MD5加密
+        // appSecret处理：如果为空则不修改，如果有值则AES加密
         if (StringUtils.isEmpty(lineApp.getAppSecret())) {
             lineApp.setAppSecret(null);
         } else {
             lineApp.setAppSecret(encryptSpaKey(lineApp.getAppSecret()));
         }
-        // spaKey处理：如果为空则不修改，如果有值则MD5加密
+        // spaKey处理：如果为空则不修改，如果有值则AES加密
         if (StringUtils.isEmpty(lineApp.getSpaKey())) {
             // 留空则保持原值不变
             lineApp.setSpaKey(null);
         } else {
-            // 有值则MD5加密
+            // 有值则AES加密
             lineApp.setSpaKey(encryptSpaKey(lineApp.getSpaKey()));
         }
         int ret = lineAppMapper.updateLineApp(lineApp);
@@ -158,10 +160,10 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
     }
 
     /**
-     * spaKey MD5加密（32位小写）
+     * AES加密
      */
     private String encryptSpaKey(String spaKey) {
-        return DigestUtils.md5DigestAsHex(spaKey.getBytes(StandardCharsets.UTF_8));
+        return aesUtils.encrypt(spaKey);
     }
 
 }

@@ -2,6 +2,12 @@
 server:
   port: 9205
 
+# VPN AES密码加密配置
+vpn:
+  aes:
+    key: EnSwordAgent@123
+    iv: 321@tnegAdrowSnE
+
 # Spring
 spring:
   application:

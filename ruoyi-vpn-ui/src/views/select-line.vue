@@ -76,8 +76,8 @@
 </template>
 
 <script>
-import { getAuthorizedLines } from '@/api/line'
-import { detectServer, selectServer, getServerVersion, getClientVersion } from '@/api/controller'
+import { getAuthorizedLines, getUserCredentials } from '@/api/line'
+import { detectServer, selectServer, getServerVersion, getClientVersion, loginWithAccount } from '@/api/controller'
 import { removeToken } from '@/utils/auth'
 
 export default {
@@ -182,6 +182,31 @@ export default {
                 } catch (versionErr) {
                   this.addLog('error', `获取版本信息失败: ${versionErr.message || '未知错误'}`)
                   // 版本获取失败不影响主流程，继续执行
+                }
+
+                // 获取用户凭证并登录控制器
+                this.addLog('info', '正在获取登录凭证...')
+                try {
+                  const credRes = await getUserCredentials()
+                  if (credRes.code === 200 && credRes.data) {
+                    this.addLog('info', `用户: ${credRes.data.username}`)
+                    this.addLog('info', '正在登录控制器...')
+                    try {
+                      const loginRes = await loginWithAccount(credRes.data.username, credRes.data.password)
+                      if (loginRes && loginRes.code === '200' && loginRes.data) {
+                        this.addLog('info', '控制器登录成功')
+                        this.addLog('info', `用户名: ${loginRes.data.account || loginRes.data.name || 'N/A'}`)
+                      } else {
+                        this.addLog('error', '控制器登录失败: ' + (loginRes?.messages || '未知错误'))
+                      }
+                    } catch (loginErr) {
+                      this.addLog('error', '控制器登录失败: ' + (loginErr.message || '未知错误'))
+                    }
+                  } else {
+                    this.addLog('error', '获取凭证失败: ' + (credRes.msg || '凭证已过期，请重新登录'))
+                  }
+                } catch (credErr) {
+                  this.addLog('error', '获取凭证失败: ' + (credErr.message || '未知错误'))
                 }
 
                 this.addLog('info', '线路选择完成')

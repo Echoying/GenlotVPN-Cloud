@@ -1,11 +1,15 @@
 package com.ruoyi.vpn.auth.controller;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.Map;
 
 import com.ruoyi.common.core.constant.SecurityConstants;
+import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.vpn.auth.form.VpnLoginBody;
 import com.ruoyi.vpn.auth.form.VpnUnLockBody;
 import com.ruoyi.vpn.auth.service.VpnLoginService;
+import com.ruoyi.vpn.auth.utils.AesUtils;
 import com.ruoyi.yianlian.api.RemoteVpnUserService;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +42,12 @@ public class TokenController
 
     @Autowired
     private RemoteVpnUserService remoteVpnUserService;
+
+    @Autowired
+    private RedisService redisService;
+
+    @Autowired
+    private AesUtils aesUtils;
 
     @PostMapping("login")
     public R<?> login(@RequestBody VpnLoginBody form)
@@ -95,5 +105,31 @@ public class TokenController
         String token = SecurityUtils.getToken(request);
         Long userId = Long.parseLong(JwtUtils.getUserId(token));
         return remoteVpnUserService.getAuthorizedLines(userId, SecurityConstants.INNER);
+    }
+
+    /**
+     * 获取当前用户的控制器登录凭证（用户名 + AES加密密码）
+     */
+    @GetMapping("user-credentials")
+    public R<?> getUserCredentials(HttpServletRequest request)
+    {
+        String token = SecurityUtils.getToken(request);
+        String username = JwtUtils.getUserName(token);
+        Long userId = Long.parseLong(JwtUtils.getUserId(token));
+
+        // 从Redis获取缓存的明文密码
+        String plainPassword = redisService.getCacheObject("vpn_plain_pwd:" + userId);
+        if (StringUtils.isEmpty(plainPassword))
+        {
+            return R.fail("凭证已过期，请重新登录");
+        }
+
+        // AES加密密码
+        String encryptedPassword = aesUtils.encrypt(plainPassword);
+
+        Map<String, String> credentials = new HashMap<>();
+        credentials.put("username", username);
+        credentials.put("password", encryptedPassword);
+        return R.ok(credentials);
     }
 }

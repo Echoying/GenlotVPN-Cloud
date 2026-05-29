@@ -34,6 +34,7 @@ import com.ruoyi.yianlian.service.vpn.IVpnRoleService;
 import com.ruoyi.yianlian.service.vpn.IVpnUserService;
 import com.ruoyi.yianlian.service.vpn.IVpnUserYianlianMappingService;
 import com.ruoyi.yianlian.service.yianlian.IYiAnLianUserService;
+import com.ruoyi.yianlian.utils.AesUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,6 +85,9 @@ public class VpnUserController extends BaseController {
 
     @Autowired
     private YalUserAuthMapper yalUserAuthMapper;
+
+    @Autowired
+    private AesUtils aesUtils;
 
     /**
      * 获取用户授权线路列表（供Feign调用）
@@ -149,7 +153,12 @@ public class VpnUserController extends BaseController {
                 vo.put("host", line.getHost());
                 vo.put("srvPort", line.getSrvPort());
                 vo.put("spaPort", line.getSpaPort());
-                vo.put("spaKey", line.getSpaKey());
+                // spaKey: AES解密后MD5(32位小写)
+                String spaKey = line.getSpaKey();
+                if (spaKey != null && !spaKey.isEmpty()) {
+                    spaKey = AesUtils.md5(aesUtils.decrypt(spaKey));
+                }
+                vo.put("spaKey", spaKey);
                 return vo;
             })
             .collect(Collectors.toList());
@@ -216,6 +225,7 @@ public class VpnUserController extends BaseController {
         String plainPassword = user.getPassword();
         user.setCreateBy(SecurityUtils.getUsername());
         user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
+        user.setEncryptedPwd(aesUtils.encrypt(plainPassword));
         int row = userService.insertUser(user);
 
         // 同步到易安联
@@ -343,20 +353,35 @@ public class VpnUserController extends BaseController {
     @PutMapping("/resetPwd")
     public AjaxResult resetPwd(@RequestBody VpnUser user) {
         userService.checkUserAllowed(user);
+
+        // 先查询用户信息，获取旧的AES加密密码
+        VpnUser vpnUser = userService.selectUserById(user.getUserId());
+
         // 保存明文密码，用于同步到易安联
         String plainPassword = user.getPassword();
         user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
+        user.setEncryptedPwd(aesUtils.encrypt(plainPassword));
         user.setUpdateBy(SecurityUtils.getUsername());
         int row = userService.resetPwd(user);
 
         // 同步到易安联
         if (row > 0) {
-            VpnUser vpnUser = userService.selectUserById(user.getUserId());
             List<VpnUserYianlianMapping> mappings = userMappingService.selectByUserId(user.getUserId());
             for (VpnUserYianlianMapping mapping : mappings) {
+                // 解密旧密码
+                String oldPassword = null;
+                if (vpnUser.getEncryptedPwd() != null) {
+                    try {
+                        oldPassword = aesUtils.decrypt(vpnUser.getEncryptedPwd());
+                    } catch (Exception e) {
+                        log.error("解密旧密码失败, userId: {}", user.getUserId(), e);
+                    }
+                }
+
                 YiAnLianUserPasswordResetRequest resetRequest = new YiAnLianUserPasswordResetRequest();
                 resetRequest.setAppId(mapping.getAppId());
                 resetRequest.setUsername(vpnUser.getUserName());
+                resetRequest.setOldPassword(oldPassword);
                 resetRequest.setNewPassword(plainPassword);
                 yiAnLianUserService.resetPassword(mapping.getAppId(), resetRequest);
             }

@@ -45,7 +45,7 @@ public class LineApp extends BaseEntity
     /** 敲门端口 */
     private Integer spaPort;
 
-    /** 预共享秘钥（MD5加密32位小写存储） */
+    /** 预共享秘钥（AES加密存储） */
     private String spaKey;
 
     /** 线路状态:0启用,1停用 */

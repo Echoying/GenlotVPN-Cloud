@@ -63,6 +63,9 @@ public class VpnUser extends BaseEntity
     /** 密码 */
     private String password;
 
+    /** AES加密密码（用于同步易安联） */
+    private String encryptedPwd;
+
     /** 账号状态（0正常 1停用） */
     @Excel(name = "账号状态", readConverterExp = "0=正常,1=停用")
     private String status;

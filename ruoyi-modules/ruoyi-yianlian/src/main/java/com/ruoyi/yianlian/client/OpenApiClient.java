@@ -15,6 +15,7 @@ import com.ruoyi.yianlian.constant.YiAnLianConstants;
 import com.ruoyi.yianlian.constant.YiAnLianResultCode;
 import com.ruoyi.yianlian.domain.LineApp;
 import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
+import com.ruoyi.yianlian.utils.AesUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,9 @@ public class OpenApiClient
 
     @Autowired
     private IVpnLineAppService vpnLineAppService;
+
+    @Autowired
+    private AesUtils aesUtils;
 
     private static final Logger log = LoggerFactory.getLogger(OpenApiClient.class);
 
@@ -67,7 +71,7 @@ public class OpenApiClient
                 YiAnLianTokenRequest request = new YiAnLianTokenRequest();
 
                 request.setAppId(lineApp.getAppId());
-                request.setAppSecret(lineApp.getAppSecret());
+                request.setAppSecret(aesUtils.decrypt(lineApp.getAppSecret()));
                 log.debug("获取易安联token, appId: {}", lineApp.getAppId());
 
                 // 获取 token 也需要通过 YiAnLianResponse 包装
@@ -170,7 +174,7 @@ public class OpenApiClient
                 YiAnLianTokenRequest request = new YiAnLianTokenRequest();
 
                 request.setAppId(lineApp.getAppId());
-                request.setAppSecret(lineApp.getAppSecret());
+                request.setAppSecret(aesUtils.decrypt(lineApp.getAppSecret()));
                 log.debug("获取易安联token, appId: {}", lineApp.getAppId());
 
               // 获取 token 也需要通过 YiAnLianResponse 包装

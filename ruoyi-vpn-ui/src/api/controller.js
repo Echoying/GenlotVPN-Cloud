@@ -194,4 +194,29 @@ export function getClientVersion() {
   })
 }
 
+/**
+ * 账密登录
+ * @param {string} username - 用户名
+ * @param {string} password - 加密后密码(AES加密,CBC/pkcs7padding/128位,密钥:EnSwordAgent@123,偏移量:321@tnegAdrowSnE)
+ * @returns {Promise} 返回 { code, messages, data: { token, userId, account, name, redirect, refreshToken } }
+ */
+export function loginWithAccount(username, password) {
+  return controllerService({
+    url: '/api/v1/user/loginWithAccount',
+    method: 'post',
+    data: {
+      username,
+      password
+    }
+  }).then(res => {
+    if (res.code === '200') {
+      if (!res.data || typeof res.data !== 'object' || !res.data.token) {
+        Message.error('登录失败：返回数据无效')
+        return Promise.reject(new Error('登录失败：返回数据缺少token字段'))
+      }
+    }
+    return res
+  })
+}
+
 export default controllerService
