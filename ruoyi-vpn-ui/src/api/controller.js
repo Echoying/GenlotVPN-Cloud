@@ -10,11 +10,15 @@ const controllerService = axios.create({
   }
 })
 
+// 不需要校验 data 的接口路径
+const ALLOW_NULL_DATA_URLS = ['/api/v1/user/getRedirectUrl', '/api/v1/user/logout']
+
 // 响应拦截器
 controllerService.interceptors.response.use(
   response => {
     const res = response.data
     const code = res.code
+    const requestUrl = response.config.url || ''
 
     // 201: JSON解析失败
     if (code === '201') {
@@ -30,6 +34,12 @@ controllerService.interceptors.response.use(
 
     // 200 成功 - 但需要验证 data 是否有效
     if (code === '200') {
+      // 允许 data 为 null 的接口直接返回
+      const skipValidation = ALLOW_NULL_DATA_URLS.some(url => requestUrl.includes(url))
+      if (skipValidation) {
+        return res
+      }
+
       // 检查 data 是否存在且有内容
       if (!res.data || (Array.isArray(res.data) && res.data.length === 0)) {
         Message.warning('未返回有效数据')
@@ -52,6 +62,16 @@ controllerService.interceptors.response.use(
     return Promise.reject(new Error(res.messages || '请求失败'))
   },
   error => {
+    const requestUrl = (error.config && error.config.url) || ''
+
+    // logout 接口：HTTP状态码非200但响应体code为200时，视为成功
+    if (requestUrl.includes('/api/v1/user/logout') && error.response && error.response.data) {
+      const res = error.response.data
+      if (res.code === '200') {
+        return res
+      }
+    }
+
     let message = '本地控制器连接失败'
 
     if (error.message.includes('Network Error')) {
@@ -216,6 +236,39 @@ export function loginWithAccount(username, password) {
       }
     }
     return res
+  })
+}
+
+/**
+ * 用户登出
+ * @returns {Promise} 返回 { code, messages, data }
+ */
+export function logout() {
+  return controllerService({
+    url: '/api/v1/user/logout',
+    method: 'post'
+  })
+}
+
+/**
+ * 获取用户信息
+ * @returns {Promise} 返回 { code, messages, data: { token, userId, account, name, redirect } }
+ */
+export function getUserInfo() {
+  return controllerService({
+    url: '/api/v1/user/info',
+    method: 'get'
+  })
+}
+
+/**
+ * 获取应用列表（重定向URL）
+ * @returns {Promise} 返回 { code, messages, data } 应用分组树结构
+ */
+export function getRedirectUrl() {
+  return controllerService({
+    url: '/api/v1/user/getRedirectUrl',
+    method: 'get'
   })
 }
 

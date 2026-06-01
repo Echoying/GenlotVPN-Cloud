@@ -143,3 +143,36 @@ Content-Type: application/json
 # 编码方式
 Content-Encoding: utf-8
 
+
+###
+GET http://127.0.0.1:30303/api/v1/user/getRedirectUrl
+Content-Type: application/json
+# 编码方式
+Content-Encoding: utf-8
+
+
+
+
+###
+GET http://127.0.0.1:30303/api/v1/user/info
+Content-Type: application/json
+# 编码方式
+Content-Encoding: utf-8
+
+
+
+###
+GET http://127.0.0.1:30303/api/v1/user/logout
+Content-Type: application/json
+# 编码方式
+Content-Encoding: utf-8
+
+
+###
+GET http://127.0.0.1:30303/api/v1/tunnel/status
+Content-Type: application/json
+# 编码方式
+Content-Encoding: utf-8
+
+
+

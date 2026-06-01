@@ -15,6 +15,11 @@ export const constantRoutes = [
     hidden: true
   },
   {
+    path: '/app-list',
+    component: () => import('@/views/app-list'),
+    hidden: true
+  },
+  {
     path: '/',
     component: () => import('@/views/home'),
     hidden: true

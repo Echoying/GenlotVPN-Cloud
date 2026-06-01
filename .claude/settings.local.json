@@ -24,7 +24,9 @@
       "Bash(xargs ls:*)",
       "Read(//d/claude/GenlotVPN-Cloud/**)",
       "Bash(docker compose:*)",
-      "Bash(npx vue-cli-service:*)"
+      "Bash(npx vue-cli-service:*)",
+      "Bash(dir:*)",
+      "Bash(mvn test-compile:*)"
     ]
   }
 }
