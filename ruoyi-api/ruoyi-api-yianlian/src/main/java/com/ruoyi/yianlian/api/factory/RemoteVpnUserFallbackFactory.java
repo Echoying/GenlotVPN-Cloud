@@ -2,15 +2,13 @@ package com.ruoyi.yianlian.api.factory;
 
 import com.ruoyi.common.core.domain.R;
 import com.ruoyi.yianlian.api.RemoteVpnUserService;
+import com.ruoyi.yianlian.api.domain.VpnChangePasswordRequest;
 import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
-import java.util.Map;
 
 import java.util.List;
 import java.util.Map;
@@ -48,6 +46,12 @@ public class RemoteVpnUserFallbackFactory implements FallbackFactory<RemoteVpnUs
             public R<List<Map<String, Object>>> getAuthorizedLines(Long userId, String source)
             {
                 return R.fail("获取授权线路失败:" + throwable.getMessage());
+            }
+
+            @Override
+            public R<Boolean> changePassword(VpnChangePasswordRequest request, String source)
+            {
+                return R.fail("修改密码失败:" + throwable.getMessage());
             }
         };
     }

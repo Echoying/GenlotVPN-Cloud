@@ -7,6 +7,7 @@ import java.util.Map;
 import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.vpn.auth.form.VpnLoginBody;
+import com.ruoyi.vpn.auth.form.VpnChangePasswordBody;
 import com.ruoyi.vpn.auth.form.VpnUnLockBody;
 import com.ruoyi.vpn.auth.service.VpnLoginService;
 import com.ruoyi.vpn.auth.utils.AesUtils;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.core.domain.R;
@@ -131,5 +133,15 @@ public class TokenController
         credentials.put("username", username);
         credentials.put("password", encryptedPassword);
         return R.ok(credentials);
+    }
+
+    /**
+     * VPN用户修改密码（登录前）
+     */
+    @PutMapping("change-password")
+    public R<?> changePassword(@RequestBody VpnChangePasswordBody form)
+    {
+        vpnLoginService.changePassword(form.getUsername(), form.getOldPassword(), form.getNewPassword());
+        return R.ok();
     }
 }

@@ -2,6 +2,8 @@ package com.ruoyi.yianlian.controller;
 
 import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.common.core.domain.R;
+import com.ruoyi.common.core.enums.UserStatus;
+import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.common.core.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.web.controller.BaseController;
 import com.ruoyi.common.core.web.domain.AjaxResult;
@@ -11,6 +13,7 @@ import com.ruoyi.common.log.enums.BusinessType;
 import com.ruoyi.common.security.annotation.InnerAuth;
 import com.ruoyi.common.security.annotation.RequiresPermissions;
 import com.ruoyi.common.security.utils.SecurityUtils;
+import com.ruoyi.yianlian.api.domain.VpnChangePasswordRequest;
 import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import com.ruoyi.yianlian.client.dto.YiAnLianUserPasswordResetRequest;
@@ -504,6 +507,92 @@ public class VpnUserController extends BaseController {
         user.setLoginDate(vpnUser.getLoginDate());
         userService.updateUser(user);
         return R.ok(true);
+    }
+
+    /**
+     * VPN用户自助修改密码（供Feign调用）
+     *
+     * @param request 修改密码请求
+     * @param source  请求来源
+     * @return 结果
+     */
+    @InnerAuth
+    @PutMapping("/changePassword")
+    public R<Boolean> changePassword(@RequestBody VpnChangePasswordRequest request, @RequestHeader(SecurityConstants.FROM_SOURCE) String source) {
+        String username = request.getUsername();
+        String oldPassword = request.getOldPassword();
+        String newPassword = request.getNewPassword();
+
+        // 查询用户
+        VpnUser vpnUser = userService.selectUserByUserName(username);
+        if (vpnUser == null) {
+            return R.fail("用户不存在");
+        }
+        if (UserStatus.DELETED.getCode().equals(vpnUser.getDelFlag())) {
+            return R.fail("用户已被删除");
+        }
+        if (UserStatus.DISABLE.getCode().equals(vpnUser.getStatus())) {
+            return R.fail("用户已停用");
+        }
+
+        // 校验旧密码
+        if (!SecurityUtils.matchesPassword(oldPassword, vpnUser.getPassword())) {
+            return R.fail("旧密码错误");
+        }
+        // 新旧密码不能相同
+        if (SecurityUtils.matchesPassword(newPassword, vpnUser.getPassword())) {
+            return R.fail("新密码不能与旧密码相同");
+        }
+
+        // 更新本地密码并同步到线路
+        updatePasswordAndSync(vpnUser, oldPassword, newPassword);
+        return R.ok(true);
+    }
+
+    /**
+     * 更新本地密码并同步到所有已映射且启用中的线路
+     */
+    private void updatePasswordAndSync(VpnUser vpnUser, String oldPlainPassword, String newPlainPassword) {
+        // 更新本地密码
+        VpnUser updateUser = new VpnUser();
+        updateUser.setUserId(vpnUser.getUserId());
+        updateUser.setPassword(SecurityUtils.encryptPassword(newPlainPassword));
+        updateUser.setEncryptedPwd(aesUtils.encrypt(newPlainPassword));
+        userService.resetPwd(updateUser);
+
+        // 同步到已映射且启用中的线路
+        List<VpnUserYianlianMapping> mappings = userMappingService.selectByUserId(vpnUser.getUserId());
+        // 获取所有启用中的线路appId集合
+        List<LineApp> allLines = lineAppService.selectLineAppList(new LineApp());
+        Set<String> enabledAppIds = allLines.stream()
+                .filter(line -> "0".equals(line.getStatus()))
+                .map(LineApp::getAppId)
+                .collect(Collectors.toSet());
+
+        for (VpnUserYianlianMapping mapping : mappings) {
+            if (!enabledAppIds.contains(mapping.getAppId())) {
+                continue;
+            }
+            // 解密旧密码用于远端同步
+            String remoteOldPassword = oldPlainPassword;
+            if (vpnUser.getEncryptedPwd() != null) {
+                try {
+                    remoteOldPassword = aesUtils.decrypt(vpnUser.getEncryptedPwd());
+                } catch (Exception e) {
+                    log.error("解密旧密码失败, userId: {}, 使用用户输入的旧密码", vpnUser.getUserId(), e);
+                }
+            }
+
+            YiAnLianUserPasswordResetRequest resetRequest = new YiAnLianUserPasswordResetRequest();
+            resetRequest.setAppId(mapping.getAppId());
+            resetRequest.setUsername(vpnUser.getUserName());
+            resetRequest.setOldPassword(remoteOldPassword);
+            resetRequest.setNewPassword(newPlainPassword);
+            Boolean result = yiAnLianUserService.resetPassword(mapping.getAppId(), resetRequest);
+            if (result == null || !result) {
+                log.error("同步修改密码到线路失败, appId: {}, username: {}", mapping.getAppId(), vpnUser.getUserName());
+            }
+        }
     }
 
 }

@@ -1,5 +1,6 @@
 package com.ruoyi.vpn.auth.service;
 
+import com.ruoyi.yianlian.api.domain.VpnChangePasswordRequest;
 import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -146,6 +147,39 @@ public class VpnLoginService
         if (!SecurityUtils.matchesPassword(password, user.getPassword()))
         {
             throw new ServiceException("密码错误，请重新输入");
+        }
+    }
+
+    /**
+     * 修改密码
+     */
+    public void changePassword(String username, String oldPassword, String newPassword)
+    {
+        // 用户名或密码为空 错误
+        if (StringUtils.isAnyBlank(username, oldPassword, newPassword))
+        {
+            throw new ServiceException("用户名/旧密码/新密码必须填写");
+        }
+        // 新旧密码不能相同
+        if (oldPassword.equals(newPassword))
+        {
+            throw new ServiceException("新密码不能与旧密码相同");
+        }
+        // 密码如果不在指定范围内 错误
+        if (newPassword.length() < UserConstants.PASSWORD_MIN_LENGTH
+                || newPassword.length() > UserConstants.PASSWORD_MAX_LENGTH)
+        {
+            throw new ServiceException("新密码长度不在指定范围");
+        }
+        // 调用yianlian模块执行修改密码
+        VpnChangePasswordRequest request = new VpnChangePasswordRequest();
+        request.setUsername(username);
+        request.setOldPassword(oldPassword);
+        request.setNewPassword(newPassword);
+        R<Boolean> result = remoteVpnUserService.changePassword(request, SecurityConstants.INNER);
+        if (R.FAIL == result.getCode())
+        {
+            throw new ServiceException(result.getMsg());
         }
     }
 

@@ -20,3 +20,13 @@ export function getCodeImg() {
     timeout: 20000
   })
 }
+
+// 修改密码
+export function changePassword(data) {
+  return request({
+    url: '/vpn/change-password',
+    headers: { isToken: false },
+    method: 'put',
+    data: data
+  })
+}

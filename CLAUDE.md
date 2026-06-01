@@ -28,13 +28,21 @@ mvn clean package -pl ruoyi-modules/ruoyi-yianlian -am -DskipTests
 mvn clean package -P dev -DskipTests
 ```
 
-### Frontend
+### Frontend (Admin)
 ```bash
 cd ruoyi-ui
 npm install
 npm run dev          # Dev server on port 80, proxies API to 10.9.2.177:80
 npm run build:prod   # Production build
 npm run build:stage  # Staging build
+```
+
+### Frontend (VPN User Login)
+```bash
+cd ruoyi-vpn-ui
+npm install
+npm run dev          # Dev server on port 8060, proxies API to 10.9.2.177:8060
+npm run build:prod   # Production build
 ```
 
 ### Docker Deployment

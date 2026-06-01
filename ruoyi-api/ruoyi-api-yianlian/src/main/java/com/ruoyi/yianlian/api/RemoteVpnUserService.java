@@ -3,14 +3,12 @@ package com.ruoyi.yianlian.api;
 import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.common.core.constant.ServiceNameConstants;
 import com.ruoyi.common.core.domain.R;
+import com.ruoyi.yianlian.api.domain.VpnChangePasswordRequest;
 import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.factory.RemoteVpnUserFallbackFactory;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
 
 import java.util.List;
 import java.util.Map;
@@ -52,5 +50,15 @@ public interface RemoteVpnUserService {
      */
     @GetMapping("/vpn/user/authorized-lines/{userId}")
     public R<List<Map<String, Object>>> getAuthorizedLines(@PathVariable("userId") Long userId, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
+
+    /**
+     * VPN用户自助修改密码
+     *
+     * @param request 修改密码请求
+     * @param source 请求来源
+     * @return 结果
+     */
+    @PutMapping("/vpn/user/changePassword")
+    public R<Boolean> changePassword(@RequestBody VpnChangePasswordRequest request, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
 
 }

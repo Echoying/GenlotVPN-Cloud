@@ -46,8 +46,34 @@
           <span v-if="!loading">登 录</span>
           <span v-else>登 录 中...</span>
         </el-button>
+        <div style="text-align: right; margin-top: 10px;">
+          <el-button type="text" @click="showChangePwd = true">修改密码</el-button>
+        </div>
       </el-form-item>
     </el-form>
+
+    <!-- 修改密码弹窗 -->
+    <el-dialog title="修改密码" :visible.sync="showChangePwd" width="500px" append-to-body @close="resetChangePwdForm">
+      <el-form ref="changePwdForm" :model="changePwdForm" :rules="changePwdRules" label-width="80px">
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="changePwdForm.username" placeholder="请输入用户名" />
+        </el-form-item>
+        <el-form-item label="旧密码" prop="oldPassword">
+          <el-input v-model="changePwdForm.oldPassword" type="password" placeholder="请输入旧密码" />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input v-model="changePwdForm.newPassword" type="password" placeholder="请输入新密码" />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input v-model="changePwdForm.confirmPassword" type="password" placeholder="请确认新密码" />
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="showChangePwd = false">取 消</el-button>
+        <el-button type="primary" :loading="changePwdLoading" @click="handleChangePassword">确 定</el-button>
+      </div>
+    </el-dialog>
+
     <!--  底部  -->
     <div class="el-login-footer">
       <span>{{ footerContent }}</span>
@@ -56,7 +82,7 @@
 </template>
 
 <script>
-import { getCodeImg } from "@/api/login"
+import { getCodeImg, changePassword } from "@/api/login"
 import Cookies from "js-cookie"
 import { encrypt, decrypt } from "@/utils/jsencrypt"
 import defaultSettings from "@/settings"
@@ -64,6 +90,13 @@ import defaultSettings from "@/settings"
 export default {
   name: "Login",
   data() {
+    const validateConfirmPassword = (rule, value, callback) => {
+      if (value !== this.changePwdForm.newPassword) {
+        callback(new Error("两次输入的密码不一致"))
+      } else {
+        callback()
+      }
+    }
     return {
       title: process.env.VUE_APP_TITLE,
       footerContent: defaultSettings.footerContent,
@@ -86,7 +119,32 @@ export default {
       },
       loading: false,
       captchaEnabled: true,
-      redirect: undefined
+      redirect: undefined,
+      // 修改密码
+      showChangePwd: false,
+      changePwdLoading: false,
+      changePwdForm: {
+        username: "",
+        oldPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+      },
+      changePwdRules: {
+        username: [
+          { required: true, trigger: "blur", message: "请输入用户名" }
+        ],
+        oldPassword: [
+          { required: true, trigger: "blur", message: "请输入旧密码" }
+        ],
+        newPassword: [
+          { required: true, trigger: "blur", message: "请输入新密码" },
+          { min: 5, max: 20, message: "密码长度在 5 到 20 个字符", trigger: "blur" }
+        ],
+        confirmPassword: [
+          { required: true, trigger: "blur", message: "请确认新密码" },
+          { validator: validateConfirmPassword, trigger: "blur" }
+        ]
+      }
     }
   },
   watch: {
@@ -148,6 +206,39 @@ export default {
           })
         }
       })
+    },
+    handleChangePassword() {
+      this.$refs.changePwdForm.validate(valid => {
+        if (valid) {
+          if (this.changePwdForm.oldPassword === this.changePwdForm.newPassword) {
+            this.$alert("新密码不能与旧密码相同", "提示", { type: "warning" })
+            return
+          }
+          this.changePwdLoading = true
+          changePassword({
+            username: this.changePwdForm.username,
+            oldPassword: this.changePwdForm.oldPassword,
+            newPassword: this.changePwdForm.newPassword
+          }).then(() => {
+            this.$alert("密码修改成功，请使用新密码登录", "提示", { type: "success" }).then(() => {
+              this.showChangePwd = false
+              // 将用户名回填到登录表单
+              this.loginForm.username = this.changePwdForm.username
+              this.loginForm.password = ""
+            })
+          }).catch((error) => {
+            const msg = error && error.message ? error.message : "修改密码失败，请稍后重试"
+            this.$alert(msg, "修改失败", { type: "error" })
+          }).finally(() => {
+            this.changePwdLoading = false
+          })
+        }
+      })
+    },
+    resetChangePwdForm() {
+      if (this.$refs.changePwdForm) {
+        this.$refs.changePwdForm.resetFields()
+      }
     }
   }
 }
