@@ -1,4 +1,8 @@
 # CLAUDE.md
+## 语言规范
+- 所有对话和文档尽量使用简体中文。
+- 所有回答尽量使用简体中文[reference:8]。
+- 代码注释尽量使用简体中文[reference:9]。
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -97,6 +101,17 @@ All services register with Nacos (namespace: `dev`). Application config is store
 - **ruoyi-vpn-auth/**: VPN user authentication service
 - **ruoyi-visual/**: Spring Boot Admin monitoring
 
+### VPN User Authentication Flow
+
+VPN user login is handled by `ruoyi-vpn-auth` (separate from system admin auth in `ruoyi-auth`):
+
+1. `VpnLoginService.login()` validates username/password length, checks the Redis IP blacklist (`CacheConstants.SYS_LOGIN_BLACKIPLIST`)
+2. Calls the YianLian module via Feign (`RemoteVpnUserService.getUserInfo`, using `SecurityConstants.INNER` for internal trust)
+3. On success, caches the **plaintext password** in Redis under `vpn_plain_pwd:{userId}` with a 30-minute TTL (matching token lifetime). This is consumed by downstream YianLian controller operations that must re-authenticate against the remote platform.
+4. Password change (`changePassword`) and login-info recording are also delegated to the YianLian module through `RemoteVpnUserService`
+
+`ruoyi-api/ruoyi-api-yianlian` defines the Feign contract (`RemoteVpnUserService`) and shared models (`VpnLoginUser`, `VpnUserInfo`, `VpnChangePasswordRequest`) that bridge `ruoyi-vpn-auth` and `ruoyi-modules-yianlian`.
+
 ### YianLian Module — Dual Service Layer
 
 The YianLian module has a distinctive **dual service layer** architecture:
@@ -122,6 +137,20 @@ Controller
 - API base path: `/enadmin/api/open/v1/`
 - All API paths defined in `YiAnLianConstants`
 - Responses deserialized into `YiAnLianResponse<T>`
+
+### YianLian Module — Package Layout
+
+Under `ruoyi-modules/ruoyi-yianlian/src/main/java/com/ruoyi/yianlian/`:
+
+- `controller/` — 11 REST controllers (see list above)
+- `domain/` + `domain/vo/` — local entities and view objects
+- `mapper/` — MyBatis mapper interfaces (XML lives under `src/main/resources/mapper/`)
+- `service/vpn/` + `service/vpn/impl/` — local CRUD service layer (`IVpnXxxService`)
+- `service/yianlian/` + `service/yianlian/impl/` — remote sync service layer (`IYiAnLianXxxService`)
+- `client/`, `client/YiAnLianBase/`, `client/dto/`, `client/dto/vo/` — `OpenApiClient` and request/response DTOs for the external API
+- `constant/` — `YiAnLianConstants` (API paths, token cache keys)
+- `config/` — module configuration
+- `utils/` — helpers (e.g. MD5 encryption for `appSecret`/`spaKey`)
 
 ### Domain Entities
 
