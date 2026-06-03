@@ -1,0 +1,16 @@
+# 选线钉钉验证码 — 追加到 Nacos 配置 ruoyi-vpn-auth-dev.yml（或对应环境）
+# 部署后需重启 ruoyi-vpn-auth
+
+dingtalk:
+  robot:
+    enabled: true
+    access-token: 替换为钉钉自定义机器人 access_token
+    secret: 替换为加签密钥（未开启加签可留空或删除）
+    webhook-url: https://oapi.dingtalk.com/robot/send
+
+vpn:
+  line-verify:
+    code-ttl-minutes: 5
+    send-cooldown-seconds: 60
+    max-verify-attempts: 5
+    line-name-max-length: 64

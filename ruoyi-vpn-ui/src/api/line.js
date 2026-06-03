@@ -9,9 +9,10 @@ export function getAuthorizedLines() {
 }
 
 // 获取当前用户的控制器登录凭据（用户名 + AES加密后的密码）
-export function getUserCredentials() {
+export function getUserCredentials(appId) {
   return request({
     url: '/vpn/user-credentials',
-    method: 'get'
+    method: 'get',
+    params: { appId }
   })
 }

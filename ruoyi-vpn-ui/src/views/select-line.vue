@@ -72,11 +72,51 @@
         <el-button type="text" @click="handleLogout">退出登录</el-button>
       </div>
     </div>
+
+    <!-- 选线安全验证弹窗 -->
+    <el-dialog
+      title="选线安全验证"
+      :visible.sync="verifyDialogVisible"
+      width="480px"
+      :close-on-click-modal="false"
+      @close="handleVerifyDialogClose"
+    >
+      <p v-if="pendingLine" class="verify-line-hint">当前线路：{{ pendingLine.appName }}</p>
+      <div class="verify-code-row">
+        <el-input
+          v-model="verifyCode"
+          placeholder="请输入钉钉验证码"
+          maxlength="6"
+          clearable
+          class="verify-code-input"
+          @keyup.enter.native="handleConfirmVerify"
+        />
+        <el-button
+          type="primary"
+          :disabled="sendCountdown > 0 || sendingCode"
+          :loading="sendingCode"
+          @click="handleSendCode"
+        >
+          {{ sendCountdown > 0 ? `重新发送(${sendCountdown}s)` : '发送验证码' }}
+        </el-button>
+        <el-tooltip placement="top" effect="dark">
+          <div slot="content" class="verify-tooltip-content">
+            钉钉验证码会发送到 VPN 群中，VPN 验证码信息机器人会把验证码信息发送到群里，请把收到的验证码回填。
+          </div>
+          <i class="el-icon-question verify-help-icon"></i>
+        </el-tooltip>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="handleVerifyDialogClose">取 消</el-button>
+        <el-button type="primary" :loading="confirmingVerify" @click="handleConfirmVerify">确 认</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { getAuthorizedLines, getUserCredentials } from '@/api/line'
+import { sendLineVerifyCode, confirmLineVerifyCode } from '@/api/lineVerify'
 import { detectServer, selectServer, getServerVersion, getClientVersion, loginWithAccount } from '@/api/controller'
 import { removeToken } from '@/utils/auth'
 
@@ -88,11 +128,21 @@ export default {
       lines: [],
       logs: [],
       detectingLineId: null,
-      appTitle: process.env.VUE_APP_TITLE || 'Genlot VPN'
+      appTitle: process.env.VUE_APP_TITLE || 'Genlot VPN',
+      verifyDialogVisible: false,
+      pendingLine: null,
+      verifyCode: '',
+      sendCountdown: 0,
+      countdownTimer: null,
+      sendingCode: false,
+      confirmingVerify: false
     }
   },
   created() {
     this.loadLines()
+  },
+  beforeDestroy() {
+    this.clearSendCountdown()
   },
   methods: {
     loadLines() {
@@ -109,7 +159,87 @@ export default {
         this.loading = false
       })
     },
-    async selectLine(line) {
+    selectLine(line) {
+      if (this.detectingLineId) {
+        this.$message.warning('正在检测其他线路，请稍候')
+        return
+      }
+      this.pendingLine = line
+      this.verifyCode = ''
+      this.verifyDialogVisible = true
+    },
+    handleSendCode() {
+      if (!this.pendingLine || this.sendCountdown > 0) {
+        return
+      }
+      this.sendingCode = true
+      sendLineVerifyCode({
+        appId: this.pendingLine.appId,
+        lineName: this.pendingLine.appName
+      }).then(res => {
+        this.$message.success('验证码已发送到 VPN 群，请查收')
+        if (res.data && res.data.validSeconds) {
+          this.addLog('info', `验证码有效时间: ${res.data.validSeconds}秒`)
+        }
+        this.startSendCountdown(60)
+      }).catch(err => {
+        this.$message.error(err.message || '发送验证码失败')
+      }).finally(() => {
+        this.sendingCode = false
+      })
+    },
+    handleConfirmVerify() {
+      if (!this.pendingLine) {
+        return
+      }
+      const code = (this.verifyCode || '').trim()
+      if (!/^\d{6}$/.test(code)) {
+        this.$message.warning('请输入6位数字验证码')
+        return
+      }
+      this.confirmingVerify = true
+      confirmLineVerifyCode({
+        appId: this.pendingLine.appId,
+        code
+      }).then(() => {
+        this.$message.success('验证通过')
+        const line = this.pendingLine
+        this.verifyDialogVisible = false
+        this.pendingLine = null
+        this.verifyCode = ''
+        this.proceedSelectLine(line)
+      }).catch(err => {
+        this.$message.error(err.message || '验证码校验失败')
+      }).finally(() => {
+        this.confirmingVerify = false
+      })
+    },
+    handleVerifyDialogClose() {
+      this.verifyDialogVisible = false
+      this.pendingLine = null
+      this.verifyCode = ''
+      this.clearSendCountdown()
+    },
+    startSendCountdown(seconds) {
+      this.clearSendCountdown()
+      this.sendCountdown = seconds
+      this.countdownTimer = setInterval(() => {
+        if (this.sendCountdown <= 1) {
+          this.sendCountdown = 0
+          this.clearSendCountdown()
+        } else {
+          this.sendCountdown--
+        }
+      }, 1000)
+    },
+    clearSendCountdown() {
+      if (this.countdownTimer) {
+        clearInterval(this.countdownTimer)
+        this.countdownTimer = null
+      }
+      this.sendCountdown = 0
+    },
+    async proceedSelectLine(line) {
       if (this.detectingLineId) {
         this.$message.warning('正在检测其他线路，请稍候')
         return
@@ -187,7 +317,7 @@ export default {
                 // 获取用户凭证并登录控制器
                 this.addLog('info', '正在获取登录凭证...')
                 try {
-                  const credRes = await getUserCredentials()
+                  const credRes = await getUserCredentials(line.appId)
                   if (credRes.code === 200 && credRes.data) {
                     this.addLog('info', `用户: ${credRes.data.username}`)
                     this.addLog('info', '正在登录控制器...')
@@ -493,5 +623,33 @@ export default {
   margin-top: 24px;
   padding-top: 20px;
   border-top: 1px solid #f0f0f0;
+}
+
+.verify-line-hint {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: #606266;
+}
+
+.verify-code-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.verify-code-input {
+  flex: 1;
+}
+
+.verify-help-icon {
+  font-size: 18px;
+  color: #909399;
+  cursor: help;
+  flex-shrink: 0;
+}
+
+.verify-tooltip-content {
+  max-width: 280px;
+  line-height: 1.5;
 }
 </style>
