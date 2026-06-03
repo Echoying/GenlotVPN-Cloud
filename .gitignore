@@ -24,6 +24,7 @@ target/
 *.iws
 *.iml
 *.ipr
+*.tar
 
 ### JRebel ###
 rebel.xml
@@ -34,6 +35,10 @@ nbbuild/
 dist/
 nbdist/
 .nb-gradle/
+
+######################################################################
+# Frontend (Vue / npm)
+node_modules/
 
 ######################################################################
 # Others

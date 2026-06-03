@@ -10,8 +10,12 @@ const controllerService = axios.create({
   }
 })
 
-// 不需要校验 data 的接口路径
-const ALLOW_NULL_DATA_URLS = ['/api/v1/user/getRedirectUrl', '/api/v1/user/logout']
+// 不需要校验 data 的接口路径（允许 data 为 null）
+const ALLOW_NULL_DATA_URLS = ['/api/v1/user/logout', '/api/v1/gateway/turnOn', '/api/v1/gateway/switch']
+// 允许 data 为空数组且不弹「未返回有效数据」
+const ALLOW_EMPTY_ARRAY_URLS = ['/api/v1/user/getUserGroupedServiceList']
+// 数组响应不做 host/srvPort 探测字段校验
+const SKIP_ARRAY_ITEM_VALIDATION_URLS = ['/api/v1/user/getUserGroupedServiceList']
 
 // 响应拦截器
 controllerService.interceptors.response.use(
@@ -34,20 +38,25 @@ controllerService.interceptors.response.use(
 
     // 200 成功 - 但需要验证 data 是否有效
     if (code === '200') {
-      // 允许 data 为 null 的接口直接返回
-      const skipValidation = ALLOW_NULL_DATA_URLS.some(url => requestUrl.includes(url))
-      if (skipValidation) {
+      const skipNullValidation = ALLOW_NULL_DATA_URLS.some(url => requestUrl.includes(url))
+      if (skipNullValidation) {
+        return res
+      }
+
+      const skipEmptyArray = ALLOW_EMPTY_ARRAY_URLS.some(url => requestUrl.includes(url))
+      if (Array.isArray(res.data) && res.data.length === 0 && skipEmptyArray) {
         return res
       }
 
       // 检查 data 是否存在且有内容
       if (!res.data || (Array.isArray(res.data) && res.data.length === 0)) {
         Message.warning('未返回有效数据')
-        return res // 仍然返回，让调用方处理
+        return res
       }
 
-      // 如果是数组，检查每个元素是否有 host 和 srvPort
-      if (Array.isArray(res.data)) {
+      // 探测接口数组项校验 host/srvPort
+      const skipArrayItemValidation = SKIP_ARRAY_ITEM_VALIDATION_URLS.some(url => requestUrl.includes(url))
+      if (Array.isArray(res.data) && !skipArrayItemValidation) {
         const invalidItems = res.data.filter(item => !item.host || !item.srvPort)
         if (invalidItems.length > 0) {
           console.warn('部分数据缺少 host 或 srvPort:', invalidItems)
@@ -262,13 +271,133 @@ export function getUserInfo() {
 }
 
 /**
- * 获取应用列表（重定向URL）
- * @returns {Promise} 返回 { code, messages, data } 应用分组树结构
+ * 获取应用列表（按组扁平列表，前端自行分组）
+ * @param {string} serviceName 应用名称，为空则查询全部
+ * @returns {Promise} 返回 { code, messages, data: Array } 应用项列表
  */
-export function getRedirectUrl() {
+export function getUserGroupedServiceList(serviceName = '') {
   return controllerService({
-    url: '/api/v1/user/getRedirectUrl',
+    url: '/api/v1/user/getUserGroupedServiceList',
+    method: 'post',
+    data: {
+      serviceName: serviceName || ''
+    }
+  }).then(res => {
+    if (res.code === '200' && !Array.isArray(res.data)) {
+      return Promise.reject(new Error('获取应用列表失败：返回数据格式错误'))
+    }
+    return res
+  })
+}
+
+// 网关列表轮询配置
+const GATEWAY_POLL_MAX = 20        // 最大轮询次数
+const GATEWAY_POLL_INTERVAL = 3000 // 轮询间隔(ms)
+
+/**
+ * 获取网关列表
+ * 登录后轮询调用，获取网关信息及连接状态
+ * @returns {Promise} 返回 { code, messages, data } 其中 data 包含：
+ *   - baselineIsMeet {boolean} 基线是否通过
+ *   - tunCode {number} 隧道响应码(200隧道连接成功)
+ *   - tunDesc {string} 隧道响应消息
+ *   - turnOn {boolean} 开关
+ *   - list {Array} 网关列表，元素含：
+ *       id, name, srcIP, virtualIP, virtualIPv6,
+ *       connected {boolean}, timing {string},
+ *       canConnect {boolean}, delayTime {string}
+ */
+export function getGatewayList() {
+  return controllerService({
+    url: '/api/v1/gateway/list',
     method: 'get'
+  }).then(res => {
+    if (res.code === '200') {
+      if (!res.data || typeof res.data !== 'object') {
+        return Promise.reject(new Error('获取网关列表失败：返回数据缺少data字段'))
+      }
+    }
+    return res
+  })
+}
+
+/**
+ * 打开/关闭网关连接
+ * 登录后调用；登录后默认不开启网关，需显式打开
+ * @param {boolean} turnOn true 打开连接，false 关闭连接
+ * @returns {Promise} 返回 { code, messages, data }，成功时 data 可为 null
+ */
+export function turnOnGateway(turnOn) {
+  return controllerService({
+    url: '/api/v1/gateway/turnOn',
+    method: 'post',
+    data: {
+      turnOn: !!turnOn
+    }
+  })
+}
+
+/**
+ * 切换网关连接
+ * 登录后调用，切换到指定网关
+ * @param {string} gatewayID 网关 id（来自网关列表 list[].id）
+ * @returns {Promise} 返回 { code, messages, data }，成功时 data 可为 null
+ */
+export function switchGateway(gatewayID) {
+  return controllerService({
+    url: '/api/v1/gateway/switch',
+    method: 'post',
+    data: {
+      gatewayID
+    }
+  })
+}
+
+/**
+ * 获取隧道连接状态
+ * 登录后调用，用于展示隧道连接状态
+ * @returns {Promise} 返回 { code, messages, data: { status, reConnect } }
+ *   status: 0未连接 1连接中 2已连接 3断开连接中 4已断开
+ */
+export function getTunnelStatus() {
+  return controllerService({
+    url: '/api/v1/tunnel/status',
+    method: 'get'
+  }).then(res => {
+    if (res.code === '200') {
+      if (!res.data || typeof res.data !== 'object') {
+        return Promise.reject(new Error('获取隧道状态失败：返回数据缺少data字段'))
+      }
+    }
+    return res
+  })
+}
+
+/**
+ * 轮询获取网关列表
+ * 最多轮询 GATEWAY_POLL_MAX 次，每次间隔 GATEWAY_POLL_INTERVAL 毫秒
+ * @param {Object} options
+ * @param {Function} [options.onUpdate] 每次拿到数据的回调 (data, attempt) => void
+ * @param {Function} [options.isDone]   提前结束判断 (data) => boolean，返回 true 立即结束
+ * @returns {Promise} resolve(最后一次 data)；达到上限仍未满足或异常则 reject
+ */
+export function pollGatewayList({ onUpdate, isDone } = {}) {
+  return new Promise((resolve, reject) => {
+    let attempts = 0
+    const tick = () => {
+      attempts++
+      getGatewayList().then(res => {
+        const data = res.data
+        if (onUpdate) onUpdate(data, attempts)
+        if (isDone && isDone(data)) return resolve(data)
+        if (attempts >= GATEWAY_POLL_MAX) return reject(new Error('网关连接超时'))
+        setTimeout(tick, GATEWAY_POLL_INTERVAL)
+      }).catch(err => {
+        if (attempts >= GATEWAY_POLL_MAX) return reject(err)
+        setTimeout(tick, GATEWAY_POLL_INTERVAL)
+      })
+    }
+    tick()
   })
 }
 

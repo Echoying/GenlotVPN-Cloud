@@ -196,7 +196,8 @@ export default {
                       if (loginRes && loginRes.code === '200' && loginRes.data) {
                         this.addLog('info', '控制器登录成功')
                         this.addLog('info', `用户名: ${loginRes.data.account || loginRes.data.name || 'N/A'}`)
-                        // 登录成功后跳转到应用列表页
+                        this.addLog('info', '正在跳转到应用列表...')
+                        await this.$store.dispatch('SelectLine', line)
                         this.$router.push('/app-list')
                       } else {
                         this.addLog('error', '控制器登录失败: ' + (loginRes?.messages || '未知错误'))
