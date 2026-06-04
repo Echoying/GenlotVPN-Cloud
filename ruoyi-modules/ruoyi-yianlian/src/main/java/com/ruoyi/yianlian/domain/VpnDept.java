@@ -26,6 +26,9 @@ public class VpnDept extends BaseEntity
     /** 部门ID */
     private Long deptId;
 
+    /** 线路ID（line_app.app_id） */
+    private String appId;
+
     /** 父部门ID */
     private Long parentId;
 
@@ -89,6 +92,7 @@ public class VpnDept extends BaseEntity
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
             .append("deptId", getDeptId())
+            .append("appId", getAppId())
             .append("parentId", getParentId())
             .append("ancestors", getAncestors())
             .append("deptName", getDeptName())

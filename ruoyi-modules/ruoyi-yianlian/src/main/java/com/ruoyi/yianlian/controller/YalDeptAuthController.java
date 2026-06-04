@@ -44,9 +44,9 @@ public class YalDeptAuthController extends BaseController
      * 根据部门ID获取授权列表
      */
     @GetMapping("/listByDeptId/{deptId}")
-    public AjaxResult listByDeptId(@PathVariable Long deptId)
+    public AjaxResult listByDeptId(@PathVariable Long deptId, @RequestParam String lineId)
     {
-        List<YalDeptAuth> list = yalDeptAuthService.selectByDeptId(deptId);
+        List<YalDeptAuth> list = yalDeptAuthService.selectByDeptIdAndLineId(deptId, lineId);
         return success(list);
     }
 
@@ -98,7 +98,7 @@ public class YalDeptAuthController extends BaseController
     @PostMapping("/batchSave")
     public AjaxResult batchSave(@RequestBody YalDeptAuthBatchDTO batchDTO)
     {
-        return toAjax(yalDeptAuthService.batchSaveDeptAuth(batchDTO.getDeptId(), batchDTO.getAuthList()));
+        return toAjax(yalDeptAuthService.batchSaveDeptAuth(batchDTO.getDeptId(), batchDTO.getLineId(), batchDTO.getAuthList()));
     }
 
     /**

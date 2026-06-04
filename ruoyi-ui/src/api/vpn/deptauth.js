@@ -1,10 +1,11 @@
 import request from '@/utils/request'
 
 // 根据部门ID查询授权列表
-export function listByDeptId(deptId) {
+export function listByDeptId(deptId, lineId) {
   return request({
     url: '/yianlian/deptAuth/listByDeptId/' + deptId,
-    method: 'get'
+    method: 'get',
+    params: { lineId }
   })
 }
 

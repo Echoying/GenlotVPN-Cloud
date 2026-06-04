@@ -10,10 +10,11 @@ export function listDept(query) {
 }
 
 // 查询VPN部门列表（排除节点）
-export function listDeptExcludeChild(deptId) {
+export function listDeptExcludeChild(deptId, params) {
   return request({
     url: '/yianlian/vpn/dept/list/exclude/' + deptId,
-    method: 'get'
+    method: 'get',
+    params: params
   })
 }
 

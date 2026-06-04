@@ -1,7 +1,10 @@
 package com.ruoyi.yianlian.service.impl;
 
+import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.common.core.utils.DateUtils;
 import com.ruoyi.common.core.utils.StringUtils;
+import com.ruoyi.yianlian.domain.VpnDept;
+import com.ruoyi.yianlian.service.vpn.IVpnDeptService;
 import com.ruoyi.yianlian.client.dto.YiAnLianGroupAuthRequest;
 import com.ruoyi.yianlian.domain.VpnDeptYianlianMapping;
 import com.ruoyi.yianlian.domain.VpnService;
@@ -54,6 +57,9 @@ public class YalDeptAuthServiceImpl implements IYalDeptAuthService
     @Autowired
     private VpnDeptYianlianMappingMapper deptYianlianMappingMapper;
 
+    @Autowired
+    private IVpnDeptService vpnDeptService;
+
     @Override
     public YalDeptAuth selectYalDeptAuthById(Long id)
     {
@@ -70,6 +76,12 @@ public class YalDeptAuthServiceImpl implements IYalDeptAuthService
     public List<YalDeptAuth> selectByDeptId(Long deptId)
     {
         return yalDeptAuthMapper.selectYalDeptAuthByDeptId(deptId);
+    }
+
+    @Override
+    public List<YalDeptAuth> selectByDeptIdAndLineId(Long deptId, String lineId)
+    {
+        return yalDeptAuthMapper.selectYalDeptAuthByDeptIdAndLineId(deptId, lineId);
     }
 
     @Override
@@ -107,24 +119,36 @@ public class YalDeptAuthServiceImpl implements IYalDeptAuthService
      */
     @Override
     @Transactional
-    public int batchSaveDeptAuth(Long deptId, List<YalDeptAuth> authList)
+    public int batchSaveDeptAuth(Long deptId, String lineId, List<YalDeptAuth> authList)
     {
-        // 先删除该部门的所有授权
-        yalDeptAuthMapper.deleteYalDeptAuthByDeptId(deptId);
+        if (StringUtils.isEmpty(lineId))
+        {
+            throw new ServiceException("线路不能为空");
+        }
+        VpnDept dept = vpnDeptService.selectDeptById(deptId);
+        if (dept == null)
+        {
+            throw new ServiceException("部门不存在");
+        }
+        if (StringUtils.isNotEmpty(dept.getAppId()) && !lineId.equals(dept.getAppId()))
+        {
+            throw new ServiceException("授权线路与部门所属线路不一致");
+        }
 
-        // 批量插入新的授权
+        yalDeptAuthMapper.deleteYalDeptAuthByDeptIdAndLineId(deptId, lineId);
+
         int result = 0;
         if (authList != null && !authList.isEmpty())
         {
             for (YalDeptAuth auth : authList)
             {
                 auth.setDeptId(deptId);
+                auth.setLineId(lineId);
                 auth.setCreateTime(DateUtils.getNowDate());
             }
             result = yalDeptAuthMapper.batchInsertYalDeptAuth(authList);
         }
 
-        // 同步给易安联：遍历所有线路，按部门授权
         try
         {
             syncToYiAnLian(deptId, authList);

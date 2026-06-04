@@ -123,4 +123,19 @@ public interface IVpnDeptService
      * @return 结果
      */
     public int deleteDeptById(Long deptId);
+
+    /**
+     * 新增部门并同步易安联（同步失败则整体回滚）
+     */
+    int insertDeptWithSync(VpnDept dept);
+
+    /**
+     * 修改部门并同步易安联（同步失败则整体回滚）
+     */
+    int updateDeptWithSync(VpnDept dept);
+
+    /**
+     * 删除部门并同步易安联（先删远程，同步失败则整体回滚）
+     */
+    int deleteDeptWithSync(Long deptId);
 }

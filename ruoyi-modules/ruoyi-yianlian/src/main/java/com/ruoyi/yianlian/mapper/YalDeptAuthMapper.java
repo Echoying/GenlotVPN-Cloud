@@ -68,12 +68,22 @@ public interface YalDeptAuthMapper
     public List<YalDeptAuth> selectYalDeptAuthByDeptId(Long deptId);
 
     /**
+     * 根据部门ID与线路查询授权列表
+     */
+    public List<YalDeptAuth> selectYalDeptAuthByDeptIdAndLineId(@Param("deptId") Long deptId, @Param("lineId") String lineId);
+
+    /**
      * 根据部门ID删除授权
      *
      * @param deptId 部门ID
      * @return 结果
      */
     public int deleteYalDeptAuthByDeptId(Long deptId);
+
+    /**
+     * 根据部门ID与线路删除授权
+     */
+    public int deleteYalDeptAuthByDeptIdAndLineId(@Param("deptId") Long deptId, @Param("lineId") String lineId);
 
     /**
      * 批量新增部门授权

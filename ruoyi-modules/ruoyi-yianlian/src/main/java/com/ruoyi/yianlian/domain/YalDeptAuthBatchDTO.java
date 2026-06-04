@@ -12,6 +12,9 @@ public class YalDeptAuthBatchDTO
     /** 部门ID */
     private Long deptId;
 
+    /** 线路ID（line_app.app_id） */
+    private String lineId;
+
     /** 授权列表 */
     private List<YalDeptAuth> authList;
 
@@ -23,6 +26,16 @@ public class YalDeptAuthBatchDTO
     public void setDeptId(Long deptId)
     {
         this.deptId = deptId;
+    }
+
+    public String getLineId()
+    {
+        return lineId;
+    }
+
+    public void setLineId(String lineId)
+    {
+        this.lineId = lineId;
     }
 
     public List<YalDeptAuth> getAuthList()

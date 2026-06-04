@@ -45,6 +45,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where dept_id = #{deptId}
     </select>
 
+    <select id="selectYalDeptAuthByDeptIdAndLineId" resultMap="YalDeptAuthResult">
+        <include refid="selectYalDeptAuthVo"/>
+        where dept_id = #{deptId} and line_id = #{lineId}
+    </select>
+
     <insert id="insertYalDeptAuth" parameterType="YalDeptAuth" useGeneratedKeys="true" keyProperty="id">
         insert into yal_dept_auth
         <trim prefix="(" suffix=")" suffixOverrides=",">
@@ -103,6 +108,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <delete id="deleteYalDeptAuthByDeptId" parameterType="Long">
         delete from yal_dept_auth where dept_id = #{deptId}
+    </delete>
+
+    <delete id="deleteYalDeptAuthByDeptIdAndLineId">
+        delete from yal_dept_auth where dept_id = #{deptId} and line_id = #{lineId}
     </delete>
 
 </mapper>

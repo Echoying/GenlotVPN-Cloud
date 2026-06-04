@@ -76,7 +76,7 @@ public interface VpnDeptMapper
      * @param parentId 父部门ID
      * @return 结果
      */
-    public VpnDept checkDeptNameUnique(@Param("deptName") String deptName, @Param("parentId") Long parentId);
+    public VpnDept checkDeptNameUnique(@Param("deptName") String deptName, @Param("parentId") Long parentId, @Param("appId") String appId);
 
     /**
      * 新增部门信息

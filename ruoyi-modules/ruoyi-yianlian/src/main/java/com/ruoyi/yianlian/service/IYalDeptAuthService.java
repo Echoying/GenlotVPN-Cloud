@@ -37,6 +37,11 @@ public interface IYalDeptAuthService
     public List<YalDeptAuth> selectByDeptId(Long deptId);
 
     /**
+     * 根据部门ID与线路查询授权列表
+     */
+    public List<YalDeptAuth> selectByDeptIdAndLineId(Long deptId, String lineId);
+
+    /**
      * 新增部门授权
      *
      * @param yalDeptAuth 部门授权信息
@@ -75,7 +80,7 @@ public interface IYalDeptAuthService
      * @param authList 授权列表
      * @return 结果
      */
-    public int batchSaveDeptAuth(Long deptId, List<YalDeptAuth> authList);
+    public int batchSaveDeptAuth(Long deptId, String lineId, List<YalDeptAuth> authList);
 
     /**
      * 构建应用服务树（应用组为父节点，应用为子节点）

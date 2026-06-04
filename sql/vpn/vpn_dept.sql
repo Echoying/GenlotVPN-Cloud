@@ -4,6 +4,7 @@
 drop table if exists vpn_dept;
 create table vpn_dept (
   dept_id           bigint(20)      not null auto_increment    comment '部门id',
+  app_id            varchar(64)     default null               comment '线路ID(line_app.app_id)',
   parent_id         bigint(20)      default 0                  comment '父部门id',
   ancestors         varchar(50)     default ''                 comment '祖级列表',
   dept_name         varchar(30)     default ''                 comment '部门名称',
@@ -17,7 +18,8 @@ create table vpn_dept (
   create_time 	    datetime                                   comment '创建时间',
   update_by         varchar(64)     default ''                 comment '更新者',
   update_time       datetime                                   comment '更新时间',
-  primary key (dept_id)
+  primary key (dept_id),
+  key idx_vpn_dept_app_id (app_id)
 ) engine=innodb auto_increment=200 comment = 'VPN部门表';
 
 -- ----------------------------

@@ -5,9 +5,12 @@ import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.common.core.text.Convert;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.yianlian.domain.VpnDept;
+import com.ruoyi.yianlian.domain.VpnDeptYianlianMapping;
 import com.ruoyi.yianlian.domain.vo.TreeSelect;
 import com.ruoyi.yianlian.mapper.VpnDeptMapper;
+import com.ruoyi.yianlian.service.IVpnDeptYianlianMappingService;
 import com.ruoyi.yianlian.service.vpn.IVpnDeptService;
+import com.ruoyi.yianlian.service.vpn.VpnDeptYiAnLianSyncService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,6 +32,12 @@ public class VpnDeptServiceImpl implements IVpnDeptService
 {
     @Autowired
     private VpnDeptMapper deptMapper;
+
+    @Autowired
+    private VpnDeptYiAnLianSyncService deptYiAnLianSyncService;
+
+    @Autowired
+    private IVpnDeptYianlianMappingService mappingService;
 
     /**
      * 查询部门管理数据
@@ -167,7 +176,7 @@ public class VpnDeptServiceImpl implements IVpnDeptService
     public boolean checkDeptNameUnique(VpnDept dept)
     {
         Long deptId = StringUtils.isNull(dept.getDeptId()) ? -1L : dept.getDeptId();
-        VpnDept info = deptMapper.checkDeptNameUnique(dept.getDeptName(), dept.getParentId());
+        VpnDept info = deptMapper.checkDeptNameUnique(dept.getDeptName(), dept.getParentId(), dept.getAppId());
         if (StringUtils.isNotNull(info) && info.getDeptId().longValue() != deptId.longValue())
         {
             return UserConstants.NOT_UNIQUE;
@@ -290,6 +299,52 @@ public class VpnDeptServiceImpl implements IVpnDeptService
     public int deleteDeptById(Long deptId)
     {
         return deptMapper.deleteDeptById(deptId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int insertDeptWithSync(VpnDept dept)
+    {
+        int ret = insertDept(dept);
+        if (ret > 0 && !deptYiAnLianSyncService.syncOnAdd(dept))
+        {
+            throw new ServiceException("同步易安联部门失败");
+        }
+        return ret;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int updateDeptWithSync(VpnDept dept)
+    {
+        boolean isRootDept = dept.getParentId() == null || dept.getParentId() == 0L;
+        int ret = updateDept(dept);
+        if (ret > 0 && !deptYiAnLianSyncService.syncOnEdit(dept, isRootDept))
+        {
+            throw new ServiceException("同步易安联部门失败");
+        }
+        return ret;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int deleteDeptWithSync(Long deptId)
+    {
+        VpnDept oldDept = deptMapper.selectDeptById(deptId);
+        if (oldDept == null)
+        {
+            return 0;
+        }
+        if (StringUtils.isNotEmpty(oldDept.getAppId()))
+        {
+            VpnDeptYianlianMapping mapping = mappingService.selectByDeptIdAndAppId(deptId, oldDept.getAppId());
+            if (!deptYiAnLianSyncService.syncOnDelete(mapping))
+            {
+                throw new ServiceException("同步易安联部门失败");
+            }
+            mappingService.deleteByDeptId(deptId);
+        }
+        return deleteDeptById(deptId);
     }
 
     /**

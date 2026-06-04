@@ -1,6 +1,16 @@
 <template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch">
+      <el-form-item label="线路" prop="appId">
+        <el-select v-model="currentAppId" placeholder="请选择线路" style="width: 200px" @change="handleLineChange">
+          <el-option
+            v-for="line in lineOptions"
+            :key="line.appId"
+            :label="line.appName"
+            :value="line.appId"
+          />
+        </el-select>
+      </el-form-item>
       <el-form-item label="部门名称" prop="deptName">
         <el-input
           v-model="queryParams.deptName"
@@ -189,33 +199,13 @@
           <!-- 授权组列表 -->
           <div v-for="(group, index) in authGroups" :key="index" class="auth-group">
             <div class="auth-group-header">
-              <span class="auth-group-title">授权组 {{ index + 1 }}</span>
-              <el-button
-                type="danger"
-                icon="el-icon-delete"
-                size="mini"
-                circle
-                @click="removeAuthGroup(index)"
-              ></el-button>
+              <span class="auth-group-title">部门授权配置</span>
             </div>
             <el-row :gutter="12">
-              <!-- 第1列：线路选择 -->
+              <!-- 第1列：线路（与列表当前线路一致，不可修改） -->
               <el-col :span="8">
                 <el-form-item label="线路" label-width="50px">
-                  <el-select
-                    v-model="group.lineId"
-                    placeholder="请选择线路"
-                    style="width: 100%"
-                    @change="(val) => handleLineChange(val, index)"
-                  >
-                    <el-option
-                      v-for="line in lineOptions"
-                      :key="line.appId"
-                      :label="line.appName"
-                      :value="line.appId"
-                      :disabled="isLineUsed(line.appId, index)"
-                    />
-                  </el-select>
+                  <el-input :value="currentLineName" disabled />
                 </el-form-item>
               </el-col>
               <!-- 第2列：应用组选择（多选树） -->
@@ -281,10 +271,6 @@
             </el-row>
           </div>
 
-          <!-- 添加授权组按钮 -->
-          <div class="auth-add-btn">
-            <el-button type="primary" plain icon="el-icon-plus" @click="addAuthGroup">添加授权组</el-button>
-          </div>
         </div>
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -327,8 +313,12 @@ export default {
       refreshTable: true,
       // 记录原始排序，用于对比变更
       originalOrders: {},
+      currentAppId: null,
+      currentLineName: '',
+      lineOptions: [],
       // 查询参数
       queryParams: {
+        appId: undefined,
         deptName: undefined,
         status: undefined
       },
@@ -365,18 +355,45 @@ export default {
       authDeptName: "",
       authOpen: false,
       authSaving: false,
-      lineOptions: [],
       authGroups: []
     }
   },
   created() {
-    this.getList()
+    this.loadLineOptions()
   },
   methods: {
     // ==================== 部门管理 ====================
 
+    /** 加载线路列表，默认选中第一条 */
+    loadLineOptions() {
+      listLineApp({ pageSize: 1000, pageNum: 1 }).then(response => {
+        this.lineOptions = response.rows || []
+        if (this.lineOptions.length > 0) {
+          this.currentAppId = this.lineOptions[0].appId
+          this.currentLineName = this.lineOptions[0].appName
+          this.queryParams.appId = this.currentAppId
+          this.getList()
+        } else {
+          this.deptList = []
+          this.loading = false
+        }
+      })
+    },
+
+    /** 切换线路 */
+    handleLineChange() {
+      const line = this.lineOptions.find(l => l.appId === this.currentAppId)
+      this.currentLineName = line ? line.appName : ''
+      this.queryParams.appId = this.currentAppId
+      this.getList()
+    },
+
     /** 查询部门列表 */
     getList() {
+      if (!this.currentAppId) {
+        this.deptList = []
+        return
+      }
       this.loading = true
       listDept(this.queryParams).then(response => {
         this.deptList = this.handleTree(response.data, "deptId")
@@ -455,13 +472,18 @@ export default {
 
     /** 新增按钮操作 */
     handleAdd(row) {
+      if (!this.currentAppId) {
+        this.$modal.msgWarning('请先选择线路')
+        return
+      }
       this.reset()
+      this.form.appId = this.currentAppId
       if (row != undefined) {
         this.form.parentId = row.deptId
       }
       this.open = true
       this.title = "添加VPN部门"
-      listDept().then(response => {
+      listDept({ appId: this.currentAppId }).then(response => {
         this.deptOptions = this.handleTree(response.data, "deptId")
       })
     },
@@ -473,7 +495,7 @@ export default {
         this.form = response.data
         this.open = true
         this.title = "修改VPN部门"
-        listDeptExcludeChild(row.deptId).then(response => {
+        listDeptExcludeChild(row.deptId, { appId: this.currentAppId }).then(response => {
           this.deptOptions = this.handleTree(response.data, "deptId")
           if (this.deptOptions.length == 0) {
             const noResultsOptions = { deptId: this.form.parentId, deptName: this.form.parentName, children: [] }
@@ -487,6 +509,7 @@ export default {
     submitForm() {
       this.$refs["form"].validate(valid => {
         if (valid) {
+          this.form.appId = this.currentAppId
           if (this.form.deptId != undefined) {
             updateDept(this.form).then(() => {
               this.$modal.msgSuccess("修改成功")
@@ -514,6 +537,7 @@ export default {
     reset() {
       this.form = {
         deptId: undefined,
+        appId: this.currentAppId,
         parentId: undefined,
         deptName: undefined,
         orderNum: undefined,
@@ -537,45 +561,35 @@ export default {
 
     // ==================== 部门授权 ====================
 
-    /** 授权按钮操作：先加载线路列表，再回显授权数据 */
+    /** 授权按钮操作：线路固定为列表当前线路 */
     handleAuth(row) {
+      if (!this.currentAppId) {
+        this.$modal.msgWarning('请先选择线路')
+        return
+      }
       this.authDeptId = row.deptId
       this.authDeptName = row.deptName
       this.authGroups = []
-      this.lineOptions = []
 
-      listLineApp({ pageSize: 1000, pageNum: 1 }).then(response => {
-        this.lineOptions = response.rows || []
-
-        listByDeptId(row.deptId).then(response => {
-          const list = response.data || []
-          if (list.length === 0) {
-            this.addAuthGroup()
-            this.authOpen = true
-          } else {
-            const promises = list.map(auth => {
-              const group = this.createEmptyGroup()
-              group.lineId = auth.lineId
-              // 应用组ID回显：DB存数字字符串，treeselect期望数字
-              group.appGroupIds = auth.appGroupIds
-                ? auth.appGroupIds.split(",").filter(Boolean).map(id => Number(id))
-                : []
-              // 应用ID回显：DB存数字字符串，treeselect期望 "service_xxx" 格式
-              group.appIds = auth.appIds
-                ? auth.appIds.split(",").filter(Boolean).map(id => 'service_' + id)
-                : []
-              this.authGroups.push(group)
-              return this.loadGroupOptions(group, auth.lineId)
-            })
-            Promise.all(promises).then(() => {
-              this.authOpen = true
-            })
-          }
-        }).catch(() => {
-          this.$modal.msgError('加载授权数据失败')
+      listByDeptId(row.deptId, this.currentAppId).then(response => {
+        const list = response.data || []
+        const group = this.createEmptyGroup()
+        group.lineId = this.currentAppId
+        if (list.length > 0) {
+          const auth = list[0]
+          group.appGroupIds = auth.appGroupIds
+            ? auth.appGroupIds.split(",").filter(Boolean).map(id => Number(id))
+            : []
+          group.appIds = auth.appIds
+            ? auth.appIds.split(",").filter(Boolean).map(id => 'service_' + id)
+            : []
+        }
+        this.authGroups = [group]
+        this.loadGroupOptions(group, this.currentAppId).then(() => {
+          this.authOpen = true
         })
       }).catch(() => {
-        this.$modal.msgError('加载线路列表失败')
+        this.$modal.msgError('加载授权数据失败')
       })
     },
 
@@ -611,18 +625,6 @@ export default {
       this.authGroups.splice(index, 1)
     },
 
-    /** 线路变更时重新加载应用组和服务树 */
-    handleLineChange(lineId, index) {
-      const group = this.authGroups[index]
-      group.appGroupIds = []
-      group.appIds = []
-      group.appGroupOptions = []
-      group.serviceTreeOptions = []
-      if (lineId) {
-        this.loadGroupOptions(group, lineId)
-      }
-    },
-
     /** 加载指定线路的应用组树和服务树 */
     loadGroupOptions(group, lineId) {
       group.groupLoading = true
@@ -645,11 +647,6 @@ export default {
       })
 
       return Promise.all([p1, p2])
-    },
-
-    /** 判断线路是否已被其他授权组占用 */
-    isLineUsed(lineId, currentIndex) {
-      return this.authGroups.some((g, i) => i !== currentIndex && g.lineId === lineId)
     },
 
     /** 应用组 treeselect normalizer */
@@ -708,11 +705,9 @@ export default {
 
     /** 提交授权保存 */
     submitAuth() {
-      for (let i = 0; i < this.authGroups.length; i++) {
-        if (!this.authGroups[i].lineId) {
-          this.$modal.msgWarning(`授权组 ${i + 1} 未选择线路`)
-          return
-        }
+      if (!this.currentAppId) {
+        this.$modal.msgWarning('请先选择线路')
+        return
       }
 
       this.authSaving = true
@@ -734,7 +729,7 @@ export default {
         }
 
         return {
-          lineId: group.lineId,
+          lineId: this.currentAppId,
           appGroupIds: cleanGroupIds.join(","),
           appIds: finalAppIds.join(",")
         }
@@ -742,6 +737,7 @@ export default {
 
       batchSave({
         deptId: this.authDeptId,
+        lineId: this.currentAppId,
         authList: authList
       }).then(() => {
         this.$modal.msgSuccess("授权保存成功")

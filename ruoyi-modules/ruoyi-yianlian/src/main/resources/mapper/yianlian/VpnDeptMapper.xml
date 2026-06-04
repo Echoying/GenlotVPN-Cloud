@@ -6,6 +6,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
 	<resultMap type="VpnDept" id="VpnDeptResult">
 		<id     property="deptId"     column="dept_id"     />
+		<result property="appId"      column="app_id"      />
 		<result property="parentId"   column="parent_id"   />
 		<result property="ancestors"  column="ancestors"   />
 		<result property="deptName"   column="dept_name"   />
@@ -23,13 +24,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	</resultMap>
 
 	<sql id="selectDeptVo">
-        select d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.phone, d.email, d.status, d.del_flag, d.create_by, d.create_time
+        select d.dept_id, d.app_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.phone, d.email, d.status, d.del_flag, d.create_by, d.create_time
         from vpn_dept d
     </sql>
 
 	<select id="selectDeptList" parameterType="VpnDept" resultMap="VpnDeptResult">
         <include refid="selectDeptVo"/>
         where d.del_flag = '0'
+		<if test="appId != null and appId != ''">
+			AND d.app_id = #{appId}
+		</if>
 		<if test="deptId != null and deptId != 0">
 			AND dept_id = #{deptId}
 		</if>
@@ -67,25 +71,34 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
 	<select id="hasChildByDeptId" parameterType="Long" resultType="int">
 		select count(1) from vpn_dept
-		where del_flag = '0' and parent_id = #{deptId} limit 1
+		where del_flag = '0' and parent_id = #{deptId}
+		and app_id = (select app_id from vpn_dept where dept_id = #{deptId})
+		limit 1
 	</select>
 
 	<select id="selectChildrenDeptById" parameterType="Long" resultMap="VpnDeptResult">
 		select * from vpn_dept where find_in_set(#{deptId}, ancestors)
+		and app_id = (select app_id from vpn_dept where dept_id = #{deptId})
 	</select>
 
 	<select id="selectNormalChildrenDeptById" parameterType="Long" resultType="int">
 		select count(*) from vpn_dept where status = 0 and del_flag = '0' and find_in_set(#{deptId}, ancestors)
+		and app_id = (select app_id from vpn_dept where dept_id = #{deptId})
 	</select>
 
 	<select id="checkDeptNameUnique" resultMap="VpnDeptResult">
 	    <include refid="selectDeptVo"/>
-		where dept_name=#{deptName} and parent_id = #{parentId} and del_flag = '0' limit 1
+		where dept_name=#{deptName} and parent_id = #{parentId} and del_flag = '0'
+		<if test="appId != null and appId != ''">
+			AND app_id = #{appId}
+		</if>
+		limit 1
 	</select>
 
     <insert id="insertDept" parameterType="VpnDept" useGeneratedKeys="true" keyProperty="deptId">
  		insert into vpn_dept(
  			<if test="deptId != null and deptId != 0">dept_id,</if>
+ 			<if test="appId != null and appId != ''">app_id,</if>
  			<if test="parentId != null and parentId != 0">parent_id,</if>
  			<if test="deptName != null and deptName != ''">dept_name,</if>
  			<if test="ancestors != null and ancestors != ''">ancestors,</if>
@@ -98,6 +111,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  			create_time
  		)values(
  			<if test="deptId != null and deptId != 0">#{deptId},</if>
+ 			<if test="appId != null and appId != ''">#{appId},</if>
  			<if test="parentId != null and parentId != 0">#{parentId},</if>
  			<if test="deptName != null and deptName != ''">#{deptName},</if>
  			<if test="ancestors != null and ancestors != ''">#{ancestors},</if>
