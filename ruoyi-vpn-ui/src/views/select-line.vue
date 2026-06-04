@@ -3,12 +3,12 @@
     <div class="select-line-card">
       <div class="header">
         <h2 class="title">{{ appTitle }}</h2>
-        <p class="subtitle">请选择要连接的线路</p>
+        <p class="subtitle">{{ connectOnly ? ('正在连接：' + (activeLineName || '')) : '请选择要连接的线路' }}</p>
       </div>
 
       <div class="content-wrapper">
-        <!-- 左侧线路列表 -->
-        <div class="line-section">
+        <!-- 左侧线路列表（登录前已选线时隐藏列表，仅展示连接进度） -->
+        <div class="line-section" v-if="!connectOnly">
           <div v-if="loading" class="loading-wrap">
             <i class="el-icon-loading"></i>
             <span>正在加载线路...</span>
@@ -42,8 +42,8 @@
           </div>
         </div>
 
-        <!-- 右侧日志面板 -->
-        <div class="log-section">
+        <!-- 仅连接模式：占满宽度的日志区 -->
+        <div class="log-section" :class="{ 'log-section-full': connectOnly }">
           <div class="log-header">
             <i class="el-icon-document"></i>
             <span>日志信息</span>
@@ -51,7 +51,7 @@
           <div class="log-content" ref="logContent">
             <div v-if="logs.length === 0" class="log-empty">
               <i class="el-icon-info"></i>
-              <p>点击线路开始检测</p>
+              <p>{{ connectOnly ? '正在进行安全验证与连接...' : '点击线路开始检测' }}</p>
             </div>
             <div v-else class="log-list">
               <div
@@ -119,11 +119,14 @@ import { getAuthorizedLines, getUserCredentials } from '@/api/line'
 import { sendLineVerifyCode, confirmLineVerifyCode } from '@/api/lineVerify'
 import { detectServer, selectServer, getServerVersion, getClientVersion, loginWithAccount } from '@/api/controller'
 import { removeToken } from '@/utils/auth'
+import { getPendingLine, clearPendingLine } from '@/utils/pendingLine'
 
 export default {
   name: 'SelectLine',
   data() {
     return {
+      connectOnly: false,
+      activeLineName: '',
       loading: true,
       lines: [],
       logs: [],
@@ -139,6 +142,7 @@ export default {
     }
   },
   created() {
+    this.connectOnly = this.$route.query.connect === '1'
     this.loadLines()
   },
   beforeDestroy() {
@@ -147,16 +151,35 @@ export default {
   methods: {
     loadLines() {
       this.loading = true
+      const pending = this.$store.state.user.pendingLine || getPendingLine()
       this.addLog('info', '正在加载授权线路...')
       getAuthorizedLines().then(res => {
         const data = res.data || []
+        if (this.connectOnly && pending) {
+          const matched = data.find(l => l.appId === pending.appId)
+          if (!matched) {
+            this.lines = []
+            this.addLog('error', '您无权访问所选线路，请重新选择')
+            this.$message.error('您无权访问所选线路')
+            this.loading = false
+            return
+          }
+          this.lines = [matched]
+          this.activeLineName = matched.appName
+          this.addLog('info', `当前线路: ${matched.appName}`)
+          this.loading = false
+          this.$nextTick(() => this.selectLine(matched))
+          return
+        }
         this.lines = data
         this.addLog('info', `成功加载 ${data.length} 条线路`)
       }).catch(err => {
         this.lines = []
         this.addLog('error', '加载线路失败: ' + (err.message || '未知错误'))
       }).finally(() => {
-        this.loading = false
+        if (!this.connectOnly || !pending) {
+          this.loading = false
+        }
       })
     },
     selectLine(line) {
@@ -328,6 +351,8 @@ export default {
                         this.addLog('info', `用户名: ${loginRes.data.account || loginRes.data.name || 'N/A'}`)
                         this.addLog('info', '正在跳转到应用列表...')
                         await this.$store.dispatch('SelectLine', line)
+                        clearPendingLine()
+                        this.$store.commit('SET_PENDING_LINE', null)
                         this.$router.replace('/app-list')
                       } else {
                         this.addLog('error', '控制器登录失败: ' + (loginRes?.messages || '未知错误'))
@@ -386,7 +411,9 @@ export default {
     },
     handleLogout() {
       removeToken()
-      this.$router.replace('/login')
+      this.$store.dispatch('LogOut').then(() => {
+        this.$router.replace('/choose-line')
+      })
     }
   }
 }
@@ -446,6 +473,11 @@ export default {
   border-radius: 8px;
   overflow: hidden;
   background: #fafafa;
+}
+
+.log-section-full {
+  flex: 1;
+  width: 100%;
 }
 
 .log-header {

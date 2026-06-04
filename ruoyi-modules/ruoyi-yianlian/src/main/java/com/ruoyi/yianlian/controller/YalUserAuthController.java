@@ -41,9 +41,9 @@ public class YalUserAuthController extends BaseController
      * 根据用户ID获取授权列表
      */
     @GetMapping("/listByUserId/{userId}")
-    public AjaxResult listByUserId(@PathVariable Long userId)
+    public AjaxResult listByUserId(@PathVariable Long userId, @RequestParam String lineId)
     {
-        List<YalUserAuth> list = yalUserAuthService.selectByUserId(userId);
+        List<YalUserAuth> list = yalUserAuthService.selectByUserIdAndLineId(userId, lineId);
         return success(list);
     }
 
@@ -95,7 +95,7 @@ public class YalUserAuthController extends BaseController
     @PostMapping("/batchSave")
     public AjaxResult batchSave(@RequestBody YalUserAuthBatchDTO batchDTO)
     {
-        return toAjax(yalUserAuthService.batchSaveUserAuth(batchDTO.getUserId(), batchDTO.getAuthList()));
+        return toAjax(yalUserAuthService.batchSaveUserAuth(batchDTO.getUserId(), batchDTO.getLineId(), batchDTO.getAuthList()));
     }
 
     /**

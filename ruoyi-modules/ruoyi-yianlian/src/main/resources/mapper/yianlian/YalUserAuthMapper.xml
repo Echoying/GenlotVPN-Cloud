@@ -44,6 +44,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where user_id = #{userId}
     </select>
 
+    <select id="selectYalUserAuthByUserIdAndLineId" resultMap="YalUserAuthResult">
+        <include refid="selectYalUserAuthVo"/>
+        where user_id = #{userId} and line_id = #{lineId}
+    </select>
+
     <insert id="insertYalUserAuth" parameterType="YalUserAuth" useGeneratedKeys="true" keyProperty="id">
         insert into yal_user_auth
         <trim prefix="(" suffix=")" suffixOverrides=",">
@@ -102,6 +107,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <delete id="deleteYalUserAuthByUserId" parameterType="Long">
         delete from yal_user_auth where user_id = #{userId}
+    </delete>
+
+    <delete id="deleteYalUserAuthByUserIdAndLineId">
+        delete from yal_user_auth where user_id = #{userId} and line_id = #{lineId}
     </delete>
 
 </mapper>

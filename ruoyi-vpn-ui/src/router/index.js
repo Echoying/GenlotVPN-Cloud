@@ -5,6 +5,11 @@ Vue.use(Router)
 
 export const constantRoutes = [
   {
+    path: '/choose-line',
+    component: () => import('@/views/choose-line'),
+    hidden: true
+  },
+  {
     path: '/login',
     component: () => import('@/views/login'),
     hidden: true
@@ -21,7 +26,7 @@ export const constantRoutes = [
   },
   {
     path: '/',
-    redirect: '/select-line',
+    redirect: '/choose-line',
     hidden: true
   },
   {

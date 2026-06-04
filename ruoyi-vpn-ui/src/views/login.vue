@@ -2,6 +2,11 @@
   <div class="login">
     <el-form ref="loginForm" :model="loginForm" :rules="loginRules" class="login-form">
       <h3 class="title">{{ title }}</h3>
+      <el-form-item v-if="pendingLine" label="当前线路">
+        <el-input :value="pendingLine.appName" disabled>
+          <el-button slot="append" type="text" @click="goChooseLine">更换</el-button>
+        </el-input>
+      </el-form-item>
       <el-form-item prop="username">
         <el-input
           v-model="loginForm.username"
@@ -86,6 +91,7 @@ import { getCodeImg, changePassword } from "@/api/login"
 import Cookies from "js-cookie"
 import { encrypt, decrypt } from "@/utils/jsencrypt"
 import defaultSettings from "@/settings"
+import { getPendingLine } from "@/utils/pendingLine"
 
 export default {
   name: "Login",
@@ -129,6 +135,7 @@ export default {
         newPassword: "",
         confirmPassword: ""
       },
+      pendingLine: null,
       changePwdRules: {
         username: [
           { required: true, trigger: "blur", message: "请输入用户名" }
@@ -156,10 +163,18 @@ export default {
     }
   },
   created() {
+    this.pendingLine = this.$store.state.user.pendingLine || getPendingLine()
+    if (!this.pendingLine) {
+      this.$router.replace('/choose-line')
+      return
+    }
     this.getCode()
     this.getCookie()
   },
   methods: {
+    goChooseLine() {
+      this.$router.replace('/choose-line')
+    },
     getCode() {
       getCodeImg().then(res => {
         this.captchaEnabled = res.captchaEnabled === undefined ? true : res.captchaEnabled
@@ -197,7 +212,7 @@ export default {
             Cookies.remove("vpn-rememberMe")
           }
           this.$store.dispatch("Login", this.loginForm).then(() => {
-            this.$router.replace({ path: "/select-line" })
+            this.$router.replace({ path: "/select-line", query: { connect: '1' } })
           }).catch(() => {
             this.loading = false
             if (this.captchaEnabled) {
@@ -218,7 +233,8 @@ export default {
           changePassword({
             username: this.changePwdForm.username,
             oldPassword: this.changePwdForm.oldPassword,
-            newPassword: this.changePwdForm.newPassword
+            newPassword: this.changePwdForm.newPassword,
+            appId: this.pendingLine ? this.pendingLine.appId : undefined
           }).then(() => {
             this.$alert("密码修改成功，请使用新密码登录", "提示", { type: "success" }).then(() => {
               this.showChangePwd = false

@@ -1,5 +1,6 @@
 package com.ruoyi.yianlian.client.YiAnLianBase;
 
+import com.fasterxml.jackson.annotation.JsonSetter;
 import com.ruoyi.common.core.enums.IResultCode;
 import com.ruoyi.common.core.enums.ResultCode;
 import com.ruoyi.common.core.exception.yianlian.YiAnLianException;
@@ -21,6 +22,30 @@ public class YiAnLianResponse<T> implements Serializable {
     private int code;
     private String messages;
     private T data;
+
+    /** 易安联接口 code 可能为字符串（如 "200"、"40002"） */
+    @JsonSetter("code")
+    public void setCodeFromJson(Object codeValue)
+    {
+        if (codeValue == null)
+        {
+            this.code = 0;
+            return;
+        }
+        if (codeValue instanceof Number)
+        {
+            this.code = ((Number) codeValue).intValue();
+            return;
+        }
+        try
+        {
+            this.code = Integer.parseInt(codeValue.toString());
+        }
+        catch (NumberFormatException e)
+        {
+            this.code = 0;
+        }
+    }
 
     public static YiAnLianResponse SUCCESS = new YiAnLianResponse();
 

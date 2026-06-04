@@ -37,6 +37,11 @@ public interface YalUserAuthMapper
     public List<YalUserAuth> selectYalUserAuthByUserId(Long userId);
 
     /**
+     * 根据用户ID和线路查询授权列表
+     */
+    public List<YalUserAuth> selectYalUserAuthByUserIdAndLineId(@Param("userId") Long userId, @Param("lineId") String lineId);
+
+    /**
      * 新增用户授权
      *
      * @param yalUserAuth 用户授权
@@ -83,4 +88,9 @@ public interface YalUserAuthMapper
      * @return 结果
      */
     public int deleteYalUserAuthByUserId(Long userId);
+
+    /**
+     * 根据用户ID和线路删除授权
+     */
+    public int deleteYalUserAuthByUserIdAndLineId(@Param("userId") Long userId, @Param("lineId") String lineId);
 }

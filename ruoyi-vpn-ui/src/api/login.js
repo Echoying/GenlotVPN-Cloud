@@ -1,8 +1,8 @@
 import request from '@/utils/request'
 
 // 登录方法
-export function login(username, password, code, uuid) {
-  const data = { username, password, code, uuid }
+export function login(username, password, code, uuid, appId) {
+  const data = { username, password, code, uuid, appId }
   return request({
     url: '/vpn/login',
     headers: { isToken: false },

@@ -54,6 +54,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	<select id="selectRolePermissionByUserId" parameterType="Long" resultMap="VpnRoleResult">
 		<include refid="selectRoleVo"/>
 		WHERE r.del_flag = '0' and ur.user_id = #{userId}
+		and (u.app_id is null or u.app_id = '' or r.app_id = u.app_id)
 	</select>
 
 	<select id="selectRoleAll" resultMap="VpnRoleResult">
@@ -64,9 +65,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	<select id="selectRoleListByUserId" parameterType="Long" resultType="Long">
 		select r.role_id
         from vpn_role r
-	        left join vpn_user_role ur on ur.role_id = r.role_id
-	        left join vpn_user u on u.user_id = ur.user_id
-	    where u.user_id = #{userId}
+	        inner join vpn_user_role ur on ur.role_id = r.role_id
+	        inner join vpn_user u on u.user_id = ur.user_id
+	    where u.user_id = #{userId} and r.del_flag = '0'
+	    and (u.app_id is null or u.app_id = '' or r.app_id = u.app_id)
 	</select>
 
 	<select id="selectRoleById" parameterType="Long" resultMap="VpnRoleResult">
@@ -76,7 +78,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
 	<select id="selectRolesByUserName" parameterType="String" resultMap="VpnRoleResult">
 		<include refid="selectRoleVo"/>
-		WHERE r.del_flag = '0' and u.user_name = #{userName}
+		WHERE r.del_flag = '0' and u.user_name = #{userName} and u.del_flag = '0'
+		and (u.app_id is null or u.app_id = '' or r.app_id = u.app_id)
 	</select>
 
 	<select id="checkRoleNameUnique" resultMap="VpnRoleResult">

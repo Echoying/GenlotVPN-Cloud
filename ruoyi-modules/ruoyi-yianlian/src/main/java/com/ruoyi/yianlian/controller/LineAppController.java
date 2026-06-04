@@ -6,6 +6,9 @@ import com.ruoyi.common.core.web.domain.AjaxResult;
 import com.ruoyi.common.core.web.page.TableDataInfo;
 import com.ruoyi.common.log.annotation.Log;
 import com.ruoyi.common.log.enums.BusinessType;
+import com.ruoyi.common.core.constant.SecurityConstants;
+import com.ruoyi.common.core.domain.R;
+import com.ruoyi.common.security.annotation.InnerAuth;
 import com.ruoyi.common.security.annotation.RequiresPermissions;
 import com.ruoyi.common.security.utils.SecurityUtils;
 import com.ruoyi.yianlian.domain.LineApp;
@@ -16,7 +19,10 @@ import org.springframework.web.bind.annotation.*;
 import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
 
 import javax.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 线路 信息操作处理
@@ -32,6 +38,36 @@ public class LineAppController extends BaseController
 
     @Autowired
     private AesUtils aesUtils;
+
+    /**
+     * VPN 客户端登录前可选线路（仅启用线路，供 ruoyi-vpn-auth Feign 调用）
+     */
+    @InnerAuth
+    @GetMapping("/public/list")
+    public R<List<Map<String, Object>>> publicList(@RequestHeader(SecurityConstants.FROM_SOURCE) String source)
+    {
+        LineApp query = new LineApp();
+        query.setStatus("0");
+        List<LineApp> list = lineAppService.selectLineAppList(query);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (LineApp line : list)
+        {
+            Map<String, Object> vo = new LinkedHashMap<>();
+            vo.put("appId", line.getAppId());
+            vo.put("appName", line.getAppName());
+            vo.put("host", line.getHost());
+            vo.put("srvPort", line.getSrvPort());
+            vo.put("spaPort", line.getSpaPort());
+            String spaKey = line.getSpaKey();
+            if (spaKey != null && !spaKey.isEmpty())
+            {
+                spaKey = AesUtils.md5(aesUtils.decrypt(spaKey));
+            }
+            vo.put("spaKey", spaKey);
+            result.add(vo);
+        }
+        return R.ok(result);
+    }
 
     /**
      * 获取线路列表

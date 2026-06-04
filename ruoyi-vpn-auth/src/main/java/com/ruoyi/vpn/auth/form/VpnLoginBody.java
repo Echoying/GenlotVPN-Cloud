@@ -17,6 +17,11 @@ public class VpnLoginBody
      */
     private String password;
 
+    /**
+     * 线路ID（line_app.app_id，登录前已选择）
+     */
+    private String appId;
+
     public String getUsername()
     {
         return username;
@@ -35,5 +40,15 @@ public class VpnLoginBody
     public void setPassword(String password)
     {
         this.password = password;
+    }
+
+    public String getAppId()
+    {
+        return appId;
+    }
+
+    public void setAppId(String appId)
+    {
+        this.appId = appId;
     }
 }

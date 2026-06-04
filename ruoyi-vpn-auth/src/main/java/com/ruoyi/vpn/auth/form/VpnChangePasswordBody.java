@@ -14,6 +14,9 @@ public class VpnChangePasswordBody
     /** 新密码 */
     private String newPassword;
 
+    /** 线路ID */
+    private String appId;
+
     public String getUsername()
     {
         return username;
@@ -42,5 +45,15 @@ public class VpnChangePasswordBody
     public void setNewPassword(String newPassword)
     {
         this.newPassword = newPassword;
+    }
+
+    public String getAppId()
+    {
+        return appId;
+    }
+
+    public void setAppId(String appId)
+    {
+        this.appId = appId;
     }
 }

@@ -1,5 +1,6 @@
 package com.ruoyi.yianlian.client.dto.vo;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
@@ -22,6 +23,7 @@ public class TokenVO implements Serializable
     private String state;
 
     @ApiModelProperty(value="过期时间(秒)", example="7023")
+    @JsonAlias("expiresIn")
     private Integer expireTime;
 
     @ApiModelProperty(value="刷新token", example="t66_1253e4945759b7bafa5bc6998d2968fc")

@@ -99,6 +99,7 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
         int ret = lineAppMapper.insertLineApp(lineApp);
         if(ret > 0){
             redisService.setCacheObject(buildCacheKey(lineApp.getAppId()), lineApp);
+            clearYianlianTokenCache(lineApp.getAppId());
         }
         return ret;
     }
@@ -133,8 +134,8 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
         }
         int ret = lineAppMapper.updateLineApp(lineApp);
         if(ret > 0){
-            // 删除缓存
             redisService.deleteObject(buildCacheKey(lineApp.getAppId()));
+            clearYianlianTokenCache(lineApp.getAppId());
         }
         return ret;
     }
@@ -150,6 +151,7 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
         for (String appId : appIds)
         {
             redisService.deleteObject(buildCacheKey(appId));
+            clearYianlianTokenCache(appId);
             lineAppMapper.deleteLineAppById(appId);
         }
     }
@@ -157,6 +159,15 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
     private String buildCacheKey(String appId)
     {
         return CacheConstants.YIANLIAN_VPN_LINE_APP + appId;
+    }
+
+    /** 线路凭证变更后，同步清除易安联 access_token 缓存 */
+    private void clearYianlianTokenCache(String appId)
+    {
+        if (StringUtils.isNotEmpty(appId))
+        {
+            redisService.deleteObject(CacheConstants.YIANLIAN_TOKEN_KEY + appId);
+        }
     }
 
     /**

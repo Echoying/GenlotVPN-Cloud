@@ -6,6 +6,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <resultMap type="VpnUser" id="VpnUserResult">
         <id     property="userId"        column="user_id"         />
+        <result property="appId"         column="app_id"          />
         <result property="deptId"        column="dept_id"         />
         <result property="userName"      column="user_name"       />
         <result property="nickName"      column="nick_name"       />
@@ -48,19 +49,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
 	<sql id="selectUserVo">
-        select u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.avatar, u.phonenumber, u.password, u.encrypted_pwd, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time, u.update_by, u.update_time, u.remark, u.yianlian_id,
+        select u.user_id, u.app_id, u.dept_id, u.user_name, u.nick_name, u.email, u.avatar, u.phonenumber, u.password, u.encrypted_pwd, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time, u.update_by, u.update_time, u.remark, u.yianlian_id,
         d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.status as dept_status,
         r.role_id, r.role_name, r.role_sort, r.status as role_status
         from vpn_user u
 		    left join vpn_dept d on u.dept_id = d.dept_id
 		    left join vpn_user_role ur on u.user_id = ur.user_id
-		    left join vpn_role r on r.role_id = ur.role_id
+		    left join vpn_role r on r.role_id = ur.role_id and r.del_flag = '0'
+		        and (u.app_id is null or u.app_id = '' or r.app_id = u.app_id)
     </sql>
 
     <select id="selectUserList" parameterType="VpnUser" resultMap="VpnUserResult">
-		select u.user_id, u.dept_id, u.nick_name, u.user_name, u.email, u.avatar, u.phonenumber, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.create_by, u.create_time, u.remark, d.dept_name, d.leader from vpn_user u
+		select u.user_id, u.app_id, u.dept_id, u.nick_name, u.user_name, u.email, u.avatar, u.phonenumber, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.create_by, u.create_time, u.remark, d.dept_name, d.leader from vpn_user u
 		left join vpn_dept d on u.dept_id = d.dept_id
 		where u.del_flag = '0'
+		<if test="appId != null and appId != ''">
+			AND u.app_id = #{appId}
+		</if>
 		<if test="userId != null and userId != 0">
 			AND u.user_id = #{userId}
 		</if>
@@ -89,13 +94,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		where u.user_name = #{userName} and u.del_flag = '0'
 	</select>
 
+	<select id="selectUserByUserNameAndAppId" resultMap="VpnUserResult">
+	    <include refid="selectUserVo"/>
+		where u.user_name = #{userName} and u.app_id = #{appId} and u.del_flag = '0'
+	</select>
+
 	<select id="selectUserById" parameterType="Long" resultMap="VpnUserResult">
 		<include refid="selectUserVo"/>
 		where u.user_id = #{userId}
 	</select>
 
-	<select id="checkUserNameUnique" parameterType="String" resultMap="VpnUserResult">
-		select user_id, user_name from vpn_user where user_name = #{userName} and del_flag = '0' limit 1
+	<select id="checkUserNameUnique" resultMap="VpnUserResult">
+		select user_id, user_name from vpn_user where user_name = #{userName} and del_flag = '0'
+		<if test="appId != null and appId != ''">
+			and app_id = #{appId}
+		</if>
+		limit 1
 	</select>
 
 	<select id="checkPhoneUnique" parameterType="String" resultMap="VpnUserResult">
@@ -109,6 +123,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	<insert id="insertUser" parameterType="VpnUser" useGeneratedKeys="true" keyProperty="userId">
  		insert into vpn_user(
  			<if test="userId != null and userId != 0">user_id,</if>
+ 			<if test="appId != null and appId != ''">app_id,</if>
  			<if test="deptId != null and deptId != 0">dept_id,</if>
  			<if test="userName != null and userName != ''">user_name,</if>
  			<if test="nickName != null and nickName != ''">nick_name,</if>
@@ -125,6 +140,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  			create_time
  		)values(
  			<if test="userId != null and userId != ''">#{userId},</if>
+ 			<if test="appId != null and appId != ''">#{appId},</if>
  			<if test="deptId != null and deptId != ''">#{deptId},</if>
  			<if test="userName != null and userName != ''">#{userName},</if>
  			<if test="nickName != null and nickName != ''">#{nickName},</if>
@@ -145,6 +161,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	<update id="updateUser" parameterType="VpnUser">
  		update vpn_user
  		<set>
+ 			<if test="appId != null and appId != ''">app_id = #{appId},</if>
  			<if test="deptId != null and deptId != 0">dept_id = #{deptId},</if>
  			<if test="userName != null and userName != ''">user_name = #{userName},</if>
  			<if test="nickName != null and nickName != ''">nick_name = #{nickName},</if>

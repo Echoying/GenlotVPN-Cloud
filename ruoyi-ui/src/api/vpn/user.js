@@ -11,10 +11,11 @@ export function listUser(query) {
 }
 
 // 查询VPN用户详细
-export function getUser(userId) {
+export function getUser(userId, appId) {
   return request({
     url: '/yianlian/vpn/user/' + parseStrEmpty(userId),
-    method: 'get'
+    method: 'get',
+    params: { appId }
   })
 }
 
@@ -127,9 +128,10 @@ export function updateAuthRole(data) {
 }
 
 // 查询部门下拉树结构
-export function deptTreeSelect() {
+export function deptTreeSelect(params) {
   return request({
     url: '/yianlian/vpn/user/deptTree',
-    method: 'get'
+    method: 'get',
+    params: params
   })
 }

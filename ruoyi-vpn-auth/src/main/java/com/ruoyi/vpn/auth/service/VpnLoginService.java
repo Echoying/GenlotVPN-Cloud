@@ -18,6 +18,7 @@ import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.common.core.utils.ip.IpUtils;
 import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.common.security.utils.SecurityUtils;
+import com.ruoyi.yianlian.api.RemoteVpnLineService;
 import com.ruoyi.yianlian.api.RemoteVpnUserService;
 
 /**
@@ -32,6 +33,9 @@ public class VpnLoginService
     private RemoteVpnUserService remoteVpnUserService;
 
     @Autowired
+    private RemoteVpnLineService remoteVpnLineService;
+
+    @Autowired
     private VpnPasswordService passwordService;
 
     @Autowired
@@ -43,8 +47,13 @@ public class VpnLoginService
     /**
      * 登录
      */
-    public VpnLoginUser login(String username, String password)
+    public VpnLoginUser login(String username, String password, String appId)
     {
+        if (StringUtils.isEmpty(appId))
+        {
+            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "未选择线路");
+            throw new ServiceException("请先选择线路");
+        }
         // 用户名或密码为空 错误
         if (StringUtils.isAnyBlank(username, password))
         {
@@ -72,8 +81,8 @@ public class VpnLoginService
             recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "很遗憾，访问IP已被列入系统黑名单");
             throw new ServiceException("很遗憾，访问IP已被列入系统黑名单");
         }
-        // 查询用户信息
-        R<VpnLoginUser> userResult = remoteVpnUserService.getUserInfo(username, SecurityConstants.INNER);
+        // 查询用户信息（按所选线路）
+        R<VpnLoginUser> userResult = remoteVpnUserService.getUserInfo(username, appId, SecurityConstants.INNER);
 
         if (R.FAIL == userResult.getCode())
         {
@@ -93,6 +102,7 @@ public class VpnLoginService
             throw new ServiceException("对不起，您的账号：" + username + " 已停用");
         }
         passwordService.validate(user, password);
+        assertUserAuthorizedForLine(user.getUserId(), appId);
         recordLogService.recordLogininfor(username, Constants.LOGIN_SUCCESS, "登录成功");
         recordLoginInfo(user.getUserId());
         // 缓存明文密码，用于后续控制器登录（有效期与token一致，30分钟）
@@ -135,8 +145,8 @@ public class VpnLoginService
         {
             throw new ServiceException("密码不能为空");
         }
-        // 查询用户信息
-        R<VpnLoginUser> userResult = remoteVpnUserService.getUserInfo(username, SecurityConstants.INNER);
+        // 查询用户信息（解锁场景不按线路隔离）
+        R<VpnLoginUser> userResult = remoteVpnUserService.getUserInfo(username, null, SecurityConstants.INNER);
 
         if (R.FAIL == userResult.getCode())
         {
@@ -153,12 +163,16 @@ public class VpnLoginService
     /**
      * 修改密码
      */
-    public void changePassword(String username, String oldPassword, String newPassword)
+    public void changePassword(String username, String oldPassword, String newPassword, String appId)
     {
         // 用户名或密码为空 错误
         if (StringUtils.isAnyBlank(username, oldPassword, newPassword))
         {
             throw new ServiceException("用户名/旧密码/新密码必须填写");
+        }
+        if (StringUtils.isEmpty(appId))
+        {
+            throw new ServiceException("请先选择线路");
         }
         // 新旧密码不能相同
         if (oldPassword.equals(newPassword))
@@ -176,11 +190,45 @@ public class VpnLoginService
         request.setUsername(username);
         request.setOldPassword(oldPassword);
         request.setNewPassword(newPassword);
+        request.setAppId(appId);
         R<Boolean> result = remoteVpnUserService.changePassword(request, SecurityConstants.INNER);
         if (R.FAIL == result.getCode())
         {
             throw new ServiceException(result.getMsg());
         }
+    }
+
+    /**
+     * 校验用户是否拥有所选线路的访问授权
+     */
+    private void assertUserAuthorizedForLine(Long userId, String appId)
+    {
+        R<java.util.List<java.util.Map<String, Object>>> linesResult =
+                remoteVpnUserService.getAuthorizedLines(userId, SecurityConstants.INNER);
+        if (R.FAIL == linesResult.getCode() || linesResult.getData() == null)
+        {
+            throw new ServiceException("获取线路授权失败");
+        }
+        boolean allowed = linesResult.getData().stream()
+                .anyMatch(m -> appId.equals(m.get("appId")));
+        if (!allowed)
+        {
+            throw new ServiceException("您无权访问所选线路，请联系管理员");
+        }
+    }
+
+    /**
+     * 登录前可选线路列表
+     */
+    public java.util.List<java.util.Map<String, Object>> listPublicLines()
+    {
+        R<java.util.List<java.util.Map<String, Object>>> result =
+                remoteVpnLineService.listPublicLines(SecurityConstants.INNER);
+        if (R.FAIL == result.getCode() || result.getData() == null)
+        {
+            throw new ServiceException(StringUtils.isNotEmpty(result.getMsg()) ? result.getMsg() : "获取线路列表失败");
+        }
+        return result.getData();
     }
 
 }

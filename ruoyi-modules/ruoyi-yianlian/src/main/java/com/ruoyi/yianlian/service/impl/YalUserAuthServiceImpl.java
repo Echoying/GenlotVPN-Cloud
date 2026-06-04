@@ -12,8 +12,11 @@ import com.ruoyi.yianlian.mapper.VpnServiceGroupMapper;
 import com.ruoyi.yianlian.mapper.VpnServiceMapper;
 import com.ruoyi.yianlian.mapper.VpnUserYianlianMappingMapper;
 import com.ruoyi.yianlian.mapper.YalUserAuthMapper;
+import com.ruoyi.yianlian.domain.VpnUser;
 import com.ruoyi.yianlian.service.IYalUserAuthService;
+import com.ruoyi.yianlian.service.vpn.IVpnUserService;
 import com.ruoyi.yianlian.service.yianlian.IYiAnLianAuthorityService;
+import com.ruoyi.common.core.exception.ServiceException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -48,6 +51,9 @@ public class YalUserAuthServiceImpl implements IYalUserAuthService
     @Autowired
     private VpnUserYianlianMappingMapper userYianlianMappingMapper;
 
+    @Autowired
+    private IVpnUserService vpnUserService;
+
     @Override
     public YalUserAuth selectYalUserAuthById(Long id)
     {
@@ -64,6 +70,12 @@ public class YalUserAuthServiceImpl implements IYalUserAuthService
     public List<YalUserAuth> selectByUserId(Long userId)
     {
         return yalUserAuthMapper.selectYalUserAuthByUserId(userId);
+    }
+
+    @Override
+    public List<YalUserAuth> selectByUserIdAndLineId(Long userId, String lineId)
+    {
+        return yalUserAuthMapper.selectYalUserAuthByUserIdAndLineId(userId, lineId);
     }
 
     @Override
@@ -101,19 +113,32 @@ public class YalUserAuthServiceImpl implements IYalUserAuthService
      */
     @Override
     @Transactional
-    public int batchSaveUserAuth(Long userId, List<YalUserAuth> authList)
+    public int batchSaveUserAuth(Long userId, String lineId, List<YalUserAuth> authList)
     {
-        // 先删除该用户的所有授权
-        yalUserAuthMapper.deleteYalUserAuthByUserId(userId);
+        if (StringUtils.isEmpty(lineId))
+        {
+            throw new ServiceException("线路不能为空");
+        }
+        VpnUser user = vpnUserService.selectUserById(userId);
+        if (user == null)
+        {
+            throw new ServiceException("用户不存在");
+        }
+        if (StringUtils.isNotEmpty(user.getAppId()) && !lineId.equals(user.getAppId()))
+        {
+            throw new ServiceException("授权线路与用户所属线路不一致");
+        }
 
-        // 批量插入新的授权
+        yalUserAuthMapper.deleteYalUserAuthByUserIdAndLineId(userId, lineId);
+
         int result = 0;
         if (authList != null && !authList.isEmpty())
         {
-         for (YalUserAuth auth : authList)
-       {
+            for (YalUserAuth auth : authList)
+            {
                 auth.setUserId(userId);
-              auth.setCreateTime(DateUtils.getNowDate());
+                auth.setLineId(lineId);
+                auth.setCreateTime(DateUtils.getNowDate());
             }
             result = yalUserAuthMapper.batchInsertYalUserAuth(authList);
         }

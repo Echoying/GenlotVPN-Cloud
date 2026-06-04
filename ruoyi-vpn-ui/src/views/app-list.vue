@@ -407,13 +407,13 @@ export default {
       logout().then(res => {
         if (res.code === '200') {
           this.$store.dispatch('LogOut').then(() => {
-            this.$router.replace('/login')
+            this.$router.replace('/choose-line')
           })
         }
       }).catch(err => {
         if (err.response && err.response.data && err.response.data.code === '200') {
           this.$store.dispatch('LogOut').then(() => {
-            this.$router.replace('/login')
+            this.$router.replace('/choose-line')
           })
         }
       })

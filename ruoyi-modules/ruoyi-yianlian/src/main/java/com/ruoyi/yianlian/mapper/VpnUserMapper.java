@@ -29,6 +29,11 @@ public interface VpnUserMapper
     public VpnUser selectUserByUserName(String userName);
 
     /**
+     * 通过用户名和线路查询用户
+     */
+    public VpnUser selectUserByUserNameAndAppId(@Param("userName") String userName, @Param("appId") String appId);
+
+    /**
      * 通过用户ID查询用户
      *
      * @param userId 用户ID
@@ -92,7 +97,7 @@ public interface VpnUserMapper
      * @param userName 用户名称
      * @return 结果
      */
-    public VpnUser checkUserNameUnique(String userName);
+    public VpnUser checkUserNameUnique(@Param("userName") String userName, @Param("appId") String appId);
 
     /**
      * 校验手机号码是否唯一

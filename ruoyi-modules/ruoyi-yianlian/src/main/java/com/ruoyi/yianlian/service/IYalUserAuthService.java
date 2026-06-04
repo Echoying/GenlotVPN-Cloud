@@ -37,6 +37,11 @@ public interface IYalUserAuthService
     public List<YalUserAuth> selectByUserId(Long userId);
 
     /**
+     * 根据用户ID和线路查询授权列表
+     */
+    public List<YalUserAuth> selectByUserIdAndLineId(Long userId, String lineId);
+
+    /**
      * 新增用户授权
      *
      * @param yalUserAuth 用户授权
@@ -74,7 +79,7 @@ public interface IYalUserAuthService
    * @param authList 授权列表
      * @return 结果
      */
-    public int batchSaveUserAuth(Long userId, List<YalUserAuth> authList);
+    public int batchSaveUserAuth(Long userId, String lineId, List<YalUserAuth> authList);
 
     /**
      * 构建应用服务树

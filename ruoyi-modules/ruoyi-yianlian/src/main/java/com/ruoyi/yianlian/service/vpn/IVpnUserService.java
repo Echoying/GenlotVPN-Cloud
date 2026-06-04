@@ -28,6 +28,11 @@ public interface IVpnUserService
     public VpnUser selectUserByUserName(String userName);
 
     /**
+     * 通过用户名和线路查询用户
+     */
+    public VpnUser selectUserByUserNameAndAppId(String userName, String appId);
+
+    /**
      * 通过用户ID查询用户
      *
      * @param userId 用户ID
@@ -173,4 +178,34 @@ public interface IVpnUserService
      * @param user 用户信息
      */
     public void checkUserAllowed(VpnUser user);
+
+    /**
+     * 新增用户并同步易安联
+     */
+    public int insertUserWithSync(VpnUser user, String plainPassword);
+
+    /**
+     * 修改用户并同步易安联
+     */
+    public int updateUserWithSync(VpnUser user);
+
+    /**
+     * 批量删除用户并同步易安联
+     */
+    public int deleteUserByIdsWithSync(Long[] userIds);
+
+    /**
+     * 重置密码并同步易安联
+     */
+    public int resetPwdWithSync(VpnUser user, String plainPassword);
+
+    /**
+     * 修改状态并同步易安联
+     */
+    public int updateUserStatusWithSync(VpnUser user);
+
+    /**
+     * 修改密码并同步易安联（VPN 用户自助）
+     */
+    public void updatePasswordWithSync(VpnUser vpnUser, String oldPlainPassword, String newPlainPassword);
 }

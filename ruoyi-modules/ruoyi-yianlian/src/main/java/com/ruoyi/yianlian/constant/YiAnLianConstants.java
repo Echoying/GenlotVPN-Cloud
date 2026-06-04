@@ -136,4 +136,7 @@ public class YiAnLianConstants
      * 授予组织权限接口路径
      */
     public static final String authorityGroupPath = "/enadmin/api/open/v1/contact/authority/group";
+
+    /** 易安联开放接口：access_token 不可用 */
+    public static final int TOKEN_UNAVAILABLE_CODE = 40002;
 }

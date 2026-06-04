@@ -30,7 +30,7 @@ public class RemoteVpnUserFallbackFactory implements FallbackFactory<RemoteVpnUs
         return new RemoteVpnUserService()
         {
             @Override
-            public R<VpnLoginUser> getUserInfo(String username, String source)
+            public R<VpnLoginUser> getUserInfo(String username, String appId, String source)
             {
                 return R.fail("获取用户失败:" + throwable.getMessage());
             }

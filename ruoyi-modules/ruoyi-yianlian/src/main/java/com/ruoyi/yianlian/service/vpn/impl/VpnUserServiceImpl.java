@@ -3,12 +3,20 @@ package com.ruoyi.yianlian.service.vpn.impl;
 import com.ruoyi.common.core.constant.UserConstants;
 import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.common.core.utils.StringUtils;
-import com.ruoyi.common.security.utils.SecurityUtils;
+import com.ruoyi.yianlian.domain.VpnDept;
+import com.ruoyi.yianlian.domain.VpnRole;
 import com.ruoyi.yianlian.domain.VpnUser;
 import com.ruoyi.yianlian.domain.VpnUserRole;
+import com.ruoyi.yianlian.domain.VpnUserYianlianMapping;
 import com.ruoyi.yianlian.mapper.VpnUserMapper;
 import com.ruoyi.yianlian.mapper.VpnUserRoleMapper;
+import com.ruoyi.yianlian.service.vpn.IVpnUserYianlianMappingService;
+import com.ruoyi.yianlian.service.vpn.IVpnDeptService;
+import com.ruoyi.yianlian.service.vpn.IVpnRoleService;
 import com.ruoyi.yianlian.service.vpn.IVpnUserService;
+import com.ruoyi.yianlian.service.vpn.VpnUserYiAnLianSyncService;
+import com.ruoyi.yianlian.utils.AesUtils;
+import com.ruoyi.common.security.utils.SecurityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +44,21 @@ public class VpnUserServiceImpl implements IVpnUserService
     @Autowired
     private VpnUserRoleMapper userRoleMapper;
 
+    @Autowired
+    private VpnUserYiAnLianSyncService userYiAnLianSyncService;
+
+    @Autowired
+    private IVpnUserYianlianMappingService userMappingService;
+
+    @Autowired
+    private IVpnDeptService deptService;
+
+    @Autowired
+    private IVpnRoleService roleService;
+
+    @Autowired
+    private AesUtils aesUtils;
+
     /**
      * 根据条件分页查询用户列表
      *
@@ -58,6 +81,12 @@ public class VpnUserServiceImpl implements IVpnUserService
     public VpnUser selectUserByUserName(String userName)
     {
         return userMapper.selectUserByUserName(userName);
+    }
+
+    @Override
+    public VpnUser selectUserByUserNameAndAppId(String userName, String appId)
+    {
+        return userMapper.selectUserByUserNameAndAppId(userName, appId);
     }
 
     /**
@@ -99,7 +128,7 @@ public class VpnUserServiceImpl implements IVpnUserService
     public boolean checkUserNameUnique(VpnUser user)
     {
         Long userId = StringUtils.isNull(user.getUserId()) ? -1L : user.getUserId();
-        VpnUser info = userMapper.checkUserNameUnique(user.getUserName());
+        VpnUser info = userMapper.checkUserNameUnique(user.getUserName(), user.getAppId());
         if (StringUtils.isNotNull(info) && info.getUserId().longValue() != userId.longValue())
         {
             return UserConstants.NOT_UNIQUE;
@@ -200,6 +229,13 @@ public class VpnUserServiceImpl implements IVpnUserService
     @Transactional(rollbackFor = Exception.class)
     public void insertUserAuth(Long userId, Long[] roleIds)
     {
+        VpnUser user = userMapper.selectUserById(userId);
+        if (user == null)
+        {
+            throw new ServiceException("用户不存在");
+        }
+        user.setRoleIds(roleIds);
+        validateUserRoleAppId(user);
         userRoleMapper.deleteUserRoleByUserId(userId);
         insertUserRole(userId, roleIds);
     }
@@ -273,6 +309,7 @@ public class VpnUserServiceImpl implements IVpnUserService
      */
     public void insertUserRole(VpnUser user)
     {
+        validateUserRoleAppId(user);
         this.insertUserRole(user.getUserId(), user.getRoleIds());
     }
 
@@ -410,6 +447,181 @@ public class VpnUserServiceImpl implements IVpnUserService
         if (StringUtils.isNotNull(user.getUserId()) && user.getUserId().equals(1L))
         {
             throw new ServiceException("不允许操作超级管理员用户");
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int insertUserWithSync(VpnUser user, String plainPassword)
+    {
+        validateDeptAppId(user);
+        validateUserRoleAppId(user);
+        int ret = insertUser(user);
+        if (ret > 0 && !userYiAnLianSyncService.syncOnAdd(user, plainPassword))
+        {
+            throw new ServiceException("同步易安联用户失败");
+        }
+        return ret;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int updateUserWithSync(VpnUser user)
+    {
+        validateDeptAppId(user);
+        VpnUser dbUser = userMapper.selectUserById(user.getUserId());
+        if (dbUser != null && StringUtils.isEmpty(user.getAppId()))
+        {
+            user.setAppId(dbUser.getAppId());
+        }
+        validateUserRoleAppId(user);
+        int ret = updateUser(user);
+        if (ret > 0 && !userYiAnLianSyncService.syncOnEdit(user))
+        {
+            throw new ServiceException("同步易安联用户失败");
+        }
+        return ret;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int deleteUserByIdsWithSync(Long[] userIds)
+    {
+        for (Long userId : userIds)
+        {
+            checkUserAllowed(new VpnUser(userId));
+        }
+        for (Long userId : userIds)
+        {
+            VpnUser oldUser = userMapper.selectUserById(userId);
+            if (oldUser == null)
+            {
+                continue;
+            }
+            if (StringUtils.isNotEmpty(oldUser.getAppId()))
+            {
+                VpnUserYianlianMapping mapping = userMappingService.selectByUserIdAndAppId(userId, oldUser.getAppId());
+                if (!userYiAnLianSyncService.syncOnDelete(mapping))
+                {
+                    throw new ServiceException("同步易安联用户失败");
+                }
+                userMappingService.deleteByUserId(userId);
+            }
+        }
+        return deleteUserByIds(userIds);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int resetPwdWithSync(VpnUser user, String plainPassword)
+    {
+        VpnUser dbUser = userMapper.selectUserById(user.getUserId());
+        if (dbUser == null)
+        {
+            return 0;
+        }
+        String oldEncryptedPwd = dbUser.getEncryptedPwd();
+        if (StringUtils.isEmpty(user.getAppId()))
+        {
+            user.setAppId(dbUser.getAppId());
+        }
+        user.setUserName(dbUser.getUserName());
+        int ret = resetPwd(user);
+        if (ret > 0 && !userYiAnLianSyncService.syncOnResetPassword(dbUser, plainPassword, oldEncryptedPwd))
+        {
+            throw new ServiceException("同步易安联用户失败");
+        }
+        return ret;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int updateUserStatusWithSync(VpnUser user)
+    {
+        VpnUser dbUser = userMapper.selectUserById(user.getUserId());
+        if (dbUser == null)
+        {
+            return 0;
+        }
+        if (StringUtils.isEmpty(user.getAppId()))
+        {
+            user.setAppId(dbUser.getAppId());
+        }
+        int ret = updateUserStatus(user);
+        if (ret > 0 && !userYiAnLianSyncService.syncOnChangeStatus(dbUser, user.getStatus()))
+        {
+            throw new ServiceException("同步易安联用户失败");
+        }
+        return ret;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updatePasswordWithSync(VpnUser vpnUser, String oldPlainPassword, String newPlainPassword)
+    {
+        VpnUser updateUser = new VpnUser();
+        updateUser.setUserId(vpnUser.getUserId());
+        updateUser.setPassword(SecurityUtils.encryptPassword(newPlainPassword));
+        updateUser.setEncryptedPwd(aesUtils.encrypt(newPlainPassword));
+        String oldEncryptedPwd = vpnUser.getEncryptedPwd();
+        resetPwd(updateUser);
+        if (StringUtils.isNotEmpty(vpnUser.getAppId())
+                && !userYiAnLianSyncService.syncOnResetPassword(vpnUser, newPlainPassword, oldEncryptedPwd))
+        {
+            throw new ServiceException("同步易安联用户失败");
+        }
+    }
+
+    private void validateDeptAppId(VpnUser user)
+    {
+        if (user.getDeptId() == null || StringUtils.isEmpty(user.getAppId()))
+        {
+            return;
+        }
+        VpnDept dept = deptService.selectDeptById(user.getDeptId());
+        if (dept == null)
+        {
+            throw new ServiceException("归属部门不存在");
+        }
+        if (StringUtils.isNotEmpty(dept.getAppId()) && !user.getAppId().equals(dept.getAppId()))
+        {
+            throw new ServiceException("归属部门与当前线路不一致");
+        }
+    }
+
+    /**
+     * 校验分配的角色必须属于用户所在线路
+     */
+    private void validateUserRoleAppId(VpnUser user)
+    {
+        if (user == null || StringUtils.isEmpty(user.getRoleIds()))
+        {
+            return;
+        }
+        String appId = user.getAppId();
+        if (StringUtils.isEmpty(appId) && user.getUserId() != null)
+        {
+            VpnUser dbUser = userMapper.selectUserById(user.getUserId());
+            if (dbUser != null)
+            {
+                appId = dbUser.getAppId();
+            }
+        }
+        if (StringUtils.isEmpty(appId))
+        {
+            return;
+        }
+        for (Long roleId : user.getRoleIds())
+        {
+            VpnRole role = roleService.selectRoleById(roleId);
+            if (role == null)
+            {
+                throw new ServiceException("角色不存在");
+            }
+            if (StringUtils.isNotEmpty(role.getAppId()) && !appId.equals(role.getAppId()))
+            {
+                throw new ServiceException("角色「" + role.getRoleName() + "」与用户所属线路不一致");
+            }
         }
     }
 }

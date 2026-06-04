@@ -60,7 +60,7 @@ public class TokenController
     public R<?> login(@RequestBody VpnLoginBody form)
     {
         // 用户登录
-        VpnLoginUser userInfo = vpnLoginService.login(form.getUsername(), form.getPassword());
+        VpnLoginUser userInfo = vpnLoginService.login(form.getUsername(), form.getPassword(), form.getAppId());
         // 获取登录token
         return R.ok(tokenService.createToken(userInfo));
     }
@@ -101,6 +101,15 @@ public class TokenController
     {
         vpnLoginService.unlock(unLockBody.getPassword());
         return R.ok();
+    }
+
+    /**
+     * 登录前获取可选线路列表（无需 token）
+     */
+    @GetMapping("lines")
+    public R<?> listPublicLines()
+    {
+        return R.ok(vpnLoginService.listPublicLines());
     }
 
     /**
@@ -148,7 +157,7 @@ public class TokenController
     @PutMapping("change-password")
     public R<?> changePassword(@RequestBody VpnChangePasswordBody form)
     {
-        vpnLoginService.changePassword(form.getUsername(), form.getOldPassword(), form.getNewPassword());
+        vpnLoginService.changePassword(form.getUsername(), form.getOldPassword(), form.getNewPassword(), form.getAppId());
         return R.ok();
     }
 }

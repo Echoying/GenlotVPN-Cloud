@@ -8,7 +8,12 @@ import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.factory.RemoteVpnUserFallbackFactory;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 import java.util.Map;
@@ -29,7 +34,9 @@ public interface RemoteVpnUserService {
      * @return 结果
      */
     @GetMapping("/vpn/user/info/{username}")
-    public R<VpnLoginUser> getUserInfo(@PathVariable("username") String username, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
+    public R<VpnLoginUser> getUserInfo(@PathVariable("username") String username,
+            @RequestParam(value = "appId", required = false) String appId,
+            @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
 
     /**
      * 记录用户登录IP地址和登录时间

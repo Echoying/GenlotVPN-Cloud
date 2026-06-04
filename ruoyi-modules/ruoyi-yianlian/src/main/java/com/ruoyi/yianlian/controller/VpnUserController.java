@@ -3,7 +3,7 @@ package com.ruoyi.yianlian.controller;
 import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.common.core.domain.R;
 import com.ruoyi.common.core.enums.UserStatus;
-import com.ruoyi.common.core.exception.ServiceException;
+import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.common.core.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.web.controller.BaseController;
 import com.ruoyi.common.core.web.domain.AjaxResult;
@@ -16,31 +16,22 @@ import com.ruoyi.common.security.utils.SecurityUtils;
 import com.ruoyi.yianlian.api.domain.VpnChangePasswordRequest;
 import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
-import com.ruoyi.yianlian.client.dto.YiAnLianUserPasswordResetRequest;
-import com.ruoyi.yianlian.client.dto.YiAnLianUserCreateResultItem;
-import com.ruoyi.yianlian.client.dto.vo.YiAnLianUserVO;
 import com.ruoyi.yianlian.domain.LineApp;
 import com.ruoyi.yianlian.domain.VpnDept;
-import com.ruoyi.yianlian.domain.VpnDeptYianlianMapping;
+import com.ruoyi.yianlian.domain.VpnRole;
 import com.ruoyi.yianlian.domain.VpnUser;
-import com.ruoyi.yianlian.domain.VpnUserYianlianMapping;
 import com.ruoyi.yianlian.domain.YalDeptAuth;
 import com.ruoyi.yianlian.domain.YalRoleAuth;
 import com.ruoyi.yianlian.domain.YalUserAuth;
 import com.ruoyi.yianlian.mapper.YalDeptAuthMapper;
 import com.ruoyi.yianlian.mapper.YalRoleAuthMapper;
 import com.ruoyi.yianlian.mapper.YalUserAuthMapper;
-import com.ruoyi.yianlian.service.IVpnDeptYianlianMappingService;
 import com.ruoyi.yianlian.service.vpn.IVpnDeptService;
 import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
 import com.ruoyi.yianlian.service.vpn.IVpnRoleService;
 import com.ruoyi.yianlian.service.vpn.IVpnUserService;
-import com.ruoyi.yianlian.service.vpn.IVpnUserYianlianMappingService;
-import com.ruoyi.yianlian.service.yianlian.IYiAnLianUserService;
 import com.ruoyi.yianlian.utils.AesUtils;
 import org.apache.commons.lang3.ArrayUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -57,7 +48,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/vpn/user")
 public class VpnUserController extends BaseController {
-    private static final Logger log = LoggerFactory.getLogger(VpnUserController.class);
 
     @Autowired
     private IVpnUserService userService;
@@ -66,19 +56,10 @@ public class VpnUserController extends BaseController {
     private IVpnRoleService roleService;
 
     @Autowired
-    private IYiAnLianUserService yiAnLianUserService;
-
-    @Autowired
     private IVpnLineAppService lineAppService;
 
     @Autowired
     private IVpnDeptService deptService;
-
-    @Autowired
-    private IVpnUserYianlianMappingService userMappingService;
-
-    @Autowired
-    private IVpnDeptYianlianMappingService deptMappingService;
 
     @Autowired
     private YalDeptAuthMapper yalDeptAuthMapper;
@@ -94,10 +75,6 @@ public class VpnUserController extends BaseController {
 
     /**
      * 获取用户授权线路列表（供Feign调用）
-     *
-     * @param userId 用户ID
-     * @param source 请求来源
-     * @return 授权线路列表
      */
     @InnerAuth
     @GetMapping("/authorized-lines/{userId}")
@@ -110,33 +87,31 @@ public class VpnUserController extends BaseController {
         }
 
         Set<String> lineIdSet = new LinkedHashSet<>();
+        String userAppId = vpnUser.getAppId();
 
-        // 1. 部门授权
         if (vpnUser.getDeptId() != null) {
             List<YalDeptAuth> deptAuths = yalDeptAuthMapper.selectYalDeptAuthByDeptId(vpnUser.getDeptId());
             for (YalDeptAuth auth : deptAuths) {
-                if (auth.getLineId() != null) {
+                if (auth.getLineId() != null && matchUserLine(userAppId, auth.getLineId())) {
                     lineIdSet.add(auth.getLineId());
                 }
             }
         }
 
-        // 2. 角色授权
         if (vpnUser.getRoles() != null) {
             for (com.ruoyi.yianlian.domain.VpnRole role : vpnUser.getRoles()) {
                 List<YalRoleAuth> roleAuths = yalRoleAuthMapper.selectYalRoleAuthByRoleId(role.getRoleId());
                 for (YalRoleAuth auth : roleAuths) {
-                    if (auth.getLineId() != null) {
+                    if (auth.getLineId() != null && matchUserLine(userAppId, auth.getLineId())) {
                         lineIdSet.add(auth.getLineId());
                     }
                 }
             }
         }
 
-        // 3. 用户授权
         List<YalUserAuth> userAuths = yalUserAuthMapper.selectYalUserAuthByUserId(userId);
         for (YalUserAuth auth : userAuths) {
-            if (auth.getLineId() != null) {
+            if (auth.getLineId() != null && matchUserLine(userAppId, auth.getLineId())) {
                 lineIdSet.add(auth.getLineId());
             }
         }
@@ -145,7 +120,6 @@ public class VpnUserController extends BaseController {
             return R.ok(Collections.emptyList());
         }
 
-        // 查询线路详情，过滤状态正常的线路
         List<LineApp> allLines = lineAppService.selectLineAppList(new LineApp());
         List<Map<String, Object>> result = allLines.stream()
             .filter(line -> lineIdSet.contains(line.getAppId()) && "0".equals(line.getStatus()))
@@ -156,7 +130,6 @@ public class VpnUserController extends BaseController {
                 vo.put("host", line.getHost());
                 vo.put("srvPort", line.getSrvPort());
                 vo.put("spaPort", line.getSpaPort());
-                // spaKey: AES解密后MD5(32位小写)
                 String spaKey = line.getSpaKey();
                 if (spaKey != null && !spaKey.isEmpty()) {
                     spaKey = AesUtils.md5(aesUtils.decrypt(spaKey));
@@ -169,9 +142,10 @@ public class VpnUserController extends BaseController {
         return R.ok(result);
     }
 
-    /**
-     * 获取用户列表
-     */
+    private boolean matchUserLine(String userAppId, String lineId) {
+        return StringUtils.isEmpty(userAppId) || userAppId.equals(lineId);
+    }
+
     @RequiresPermissions("vpn:user:list")
     @GetMapping("/list")
     public TableDataInfo list(VpnUser user) {
@@ -189,86 +163,52 @@ public class VpnUserController extends BaseController {
         util.exportExcel(response, list, "用户数据");
     }
 
-    /**
-     * 获取部门树列表
-     */
     @GetMapping("/deptTree")
     public AjaxResult deptTree(VpnDept dept) {
         List<VpnDept> depts = deptService.selectDeptList(dept);
         return success(deptService.buildDeptTreeSelect(depts));
     }
 
-    /**
-     * 根据用户编号获取详细信息
-     */
     @RequiresPermissions("vpn:user:query")
     @GetMapping(value = {"/", "/{userId}"})
-    public AjaxResult getInfo(@PathVariable(value = "userId", required = false) Long userId) {
+    public AjaxResult getInfo(@PathVariable(value = "userId", required = false) Long userId,
+                              @RequestParam(value = "appId", required = false) String appId) {
         AjaxResult ajax = AjaxResult.success();
-        ajax.put("roles", roleService.selectRoleAll());
+        String roleAppId = appId;
         if (userId != null) {
             VpnUser vpnUser = userService.selectUserById(userId);
             ajax.put(AjaxResult.DATA_TAG, vpnUser);
-            ajax.put("roleIds", vpnUser.getRoles().stream().map(r -> r.getRoleId()).collect(Collectors.toList()));
+            if (vpnUser != null && StringUtils.isEmpty(roleAppId)) {
+                roleAppId = vpnUser.getAppId();
+            }
+            if (vpnUser != null && vpnUser.getRoles() != null) {
+                ajax.put("roleIds", vpnUser.getRoles().stream().map(r -> r.getRoleId()).collect(Collectors.toList()));
+            }
         }
+        VpnRole roleQuery = new VpnRole();
+        roleQuery.setAppId(roleAppId);
+        ajax.put("roles", roleService.selectRoleList(roleQuery));
         return ajax;
     }
 
-    /**
-     * 新增用户
-     */
     @RequiresPermissions("vpn:user:add")
     @Log(title = "用户管理", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@Validated @RequestBody VpnUser user) {
+        AjaxResult validate = validateAppId(user.getAppId());
+        if (validate != null) {
+            return validate;
+        }
         if (!userService.checkUserNameUnique(user)) {
             return error("新增用户'" + user.getUserName() + "'失败，登录账号已存在");
         }
-        // 保存明文密码，用于同步到易安联
         String plainPassword = user.getPassword();
         user.setCreateBy(SecurityUtils.getUsername());
         user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
         user.setEncryptedPwd(aesUtils.encrypt(plainPassword));
-        int row = userService.insertUser(user);
-
-        // 同步到易安联
-        if (row > 0) {
-            List<LineApp> lineApps = lineAppService.selectLineAppList(new LineApp());
-            for (LineApp lineApp : lineApps) {
-                // 通过部门映射表获取yianlian部门ID
-                String yiAnLianDeptId = null;
-                if (user.getDeptId() != null) {
-                    VpnDeptYianlianMapping deptMapping = deptMappingService.selectByDeptIdAndAppId(user.getDeptId(), lineApp.getAppId());
-                    if (deptMapping != null) {
-                        yiAnLianDeptId = deptMapping.getYianlianId();
-                    }
-                }
-
-                // 构建易安联用户
-                YiAnLianUserVO yiAnLianUser = buildYiAnLianUserVO(user, yiAnLianDeptId);
-                yiAnLianUser.setPassword(plainPassword);
-
-                List<YiAnLianUserCreateResultItem> results = yiAnLianUserService.create(lineApp.getAppId(), Collections.singletonList(yiAnLianUser));
-                // 创建返回的数据里直接有ID，保存映射
-                if (results != null && !results.isEmpty()) {
-                    YiAnLianUserCreateResultItem resultItem = results.get(0);
-                    if (resultItem.getData() != null && resultItem.getData().getId() != null) {
-                        VpnUserYianlianMapping mapping = new VpnUserYianlianMapping();
-                        mapping.setUserId(user.getUserId());
-                        mapping.setAppId(lineApp.getAppId());
-                        mapping.setYianlianId(resultItem.getData().getId());
-                        userMappingService.insert(mapping);
-                    }
-                }
-            }
-        }
-
-        return toAjax(row);
+        return toAjax(userService.insertUserWithSync(user, plainPassword));
     }
 
-    /**
-     * 修改用户
-     */
     @RequiresPermissions("vpn:user:edit")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping
@@ -278,47 +218,9 @@ public class VpnUserController extends BaseController {
             return error("修改用户'" + user.getUserName() + "'失败，登录账号已存在");
         }
         user.setUpdateBy(SecurityUtils.getUsername());
-        int row = userService.updateUser(user);
-
-        // 同步到易安联
-        if (row > 0) {
-            List<LineApp> lineApps = lineAppService.selectLineAppList(new LineApp());
-            for (LineApp lineApp : lineApps) {
-                // 查询映射表获取yianlian用户ID
-                VpnUserYianlianMapping mapping = userMappingService.selectByUserIdAndAppId(user.getUserId(), lineApp.getAppId());
-                if (mapping != null) {
-                    // 通过部门映射表获取yianlian部门ID
-                    String yiAnLianDeptId = null;
-                    if (user.getDeptId() != null) {
-                        VpnDeptYianlianMapping deptMapping = deptMappingService.selectByDeptIdAndAppId(user.getDeptId(), lineApp.getAppId());
-                        if (deptMapping != null) {
-                            yiAnLianDeptId = deptMapping.getYianlianId();
-                        }
-                    }
-
-                    YiAnLianUserVO remoteUser = new YiAnLianUserVO();
-                    remoteUser.setId(mapping.getYianlianId());
-                    remoteUser.setUsername(user.getUserName());
-                    remoteUser.setName(user.getNickName());
-                    remoteUser.setMobile(user.getPhonenumber());
-                    remoteUser.setEmail(user.getEmail());
-                    remoteUser.setGender(user.getSex());
-                    remoteUser.setStatus("0".equals(user.getStatus()) ? "enable" : "disable");
-                    if (yiAnLianDeptId != null) {
-                        remoteUser.setGroups(Collections.singletonList(yiAnLianDeptId));
-                    }
-
-                    yiAnLianUserService.update(lineApp.getAppId(), remoteUser);
-                }
-            }
-        }
-
-        return toAjax(row);
+        return toAjax(userService.updateUserWithSync(user));
     }
 
-    /**
-     * 删除用户
-     */
     @RequiresPermissions("vpn:user:remove")
     @Log(title = "用户管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{userIds}")
@@ -326,138 +228,44 @@ public class VpnUserController extends BaseController {
         if (ArrayUtils.contains(userIds, SecurityUtils.getUserId())) {
             return error("当前用户不能删除");
         }
-
-        int row = userService.deleteUserByIds(userIds);
-
-        // 同步到易安联
-        if (row > 0) {
-            for (Long userId : userIds) {
-                // 通过映射表获取yianlianId进行删除
-                List<VpnUserYianlianMapping> mappings = userMappingService.selectByUserId(userId);
-                for (VpnUserYianlianMapping mapping : mappings) {
-                    boolean ret = yiAnLianUserService.delete(mapping.getAppId(), Collections.singletonList(mapping.getYianlianId()));
-                    if (!ret) {
-                        log.error("删除易安联用户失败, appId: {}, yianlianId: {}", mapping.getAppId(), mapping.getYianlianId());
-                    }
-                }
-                // 删除映射记录
-                userMappingService.deleteByUserId(userId);
-            }
-        }
-
-        return toAjax(row);
+        return toAjax(userService.deleteUserByIdsWithSync(userIds));
     }
 
-    /**
-     * 重置密码
-     */
     @RequiresPermissions("vpn:user:resetPwd")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping("/resetPwd")
     public AjaxResult resetPwd(@RequestBody VpnUser user) {
         userService.checkUserAllowed(user);
-
-        // 先查询用户信息，获取旧的AES加密密码
-        VpnUser vpnUser = userService.selectUserById(user.getUserId());
-
-        // 保存明文密码，用于同步到易安联
         String plainPassword = user.getPassword();
         user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
         user.setEncryptedPwd(aesUtils.encrypt(plainPassword));
         user.setUpdateBy(SecurityUtils.getUsername());
-        int row = userService.resetPwd(user);
-
-        // 同步到易安联
-        if (row > 0) {
-            List<VpnUserYianlianMapping> mappings = userMappingService.selectByUserId(user.getUserId());
-            for (VpnUserYianlianMapping mapping : mappings) {
-                // 解密旧密码
-                String oldPassword = null;
-                if (vpnUser.getEncryptedPwd() != null) {
-                    try {
-                        oldPassword = aesUtils.decrypt(vpnUser.getEncryptedPwd());
-                    } catch (Exception e) {
-                        log.error("解密旧密码失败, userId: {}", user.getUserId(), e);
-                    }
-                }
-
-                YiAnLianUserPasswordResetRequest resetRequest = new YiAnLianUserPasswordResetRequest();
-                resetRequest.setAppId(mapping.getAppId());
-                resetRequest.setUsername(vpnUser.getUserName());
-                resetRequest.setOldPassword(oldPassword);
-                resetRequest.setNewPassword(plainPassword);
-                yiAnLianUserService.resetPassword(mapping.getAppId(), resetRequest);
-            }
-        }
-
-        return toAjax(row);
+        return toAjax(userService.resetPwdWithSync(user, plainPassword));
     }
 
-    /**
-     * 状态修改
-     */
     @RequiresPermissions("vpn:user:edit")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping("/changeStatus")
     public AjaxResult changeStatus(@RequestBody VpnUser user) {
         userService.checkUserAllowed(user);
         user.setUpdateBy(SecurityUtils.getUsername());
-        int row = userService.updateUserStatus(user);
-
-        // 同步到易安联
-        if (row > 0) {
-            VpnUser vpnUser = userService.selectUserById(user.getUserId());
-            List<VpnUserYianlianMapping> mappings = userMappingService.selectByUserId(user.getUserId());
-            for (VpnUserYianlianMapping mapping : mappings) {
-                YiAnLianUserVO remoteUser = new YiAnLianUserVO();
-                remoteUser.setId(mapping.getYianlianId());
-                remoteUser.setUsername(vpnUser.getUserName());
-                remoteUser.setName(vpnUser.getNickName());
-                remoteUser.setStatus("0".equals(user.getStatus()) ? "enable" : "disable");
-                yiAnLianUserService.update(mapping.getAppId(), remoteUser);
-            }
-        }
-
-        return toAjax(row);
+        return toAjax(userService.updateUserStatusWithSync(user));
     }
 
-
-    /**
-     * 构建易安联用户VO
-     *
-     * @param user           本地用户
-     * @param yiAnLianDeptId 易安联部门ID
-     * @return 易安联用户VO
-     */
-    private YiAnLianUserVO buildYiAnLianUserVO(VpnUser user, String yiAnLianDeptId) {
-        YiAnLianUserVO vo = new YiAnLianUserVO();
-        vo.setUsername(user.getUserName());
-        vo.setName(user.getNickName());
-        vo.setMobile(user.getPhonenumber());
-        vo.setEmail(user.getEmail());
-        vo.setGender(user.getSex());
-        vo.setStatus("0".equals(user.getStatus()) ? "enable" : "disable");
-        if (yiAnLianDeptId != null) {
-            vo.setGroups(Collections.singletonList(yiAnLianDeptId));
-        }
-        return vo;
-    }
-
-    /**
-     * 获取用户信息（供Feign调用）
-     *
-     * @param username 用户名
-     * @param source   请求来源
-     * @return 用户信息
-     */
     @InnerAuth
     @GetMapping("/info/{username}")
-    public R<VpnLoginUser> getUserInfo(@PathVariable("username") String username, @RequestHeader(SecurityConstants.FROM_SOURCE) String source) {
-        VpnUser vpnUser = userService.selectUserByUserName(username);
+    public R<VpnLoginUser> getUserInfo(@PathVariable("username") String username,
+                                       @RequestParam(value = "appId", required = false) String appId,
+                                       @RequestHeader(SecurityConstants.FROM_SOURCE) String source) {
+        VpnUser vpnUser;
+        if (StringUtils.isNotEmpty(appId)) {
+            vpnUser = userService.selectUserByUserNameAndAppId(username, appId);
+        } else {
+            vpnUser = userService.selectUserByUserName(username);
+        }
         if (vpnUser == null) {
             return R.fail("用户不存在");
         }
-        // 转换为API层的VpnUser
         VpnUserInfo apiUser = new VpnUserInfo();
         apiUser.setUserId(vpnUser.getUserId());
         apiUser.setUserName(vpnUser.getUserName());
@@ -478,26 +286,13 @@ public class VpnUserController extends BaseController {
         apiUser.setUpdateTime(vpnUser.getUpdateTime());
         apiUser.setRemark(vpnUser.getRemark());
 
-        // 构建VpnLoginUser
         VpnLoginUser vpnLoginUser = new VpnLoginUser();
         vpnLoginUser.setVpnUser(apiUser);
         vpnLoginUser.setUserid(vpnUser.getUserId());
         vpnLoginUser.setUsername(vpnUser.getUserName());
-
-        // 查询角色权限（如果需要）
-        // Set<String> roles = roleService.selectRolePermissionByUserId(vpnUser.getUserId());
-        // vpnLoginUser.setRoles(roles);
-
         return R.ok(vpnLoginUser);
     }
 
-    /**
-     * 记录用户登录信息（供Feign调用）
-     *
-     * @param vpnUser VPN用户信息
-     * @param source  请求来源
-     * @return 结果
-     */
     @InnerAuth
     @PutMapping("/recordlogin")
     public R<Boolean> recordUserLogin(@RequestBody VpnUserInfo vpnUser, @RequestHeader(SecurityConstants.FROM_SOURCE) String source) {
@@ -509,22 +304,20 @@ public class VpnUserController extends BaseController {
         return R.ok(true);
     }
 
-    /**
-     * VPN用户自助修改密码（供Feign调用）
-     *
-     * @param request 修改密码请求
-     * @param source  请求来源
-     * @return 结果
-     */
     @InnerAuth
     @PutMapping("/changePassword")
     public R<Boolean> changePassword(@RequestBody VpnChangePasswordRequest request, @RequestHeader(SecurityConstants.FROM_SOURCE) String source) {
         String username = request.getUsername();
         String oldPassword = request.getOldPassword();
         String newPassword = request.getNewPassword();
+        String appId = request.getAppId();
 
-        // 查询用户
-        VpnUser vpnUser = userService.selectUserByUserName(username);
+        VpnUser vpnUser;
+        if (StringUtils.isNotEmpty(appId)) {
+            vpnUser = userService.selectUserByUserNameAndAppId(username, appId);
+        } else {
+            vpnUser = userService.selectUserByUserName(username);
+        }
         if (vpnUser == null) {
             return R.fail("用户不存在");
         }
@@ -534,65 +327,21 @@ public class VpnUserController extends BaseController {
         if (UserStatus.DISABLE.getCode().equals(vpnUser.getStatus())) {
             return R.fail("用户已停用");
         }
-
-        // 校验旧密码
         if (!SecurityUtils.matchesPassword(oldPassword, vpnUser.getPassword())) {
             return R.fail("旧密码错误");
         }
-        // 新旧密码不能相同
         if (SecurityUtils.matchesPassword(newPassword, vpnUser.getPassword())) {
             return R.fail("新密码不能与旧密码相同");
         }
 
-        // 更新本地密码并同步到线路
-        updatePasswordAndSync(vpnUser, oldPassword, newPassword);
+        userService.updatePasswordWithSync(vpnUser, oldPassword, newPassword);
         return R.ok(true);
     }
 
-    /**
-     * 更新本地密码并同步到所有已映射且启用中的线路
-     */
-    private void updatePasswordAndSync(VpnUser vpnUser, String oldPlainPassword, String newPlainPassword) {
-        // 更新本地密码
-        VpnUser updateUser = new VpnUser();
-        updateUser.setUserId(vpnUser.getUserId());
-        updateUser.setPassword(SecurityUtils.encryptPassword(newPlainPassword));
-        updateUser.setEncryptedPwd(aesUtils.encrypt(newPlainPassword));
-        userService.resetPwd(updateUser);
-
-        // 同步到已映射且启用中的线路
-        List<VpnUserYianlianMapping> mappings = userMappingService.selectByUserId(vpnUser.getUserId());
-        // 获取所有启用中的线路appId集合
-        List<LineApp> allLines = lineAppService.selectLineAppList(new LineApp());
-        Set<String> enabledAppIds = allLines.stream()
-                .filter(line -> "0".equals(line.getStatus()))
-                .map(LineApp::getAppId)
-                .collect(Collectors.toSet());
-
-        for (VpnUserYianlianMapping mapping : mappings) {
-            if (!enabledAppIds.contains(mapping.getAppId())) {
-                continue;
-            }
-            // 解密旧密码用于远端同步
-            String remoteOldPassword = oldPlainPassword;
-            if (vpnUser.getEncryptedPwd() != null) {
-                try {
-                    remoteOldPassword = aesUtils.decrypt(vpnUser.getEncryptedPwd());
-                } catch (Exception e) {
-                    log.error("解密旧密码失败, userId: {}, 使用用户输入的旧密码", vpnUser.getUserId(), e);
-                }
-            }
-
-            YiAnLianUserPasswordResetRequest resetRequest = new YiAnLianUserPasswordResetRequest();
-            resetRequest.setAppId(mapping.getAppId());
-            resetRequest.setUsername(vpnUser.getUserName());
-            resetRequest.setOldPassword(remoteOldPassword);
-            resetRequest.setNewPassword(newPlainPassword);
-            Boolean result = yiAnLianUserService.resetPassword(mapping.getAppId(), resetRequest);
-            if (result == null || !result) {
-                log.error("同步修改密码到线路失败, appId: {}, username: {}", mapping.getAppId(), vpnUser.getUserName());
-            }
+    private AjaxResult validateAppId(String appId) {
+        if (StringUtils.isEmpty(appId)) {
+            return error("线路不能为空");
         }
+        return null;
     }
-
 }

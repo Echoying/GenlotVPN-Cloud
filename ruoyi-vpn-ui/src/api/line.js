@@ -1,5 +1,14 @@
 import request from '@/utils/request'
 
+// 登录前获取可选线路列表（无需 token）
+export function getPublicLines() {
+  return request({
+    url: '/vpn/lines',
+    headers: { isToken: false },
+    method: 'get'
+  })
+}
+
 // 获取当前用户的授权线路列表
 export function getAuthorizedLines() {
   return request({

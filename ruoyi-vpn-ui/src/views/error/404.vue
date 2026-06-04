@@ -18,7 +18,7 @@ export default {
         const target = store.state.user.selectedLine ? '/app-list' : '/select-line'
         this.$router.replace(target)
       } else {
-        this.$router.replace('/login')
+        this.$router.replace('/choose-line')
       }
     }
   }

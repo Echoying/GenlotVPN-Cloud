@@ -1,10 +1,11 @@
 import request from '@/utils/request'
 
 // 根据用户ID查询授权列表
-export function listByUserId(userId) {
+export function listByUserId(userId, lineId) {
   return request({
     url: '/yianlian/userAuth/listByUserId/' + userId,
-    method: 'get'
+    method: 'get',
+    params: { lineId }
   })
 }
 
