@@ -328,7 +328,7 @@ export default {
                         this.addLog('info', `用户名: ${loginRes.data.account || loginRes.data.name || 'N/A'}`)
                         this.addLog('info', '正在跳转到应用列表...')
                         await this.$store.dispatch('SelectLine', line)
-                        this.$router.push('/app-list')
+                        this.$router.replace('/app-list')
                       } else {
                         this.addLog('error', '控制器登录失败: ' + (loginRes?.messages || '未知错误'))
                       }
@@ -386,7 +386,7 @@ export default {
     },
     handleLogout() {
       removeToken()
-      this.$router.push('/login')
+      this.$router.replace('/login')
     }
   }
 }

@@ -12,14 +12,18 @@ router.beforeEach((to, from, next) => {
   NProgress.start()
   const hasToken = getToken()
   if (hasToken) {
-    if (to.path === '/login') {
-      next({ path: '/' })
+    if (to.path === '/login' || to.path === '/') {
+      const target = store.state.user.selectedLine ? '/app-list' : '/select-line'
+      next({ path: target, replace: true })
       NProgress.done()
     } else {
       next()
     }
   } else {
-    if (whiteList.indexOf(to.path) !== -1) {
+    if (to.path === '/') {
+      next({ path: '/login', replace: true })
+      NProgress.done()
+    } else if (whiteList.indexOf(to.path) !== -1) {
       next()
     } else {
       next(`/login?redirect=${to.fullPath}`)

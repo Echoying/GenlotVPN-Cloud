@@ -197,7 +197,7 @@ export default {
             Cookies.remove("vpn-rememberMe")
           }
           this.$store.dispatch("Login", this.loginForm).then(() => {
-            this.$router.push({ path: "/select-line" }).catch(() => {})
+            this.$router.replace({ path: "/select-line" })
           }).catch(() => {
             this.loading = false
             if (this.captchaEnabled) {
