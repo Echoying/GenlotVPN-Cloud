@@ -45,6 +45,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where role_id = #{roleId}
     </select>
 
+    <select id="selectYalRoleAuthByRoleIdAndLineId" resultMap="YalRoleAuthResult">
+        <include refid="selectYalRoleAuthVo"/>
+        where role_id = #{roleId} and line_id = #{lineId}
+    </select>
+
     <insert id="insertYalRoleAuth" parameterType="YalRoleAuth" useGeneratedKeys="true" keyProperty="id">
         insert into yal_role_auth
         <trim prefix="(" suffix=")" suffixOverrides=",">
@@ -103,6 +108,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <delete id="deleteYalRoleAuthByRoleId" parameterType="Long">
         delete from yal_role_auth where role_id = #{roleId}
+    </delete>
+
+    <delete id="deleteYalRoleAuthByRoleIdAndLineId">
+        delete from yal_role_auth where role_id = #{roleId} and line_id = #{lineId}
     </delete>
 
 </mapper>

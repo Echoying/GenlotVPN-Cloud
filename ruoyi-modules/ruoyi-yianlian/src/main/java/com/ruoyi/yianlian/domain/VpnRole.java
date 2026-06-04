@@ -28,6 +28,9 @@ public class VpnRole extends BaseEntity
     @Excel(name = "角色序号", cellType = ColumnType.NUMERIC)
     private Long roleId;
 
+    /** 线路ID（line_app.app_id） */
+    private String appId;
+
     /** 角色名称 */
     @Excel(name = "角色名称")
     private String roleName;

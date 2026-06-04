@@ -115,4 +115,19 @@ public interface IVpnRoleService
      * @return 结果
      */
     public int deleteRoleByIds(Long[] roleIds);
+
+    /**
+     * 新增角色并同步易安联（同步失败则整体回滚）
+     */
+    int insertRoleWithSync(VpnRole role);
+
+    /**
+     * 修改角色并同步易安联（同步失败则整体回滚）
+     */
+    int updateRoleWithSync(VpnRole role);
+
+    /**
+     * 批量删除角色并同步易安联（先删远程，同步失败则整体回滚）
+     */
+    int deleteRoleByIdsWithSync(Long[] roleIds);
 }

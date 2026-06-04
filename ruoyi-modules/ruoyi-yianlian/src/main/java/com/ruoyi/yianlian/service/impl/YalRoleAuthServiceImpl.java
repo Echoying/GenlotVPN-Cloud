@@ -1,7 +1,9 @@
 package com.ruoyi.yianlian.service.impl;
 
+import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.common.core.utils.DateUtils;
 import com.ruoyi.common.core.utils.StringUtils;
+import com.ruoyi.yianlian.domain.VpnRole;
 import com.ruoyi.yianlian.client.dto.YiAnLianGroupAuthRequest;
 import com.ruoyi.yianlian.domain.VpnDeptYianlianMapping;
 import com.ruoyi.yianlian.domain.VpnRoleYianlianMapping;
@@ -14,6 +16,7 @@ import com.ruoyi.yianlian.mapper.VpnServiceGroupMapper;
 import com.ruoyi.yianlian.mapper.VpnServiceMapper;
 import com.ruoyi.yianlian.mapper.YalRoleAuthMapper;
 import com.ruoyi.yianlian.service.IYalRoleAuthService;
+import com.ruoyi.yianlian.service.vpn.IVpnRoleService;
 import com.ruoyi.yianlian.service.yianlian.IYiAnLianAuthorityService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +52,9 @@ public class YalRoleAuthServiceImpl implements IYalRoleAuthService
     @Autowired
     private VpnRoleYianlianMappingMapper roleYianlianMappingMapper;
 
+    @Autowired
+    private IVpnRoleService vpnRoleService;
+
     @Override
     public YalRoleAuth selectYalRoleAuthById(Long id)
     {
@@ -65,6 +71,12 @@ public class YalRoleAuthServiceImpl implements IYalRoleAuthService
     public List<YalRoleAuth> selectByRoleId(Long roleId)
     {
         return yalRoleAuthMapper.selectYalRoleAuthByRoleId(roleId);
+    }
+
+    @Override
+    public List<YalRoleAuth> selectByRoleIdAndLineId(Long roleId, String lineId)
+    {
+        return yalRoleAuthMapper.selectYalRoleAuthByRoleIdAndLineId(roleId, lineId);
     }
 
     @Override
@@ -102,18 +114,31 @@ public class YalRoleAuthServiceImpl implements IYalRoleAuthService
      */
     @Override
     @Transactional
-    public int batchSaveRoleAuth(Long roleId, List<YalRoleAuth> authList)
+    public int batchSaveRoleAuth(Long roleId, String lineId, List<YalRoleAuth> authList)
     {
-        // 先删除该角色的所有授权
-        yalRoleAuthMapper.deleteYalRoleAuthByRoleId(roleId);
+        if (StringUtils.isEmpty(lineId))
+        {
+            throw new ServiceException("线路不能为空");
+        }
+        VpnRole role = vpnRoleService.selectRoleById(roleId);
+        if (role == null)
+        {
+            throw new ServiceException("角色不存在");
+        }
+        if (StringUtils.isNotEmpty(role.getAppId()) && !lineId.equals(role.getAppId()))
+        {
+            throw new ServiceException("授权线路与角色所属线路不一致");
+        }
 
-        // 批量插入新的授权
+        yalRoleAuthMapper.deleteYalRoleAuthByRoleIdAndLineId(roleId, lineId);
+
         int result = 0;
         if (authList != null && !authList.isEmpty())
         {
             for (YalRoleAuth auth : authList)
             {
                 auth.setRoleId(roleId);
+                auth.setLineId(lineId);
                 auth.setCreateTime(DateUtils.getNowDate());
             }
             result = yalRoleAuthMapper.batchInsertYalRoleAuth(authList);

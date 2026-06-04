@@ -6,6 +6,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
 	<resultMap type="VpnRole" id="VpnRoleResult">
 		<id     property="roleId"             column="role_id"               />
+		<result property="appId"              column="app_id"                />
 		<result property="roleName"           column="role_name"             />
 		<result property="roleSort"           column="role_sort"             />
 		<result property="menuCheckStrictly"  column="menu_check_strictly"   />
@@ -19,7 +20,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	</resultMap>
 
 	<sql id="selectRoleVo">
-	    select distinct r.role_id, r.role_name, r.role_sort, r.menu_check_strictly,
+	    select distinct r.role_id, r.app_id, r.role_name, r.role_sort, r.menu_check_strictly,
             r.status, r.del_flag, r.create_time, r.remark
         from vpn_role r
 	        left join vpn_user_role ur on ur.role_id = r.role_id
@@ -29,6 +30,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectRoleList" parameterType="VpnRole" resultMap="VpnRoleResult">
 		<include refid="selectRoleVo"/>
 		where r.del_flag = '0'
+		<if test="appId != null and appId != ''">
+			AND r.app_id = #{appId}
+		</if>
 		<if test="roleId != null and roleId != 0">
 			AND r.role_id = #{roleId}
 		</if>
@@ -75,15 +79,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		WHERE r.del_flag = '0' and u.user_name = #{userName}
 	</select>
 
-	<select id="checkRoleNameUnique" parameterType="String" resultMap="VpnRoleResult">
+	<select id="checkRoleNameUnique" resultMap="VpnRoleResult">
 		<include refid="selectRoleVo"/>
-		 where r.role_name=#{roleName} and r.del_flag = '0' limit 1
+		 where r.role_name=#{roleName} and r.del_flag = '0'
+		<if test="appId != null and appId != ''">
+			AND r.app_id = #{appId}
+		</if>
+		 limit 1
 	</select>
 
 
  	<insert id="insertRole" parameterType="VpnRole" useGeneratedKeys="true" keyProperty="roleId">
  		insert into vpn_role(
  			<if test="roleId != null and roleId != 0">role_id,</if>
+ 			<if test="appId != null and appId != ''">app_id,</if>
  			<if test="roleName != null and roleName != ''">role_name,</if>
  			<if test="roleSort != null">role_sort,</if>
  			<if test="menuCheckStrictly != null">menu_check_strictly,</if>
@@ -93,6 +102,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  			create_time
  		)values(
  			<if test="roleId != null and roleId != 0">#{roleId},</if>
+ 			<if test="appId != null and appId != ''">#{appId},</if>
  			<if test="roleName != null and roleName != ''">#{roleName},</if>
  			<if test="roleSort != null">#{roleSort},</if>
  			<if test="menuCheckStrictly != null">#{menuCheckStrictly},</if>
@@ -106,6 +116,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	<update id="updateRole" parameterType="VpnRole">
  		update vpn_role
  		<set>
+ 			<if test="appId != null and appId != ''">app_id = #{appId},</if>
  			<if test="roleName != null and roleName != ''">role_name = #{roleName},</if>
  			<if test="roleSort != null">role_sort = #{roleSort},</if>
  			<if test="menuCheckStrictly != null">menu_check_strictly = #{menuCheckStrictly},</if>

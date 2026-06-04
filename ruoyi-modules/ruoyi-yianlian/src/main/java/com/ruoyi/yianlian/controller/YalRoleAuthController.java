@@ -41,9 +41,9 @@ public class YalRoleAuthController extends BaseController
      * 根据角色ID获取授权列表
      */
     @GetMapping("/listByRoleId/{roleId}")
-    public AjaxResult listByRoleId(@PathVariable Long roleId)
+    public AjaxResult listByRoleId(@PathVariable Long roleId, @RequestParam String lineId)
     {
-        List<YalRoleAuth> list = yalRoleAuthService.selectByRoleId(roleId);
+        List<YalRoleAuth> list = yalRoleAuthService.selectByRoleIdAndLineId(roleId, lineId);
         return success(list);
     }
 
@@ -95,7 +95,7 @@ public class YalRoleAuthController extends BaseController
     @PostMapping("/batchSave")
     public AjaxResult batchSave(@RequestBody YalRoleAuthBatchDTO batchDTO)
     {
-        return toAjax(yalRoleAuthService.batchSaveRoleAuth(batchDTO.getRoleId(), batchDTO.getAuthList()));
+        return toAjax(yalRoleAuthService.batchSaveRoleAuth(batchDTO.getRoleId(), batchDTO.getLineId(), batchDTO.getAuthList()));
     }
 
     /**

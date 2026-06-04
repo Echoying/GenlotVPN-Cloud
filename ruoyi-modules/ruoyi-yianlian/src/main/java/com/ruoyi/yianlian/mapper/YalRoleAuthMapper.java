@@ -25,7 +25,11 @@ public interface YalRoleAuthMapper
 
     public List<YalRoleAuth> selectYalRoleAuthByRoleId(Long roleId);
 
+    public List<YalRoleAuth> selectYalRoleAuthByRoleIdAndLineId(@Param("roleId") Long roleId, @Param("lineId") String lineId);
+
     public int deleteYalRoleAuthByRoleId(Long roleId);
+
+    public int deleteYalRoleAuthByRoleIdAndLineId(@Param("roleId") Long roleId, @Param("lineId") String lineId);
 
     public int batchInsertYalRoleAuth(@Param("list") List<YalRoleAuth> list);
 }

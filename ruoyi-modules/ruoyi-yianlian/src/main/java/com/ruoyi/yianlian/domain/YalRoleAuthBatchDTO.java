@@ -12,6 +12,9 @@ public class YalRoleAuthBatchDTO
     /** 角色ID */
     private Long roleId;
 
+    /** 线路ID（line_app.app_id） */
+    private String lineId;
+
     /** 授权列表 */
     private List<YalRoleAuth> authList;
 
@@ -23,6 +26,16 @@ public class YalRoleAuthBatchDTO
     public void setRoleId(Long roleId)
     {
         this.roleId = roleId;
+    }
+
+    public String getLineId()
+    {
+        return lineId;
+    }
+
+    public void setLineId(String lineId)
+    {
+        this.lineId = lineId;
     }
 
     public List<YalRoleAuth> getAuthList()

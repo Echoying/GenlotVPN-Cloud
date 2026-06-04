@@ -38,6 +38,7 @@ create table vpn_role_dept (
 drop table if exists vpn_role;
 create table vpn_role (
   role_id              bigint(20)      not null auto_increment    comment '角色ID',
+  app_id               varchar(64)     default null               comment '线路ID(line_app.app_id)',
   role_name            varchar(30)     not null                   comment '角色名称',
   role_key             varchar(100)    not null                   comment '角色权限字符串',
   role_sort            int(4)          not null                   comment '显示顺序',
@@ -51,7 +52,8 @@ create table vpn_role (
   update_by            varchar(64)     default ''                 comment '更新者',
   update_time          datetime                                   comment '更新时间',
   remark               varchar(500)    default null               comment '备注',
-  primary key (role_id)
+  primary key (role_id),
+  key idx_vpn_role_app_id (app_id)
 ) engine=innodb auto_increment=100 comment = 'VPN角色信息表';
 
 -- ----------------------------

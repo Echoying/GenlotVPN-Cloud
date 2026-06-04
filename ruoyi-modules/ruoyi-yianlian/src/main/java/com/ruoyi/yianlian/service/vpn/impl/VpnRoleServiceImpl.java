@@ -4,9 +4,12 @@ import com.ruoyi.common.core.constant.UserConstants;
 import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.yianlian.domain.VpnRole;
+import com.ruoyi.yianlian.domain.VpnRoleYianlianMapping;
 import com.ruoyi.yianlian.mapper.VpnRoleMapper;
 import com.ruoyi.yianlian.mapper.VpnUserRoleMapper;
+import com.ruoyi.yianlian.service.IVpnRoleYianlianMappingService;
 import com.ruoyi.yianlian.service.vpn.IVpnRoleService;
+import com.ruoyi.yianlian.service.vpn.VpnRoleYiAnLianSyncService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +29,12 @@ public class VpnRoleServiceImpl implements IVpnRoleService
 
     @Autowired
     private VpnUserRoleMapper userRoleMapper;
+
+    @Autowired
+    private VpnRoleYiAnLianSyncService roleYiAnLianSyncService;
+
+    @Autowired
+    private IVpnRoleYianlianMappingService mappingService;
 
     /**
      * 根据条件分页查询角色数据
@@ -130,7 +139,7 @@ public class VpnRoleServiceImpl implements IVpnRoleService
     public boolean checkRoleNameUnique(VpnRole role)
     {
         Long roleId = StringUtils.isNull(role.getRoleId()) ? -1L : role.getRoleId();
-        VpnRole info = roleMapper.checkRoleNameUnique(role.getRoleName());
+        VpnRole info = roleMapper.checkRoleNameUnique(role.getRoleName(), role.getAppId());
         if (StringUtils.isNotNull(info) && info.getRoleId().longValue() != roleId.longValue())
         {
             return UserConstants.NOT_UNIQUE;
@@ -218,6 +227,62 @@ public class VpnRoleServiceImpl implements IVpnRoleService
             if (countUserRoleByRoleId(roleId) > 0)
             {
                 throw new ServiceException(String.format("%1$s已分配,不能删除", role.getRoleName()));
+            }
+        }
+        return roleMapper.deleteRoleByIds(roleIds);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int insertRoleWithSync(VpnRole role)
+    {
+        int ret = insertRole(role);
+        if (ret > 0 && !roleYiAnLianSyncService.syncOnAdd(role))
+        {
+            throw new ServiceException("同步易安联角色失败");
+        }
+        return ret;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int updateRoleWithSync(VpnRole role)
+    {
+        int ret = updateRole(role);
+        if (ret > 0 && !roleYiAnLianSyncService.syncOnEdit(role))
+        {
+            throw new ServiceException("同步易安联角色失败");
+        }
+        return ret;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int deleteRoleByIdsWithSync(Long[] roleIds)
+    {
+        for (Long roleId : roleIds)
+        {
+            VpnRole role = selectRoleById(roleId);
+            if (countUserRoleByRoleId(roleId) > 0)
+            {
+                throw new ServiceException(String.format("%1$s已分配,不能删除", role.getRoleName()));
+            }
+        }
+        for (Long roleId : roleIds)
+        {
+            VpnRole oldRole = roleMapper.selectRoleById(roleId);
+            if (oldRole == null)
+            {
+                continue;
+            }
+            if (StringUtils.isNotEmpty(oldRole.getAppId()))
+            {
+                VpnRoleYianlianMapping mapping = mappingService.selectByRoleIdAndAppId(roleId, oldRole.getAppId());
+                if (!roleYiAnLianSyncService.syncOnDelete(mapping))
+                {
+                    throw new ServiceException("同步易安联角色失败");
+                }
+                mappingService.deleteByRoleId(roleId);
             }
         }
         return roleMapper.deleteRoleByIds(roleIds);

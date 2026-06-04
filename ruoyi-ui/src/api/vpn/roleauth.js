@@ -1,10 +1,11 @@
 import request from '@/utils/request'
 
 // 根据角色ID查询授权列表
-export function listByRoleId(roleId) {
+export function listByRoleId(roleId, lineId) {
   return request({
     url: '/yianlian/roleAuth/listByRoleId/' + roleId,
-    method: 'get'
+    method: 'get',
+    params: { lineId }
   })
 }
 

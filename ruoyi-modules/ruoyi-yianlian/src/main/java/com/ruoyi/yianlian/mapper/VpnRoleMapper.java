@@ -65,7 +65,7 @@ public interface VpnRoleMapper
      * @param roleName 角色名称
      * @return 角色信息
      */
-    public VpnRole checkRoleNameUnique(String roleName);
+    public VpnRole checkRoleNameUnique(@Param("roleName") String roleName, @Param("appId") String appId);
 
 
     /**

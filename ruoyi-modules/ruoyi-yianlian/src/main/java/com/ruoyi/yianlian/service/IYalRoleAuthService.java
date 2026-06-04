@@ -28,6 +28,11 @@ public interface IYalRoleAuthService
     public List<YalRoleAuth> selectByRoleId(Long roleId);
 
     /**
+     * 根据角色ID与线路查询授权列表
+     */
+    public List<YalRoleAuth> selectByRoleIdAndLineId(Long roleId, String lineId);
+
+    /**
      * 新增角色授权
      */
     public int insertYalRoleAuth(YalRoleAuth yalRoleAuth);
@@ -50,7 +55,7 @@ public interface IYalRoleAuthService
     /**
      * 批量保存角色授权（先删后插），并同步给易安联
      */
-    public int batchSaveRoleAuth(Long roleId, List<YalRoleAuth> authList);
+    public int batchSaveRoleAuth(Long roleId, String lineId, List<YalRoleAuth> authList);
 
     /**
      * 构建应用服务树
