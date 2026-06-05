@@ -201,8 +201,8 @@ export default {
         lineName: this.pendingLine.appName
       }).then(res => {
         this.$message.success('验证码已发送到 VPN 群，请查收')
-        if (res.data && res.data.validSeconds) {
-          this.addLog('info', `验证码有效时间: ${res.data.validSeconds}秒`)
+        if (res.data && res.data.expireAt) {
+          this.addLog('info', `验证码有效至: ${res.data.expireAt}`)
         }
         this.startSendCountdown(60)
       }).catch(err => {

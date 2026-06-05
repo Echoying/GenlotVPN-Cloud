@@ -5,10 +5,11 @@ services:
   ruoyi-nacos:
     container_name: ruoyi-nacos
     image: nacos/nacos-server:v2.4.2
+    environment:
+      - TZ=Asia/Shanghai
+      - MODE=standalone
     build:
       context: ./nacos
-    environment:
-      - MODE=standalone
     volumes:
       - ./nacos/logs/:/home/nacos/logs
       - ./nacos/conf/application.properties:/home/nacos/conf/application.properties
@@ -55,6 +56,8 @@ services:
           - ruoyi-mysql
   ruoyi-redis:
     container_name: ruoyi-redis
+    environment:
+      - TZ=Asia/Shanghai
     image: redis
     build:
       context: ./redis
@@ -73,6 +76,8 @@ services:
   ruoyi-nginx:
     container_name: ruoyi-nginx
     image: nginx
+    environment:
+      - TZ=Asia/Shanghai
     build:
       context: ./nginx
     ports:
@@ -95,6 +100,8 @@ services:
   ruoyi-vpn-nginx:
     container_name: ruoyi-vpn-nginx
     image: nginx
+    environment:
+      - TZ=Asia/Shanghai
     build:
       context: ./nginx
     ports:
@@ -116,6 +123,8 @@ services:
           - ruoyi-vpn-nginx
   ruoyi-gateway:
     container_name: ruoyi-gateway
+    environment:
+      - TZ=Asia/Shanghai
     build:
       context: ./ruoyi/gateway
       dockerfile: dockerfile
@@ -129,6 +138,8 @@ services:
       - ruoyi-network
   ruoyi-vpn-gateway:
     container_name: ruoyi-vpn-gateway
+    environment:
+      - TZ=Asia/Shanghai
     build:
       context: ./ruoyi/vpn/gateway
       dockerfile: dockerfile
@@ -142,6 +153,8 @@ services:
       - ruoyi-network
   ruoyi-auth:
     container_name: ruoyi-auth
+    environment:
+      - TZ=Asia/Shanghai
     build:
       context: ./ruoyi/auth
       dockerfile: dockerfile
@@ -155,6 +168,8 @@ services:
       - ruoyi-network
   ruoyi-vpn-auth:
     container_name: ruoyi-vpn-auth
+    environment:
+      - TZ=Asia/Shanghai
     build:
       context: ./ruoyi/vpn/auth
       dockerfile: dockerfile
@@ -168,6 +183,8 @@ services:
       - ruoyi-network
   ruoyi-modules-system:
     container_name: ruoyi-modules-system
+    environment:
+      - TZ=Asia/Shanghai
     build:
       context: ./ruoyi/modules/system
       dockerfile: dockerfile
@@ -183,6 +200,8 @@ services:
       - ruoyi-network
   ruoyi-modules-yianlian:
     container_name: ruoyi-modules-yianlian
+    environment:
+      - TZ=Asia/Shanghai
     build:
       context: ./ruoyi/modules/yianlian
       dockerfile: dockerfile
@@ -198,6 +217,8 @@ services:
       - ruoyi-network
   ruoyi-modules-gen:
     container_name: ruoyi-modules-gen
+    environment:
+      - TZ=Asia/Shanghai
     build:
       context: ./ruoyi/modules/gen
       dockerfile: dockerfile
@@ -224,6 +245,8 @@ services:
       - ruoyi-network
   ruoyi-modules-file:
     container_name: ruoyi-modules-file
+    environment:
+      - TZ=Asia/Shanghai
     build:
       context: ./ruoyi/modules/file
       dockerfile: dockerfile
@@ -235,6 +258,8 @@ services:
       - ruoyi-network
   ruoyi-visual-monitor:
     container_name: ruoyi-visual-monitor
+    environment:
+      - TZ=Asia/Shanghai
     build:
       context: ./ruoyi/visual/monitor
       dockerfile: dockerfile

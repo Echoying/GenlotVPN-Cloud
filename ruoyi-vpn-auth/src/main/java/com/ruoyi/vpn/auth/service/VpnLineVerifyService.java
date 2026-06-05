@@ -1,10 +1,12 @@
 package com.ruoyi.vpn.auth.service;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import com.ruoyi.common.core.exception.ServiceException;
+import com.ruoyi.common.core.utils.DateUtils;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.vpn.auth.config.VpnLineVerifyProperties;
@@ -67,12 +69,15 @@ public class VpnLineVerifyService
         redisService.setCacheObject(cooldownKey, "1", (long) verifyProperties.getSendCooldownSeconds(), TimeUnit.SECONDS);
         redisService.deleteObject(keyErr(userId, appId));
 
-        String markdown = buildMarkdown(lineName, username, code, validSeconds);
+        Date expireAt = new Date(System.currentTimeMillis() + (long) validSeconds * 1000L);
+        String expireAtStr = DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD_HH_MM_SS, expireAt);
+
+        String markdown = buildMarkdown(lineName, username, code, expireAtStr);
         dingTalkRobotClient.sendMarkdown("VPN线路验证码", markdown);
-        log.info("选线验证码已发送 userId={} appId={} lineName={} validSeconds={}", userId, appId, lineName, validSeconds);
+        log.info("选线验证码已发送 userId={} appId={} lineName={} expireAt={}", userId, appId, lineName, expireAtStr);
 
         Map<String, String> result = new HashMap<>();
-        result.put("validSeconds", String.valueOf(validSeconds));
+        result.put("expireAt", expireAtStr);
         return result;
     }
 
@@ -142,13 +147,13 @@ public class VpnLineVerifyService
         }
     }
 
-    private String buildMarkdown(String lineName, String username, String code, int validSeconds)
+    private String buildMarkdown(String lineName, String username, String code, String expireAt)
     {
         return "### VPN 验证码\n\n"
             + "- **线路名称**：" + lineName + "\n\n"
             + "- **VPN 用户**：" + username + "\n\n"
             + "- **验证码**：" + code + "\n\n"
-            + "- **有效时间**：" + validSeconds + "秒";
+            + "- **有效时间截止**：" + expireAt;
     }
 
     private String generateCode()
