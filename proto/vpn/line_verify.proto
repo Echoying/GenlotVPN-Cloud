@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package vpn;
+
+option java_package = "com.ruoyi.vpn.protocol";
+option java_multiple_files = true;
+
+message SendLineVerifyRequest {
+  string app_id = 1;
+  string line_name = 2;
+}
+
+message SendLineVerifyResponse {
+  string expire_at = 1;
+}
+
+message ConfirmLineVerifyRequest {
+  string app_id = 1;
+  string code = 2;
+}
+
+message ConfirmLineVerifyResponse {}

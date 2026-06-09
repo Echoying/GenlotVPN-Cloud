@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package vpn;
+
+option java_package = "com.ruoyi.vpn.protocol";
+option java_multiple_files = true;
+
+// --- 验证码 ---
+message GetCaptchaRequest {}
+
+message GetCaptchaResponse {
+  bool captcha_enabled = 1;
+  string uuid = 2;
+  string img_base64 = 3;
+}
+
+// --- 登录 ---
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+  string app_id = 3;
+  string code = 4;
+  string uuid = 5;
+}
+
+message LoginResponse {
+  string access_token = 1;
+  int64 expires_in = 2;
+  bytes session_key = 3;
+}
+
+// --- 修改密码 ---
+message ChangePasswordRequest {
+  string username = 1;
+  string old_password = 2;
+  string new_password = 3;
+  string app_id = 4;
+}
+
+message ChangePasswordResponse {}
+
+// --- 登出 / 刷新 ---
+message LogoutRequest {}
+message LogoutResponse {}
+
+message RefreshTokenRequest {}
+message RefreshTokenResponse {}

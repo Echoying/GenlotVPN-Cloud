@@ -1,0 +1,148 @@
+cmake_minimum_required(VERSION 3.21)
+project(GenlotVPN VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+
+# Anaconda/vcpkg 提供的 libprotobuf 为 MSVC 版，MinGW 无法链接
+if(MINGW OR (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND WIN32))
+    message(FATAL_ERROR
+        "GenlotVPN 请使用 Qt Creator Kit：Desktop Qt MSVC2022 64bit。\n"
+        "当前为 MinGW 工具链，找不到可链接的 Protobuf 库（Anaconda 仅提供 .lib）。\n"
+        "操作：左下角 Kit 选 MSVC2022 → 构建类型选 Release → 重新运行 CMake。")
+endif()
+
+if(WIN32 AND NOT DEFINED Protobuf_ROOT AND EXISTS "D:/anaconda3/Library/include/google/protobuf/message.h")
+    set(Protobuf_ROOT "D:/anaconda3/Library" CACHE PATH "Protobuf 安装目录（Anaconda）")
+endif()
+
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Network)
+find_package(Protobuf REQUIRED)
+if(NOT Protobuf_LIBRARIES AND NOT TARGET protobuf::libprotobuf)
+    message(FATAL_ERROR
+        "未找到 Protobuf 库。请使用 MSVC Kit，并在 CMake 参数中设置：\n"
+        "  -DProtobuf_ROOT=D:/anaconda3/Library\n"
+        "或在 Qt Creator → 项目 → CMake → 初始配置 中添加上述变量。")
+endif()
+
+set(PROTO_DIR ${CMAKE_SOURCE_DIR}/../proto)
+file(GLOB PROTO_FILES ${PROTO_DIR}/vpn/*.proto)
+# import "vpn/common.proto"：-I 根目录为 proto/，生成物落在 build/vpn/ 以匹配 vpn/*.pb.h
+set(PROTOBUF_GENERATE_CPP_APPEND_PATH FALSE)
+set(Protobuf_IMPORT_DIRS ${PROTO_DIR})
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})
+if(NOT PROTO_SRCS)
+    message(FATAL_ERROR "未找到 proto 文件，请确认 ${PROTO_DIR}/vpn/*.proto 存在")
+endif()
+include_directories(${Protobuf_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
+
+set(SOURCES
+    src/main.cpp
+    src/transport/TcpClient.cpp
+    src/transport/FrameCodec.cpp
+    src/transport/CertificatePinner.cpp
+    src/core/TcpHmacUtils.cpp
+    src/core/VpnCloudService.cpp
+    src/core/ControllerService.cpp
+    src/core/SessionManager.cpp
+    src/core/SecureStorage.cpp
+    src/core/VpnFlowController.cpp
+    ${PROTO_SRCS}
+)
+
+qt_add_executable(GenlotVPN ${SOURCES})
+
+if(MSVC)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/images/genlot-app.ico")
+        target_sources(GenlotVPN PRIVATE windows/app_icon.rc)
+    else()
+        message(WARNING "未找到 assets/images/genlot-app.ico，跳过嵌入 exe 图标")
+    endif()
+endif()
+
+# Theme.qml 含 pragma Singleton，需在 qmldir 中注册为 singleton
+set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+
+qt_add_qml_module(GenlotVPN
+    URI GenlotVPN
+    VERSION 1.0
+    QML_FILES
+        qml/main.qml
+        qml/Theme.qml
+        qml/components/PageBackground.qml
+        qml/components/PageShell.qml
+        qml/components/ActionRow.qml
+        qml/components/FlatField.qml
+        qml/components/FlatCombo.qml
+        qml/components/LineCombo.qml
+        qml/components/BrandHeader.qml
+        qml/components/PrimaryButton.qml
+        qml/components/GhostButton.qml
+        qml/components/Card.qml
+        qml/pages/ChooseLinePage.qml
+        qml/pages/LoginPage.qml
+        qml/pages/ConnectLinePage.qml
+        qml/pages/AppListPage.qml
+    RESOURCES
+        assets/images/genlot-logo.svg
+        assets/images/genlot-logo-official.png
+        assets/images/genlot-app-icon-official.png
+        assets/images/genlot-bg-light.png
+)
+
+target_link_libraries(GenlotVPN PRIVATE
+    Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Network
+    ${Protobuf_LIBRARIES}
+)
+
+target_include_directories(GenlotVPN PRIVATE src ${CMAKE_CURRENT_BINARY_DIR})
+target_compile_definitions(GenlotVPN PRIVATE VPN_HAS_PROTO=1)
+
+# Anaconda 的 libprotobuf 为 Release DLL，Windows 下需定义 PROTOBUF_USE_DLLS
+set(GENLOT_PROTOBUF_DLL "")
+if(WIN32 AND TARGET protobuf::libprotobuf)
+    get_target_property(_protobuf_type protobuf::libprotobuf TYPE)
+    if(_protobuf_type STREQUAL "SHARED_LIBRARY" OR EXISTS "${Protobuf_ROOT}/bin/libprotobuf.dll")
+        target_compile_definitions(GenlotVPN PRIVATE PROTOBUF_USE_DLLS)
+        if(Protobuf_ROOT AND EXISTS "${Protobuf_ROOT}/bin/libprotobuf.dll")
+            set(GENLOT_PROTOBUF_DLL "${Protobuf_ROOT}/bin/libprotobuf.dll")
+        endif()
+    endif()
+elseif(WIN32 AND Protobuf_ROOT AND EXISTS "${Protobuf_ROOT}/bin/libprotobuf.dll")
+    target_compile_definitions(GenlotVPN PRIVATE PROTOBUF_USE_DLLS)
+    set(GENLOT_PROTOBUF_DLL "${Protobuf_ROOT}/bin/libprotobuf.dll")
+endif()
+
+# Debug 可执行文件 + Release 版 libprotobuf.dll 会触发 0xC0000005 堆损坏崩溃
+option(GENLOT_ALLOW_DEBUG_PROTOBUF "允许 Debug 构建链接 Release 版 libprotobuf（不推荐）" OFF)
+if(MSVC AND GENLOT_PROTOBUF_DLL AND NOT GENLOT_ALLOW_DEBUG_PROTOBUF)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        message(FATAL_ERROR
+            "当前为 Debug 构建，但 Anaconda/vcpkg 的 libprotobuf.dll 为 Release 版，"
+            "运行时会崩溃 (0xC0000005)。\n"
+            "请在 Qt Creator 左下角切换为 Release 后重新构建；"
+            "或传入 -DGENLOT_ALLOW_DEBUG_PROTOBUF=ON 强行继续。")
+    endif()
+    if(CMAKE_CONFIGURATION_TYPES)
+        message(STATUS "提示：使用 Visual Studio 生成器时请选择 Release 配置运行 GenlotVPN。")
+    endif()
+endif()
+
+# 拷贝默认配置与 libprotobuf.dll 到输出目录（与 exe 同目录，便于 Qt Creator 直接运行）
+configure_file(${CMAKE_SOURCE_DIR}/resources/config.json ${CMAKE_BINARY_DIR}/config.json COPYONLY)
+add_custom_command(TARGET GenlotVPN POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/resources/config.json
+        $<TARGET_FILE_DIR:GenlotVPN>/config.json
+    COMMENT "Copy config.json next to GenlotVPN executable"
+)
+if(GENLOT_PROTOBUF_DLL)
+    add_custom_command(TARGET GenlotVPN POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${GENLOT_PROTOBUF_DLL}"
+            $<TARGET_FILE_DIR:GenlotVPN>/libprotobuf.dll
+        COMMENT "Copy libprotobuf.dll next to GenlotVPN executable"
+    )
+endif()

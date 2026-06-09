@@ -27,8 +27,8 @@ cp ../ruoyi-vpn-gateway/target/ruoyi-vpn-gateway.jar ./ruoyi/vpn/gateway/jar
 echo "begin copy ruoyi-auth "
 cp ../ruoyi-auth/target/ruoyi-auth.jar ./ruoyi/auth/jar
 
-echo "begin copy ruoyi-auth "
-cp ../ruoyi-auth/target/ruoyi-vpn-auth.jar ./ruoyi/vpn/auth/jar
+echo "begin copy ruoyi-vpn-auth "
+cp ../ruoyi-vpn-auth/target/ruoyi-vpn-auth.jar ./ruoyi/vpn/auth/jar
 
 echo "begin copy ruoyi-visual "
 cp ../ruoyi-visual/ruoyi-monitor/target/ruoyi-visual-monitor.jar  ./ruoyi/visual/monitor/jar

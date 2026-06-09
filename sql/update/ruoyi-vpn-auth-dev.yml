@@ -1,0 +1,41 @@
+# Nacos 配置：Data ID = ruoyi-vpn-auth-dev.yml，Group = DEFAULT_GROUP
+# 桌面客户端走 TCP 9443（不经 vpn-gateway）；Web 端 ruoyi-vpn-ui 仍走 HTTP 9400/网关
+
+spring:
+  redis:
+    host: ruoyi-redis
+    port: 6379
+    password:
+
+vpn:
+  aes:
+    key: EnSwordAgent@123
+    iv: 321@tnegAdrowSnE
+  captcha:
+    enabled: true
+    type: math
+  # 桌面端 Protobuf RPC（GenlotVPN 客户端直连本端口）
+  tcp:
+    enabled: true
+    port: 9443
+    tls:
+      # 开发/内网联调可 false；生产必须 true 并配置证书
+      enabled: false
+      cert-path:
+      key-path:
+    security:
+      timestamp-skew-sec: 60
+      nonce-ttl-sec: 300
+      max-frame-bytes: 1048576
+  line-verify:
+    code-ttl-minutes: 5
+    send-cooldown-seconds: 60
+    max-verify-attempts: 5
+    line-name-max-length: 64
+
+dingtalk:
+  robot:
+    enabled: false
+    access-token:
+    secret:
+    webhook-url: https://oapi.dingtalk.com/robot/send

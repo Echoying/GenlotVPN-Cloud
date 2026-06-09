@@ -1,0 +1,80 @@
+# GenlotVPN 桌面客户端（Qt 6 + C++）
+
+Windows/macOS 跨平台 VPN 登录客户端。UI 风格对齐 [Genlot 官网](https://www.genlot.com/)（深蓝 + 金色点缀）。
+
+## 功能
+
+- 云端：**TLS + TCP + Protobuf**（`ruoyi-vpn-auth` 端口 9443）
+- 本地：易安联控制器 HTTP `127.0.0.1:30303`
+- 完整流程：选线 → 登录（验证码）→ 钉钉验证 → 控制器连接 → 网关/应用列表
+
+## 依赖
+
+本机需安装开发环境，**详见 [docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md)**。
+
+| 组件 | 说明 |
+|------|------|
+| Visual Studio 2022 | C++ 桌面开发 |
+| CMake 3.21+ | 构建 |
+| Qt 6.6+ MSVC 64-bit | UI |
+| Protobuf 3.x | 协议（推荐 vcpkg） |
+
+检查依赖：`bin\check-vpn-client-deps.bat`
+
+**暂未安装 Qt/Protobuf 时**：可先只构建后端 `mvn package -pl ruoyi-vpn-auth -am -DskipTests`，Web 端 `ruoyi-vpn-ui` 仍可 HTTP 登录；桌面客户端待环境就绪后再编译。
+
+## 构建
+
+```bat
+set CMAKE_PREFIX_PATH=C:\Qt\6.6.0\msvc2019_64
+set PATH=%PATH%;C:\path\to\protobuf\bin
+bin\build-vpn-client.bat
+```
+
+或手动：
+
+```bash
+cd ruoyi-vpn-client
+cmake -B build -DCMAKE_PREFIX_PATH=C:/Qt/6.6/msvc2019_64 -DProtobuf_ROOT=C:/path/to/protobuf
+cmake --build build --config Release
+```
+
+**重要（Qt Creator）**：
+
+1. **Kit** 必须选 **Desktop Qt 6.11.1 MSVC2022 64bit**（不要用 MinGW / ARM64 / WebAssembly）
+2. **构建类型** 选 **Release**（Anaconda 的 `libprotobuf.dll` 为 Release 版，Debug 会 `0xC0000005` 崩溃）
+3. CMake 初始配置建议包含：`-DProtobuf_ROOT=D:/anaconda3/Library`（路径按本机 Anaconda 调整）
+4. 若提示 “Project did not parse successfully”，多半是选错了 MinGW Kit；切换到 MSVC 后点 **构建 → 重新运行 CMake**
+
+运行前将 `build/config.json` 放在 exe 同目录，或通过 `vpnStorage` 保存服务器地址。
+
+## 配置 config.json
+
+```json
+{
+  "serverHost": "10.9.2.177",
+  "serverPort": 9443,
+  "useTls": false,
+  "certPinSha256": ""
+}
+```
+
+开发环境：`vpn.tcp.tls.enabled=false`（明文 TCP）。  
+生产环境：启用 TLS 并配置证书 Pinning。
+
+## 联调步骤
+
+1. 启动 Nacos、Redis、`ruoyi-vpn-auth`（含 TCP 9443）
+2. 本机安装并启动易安联 Agent（30303）
+3. 运行 GenlotVPN.exe
+4. 选线 → 登录 → 钉钉验证码 → 自动连接控制器 → 应用列表
+
+## 安全说明
+
+- 登录后 RPC 携带 **HMAC-SHA256(session_key)**
+- 记住密码暂用 QSettings（生产应换 DPAPI/Keychain）
+- 控制器密码使用服务端 AES 密文，**客户端不解密**，直接传给 Agent
+
+## 协议
+
+见 [`../proto/README.md`](../proto/README.md)

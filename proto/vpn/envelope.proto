@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package vpn;
+
+option java_package = "com.ruoyi.vpn.protocol";
+option java_multiple_files = true;
+
+// RPC 消息类型
+enum MessageType {
+  MESSAGE_TYPE_UNSPECIFIED = 0;
+  GET_CAPTCHA = 1;
+  LIST_PUBLIC_LINES = 2;
+  LOGIN = 3;
+  CHANGE_PASSWORD = 4;
+  LOGOUT = 5;
+  REFRESH_TOKEN = 6;
+  GET_AUTHORIZED_LINES = 7;
+  SEND_LINE_VERIFY = 8;
+  CONFIRM_LINE_VERIFY = 9;
+  GET_USER_CREDENTIALS = 10;
+}
+
+// 统一报文外壳
+message Envelope {
+  string request_id = 1;
+  int64 timestamp_ms = 2;
+  bytes nonce = 3;
+  MessageType type = 4;
+  bytes payload = 5;
+  string access_token = 6;
+  bytes mac = 7;
+}
+
+// 统一 RPC 响应包装
+message RpcResponse {
+  int32 code = 1;
+  string msg = 2;
+  bytes data = 3;
+}

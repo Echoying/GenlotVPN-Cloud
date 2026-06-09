@@ -7,6 +7,20 @@ vpn:
   aes:
     key: EnSwordAgent@123
     iv: 321@tnegAdrowSnE
+  captcha:
+    enabled: true
+    type: math
+  tcp:
+    enabled: true
+    port: 9443
+    tls:
+      enabled: false
+      cert-path:
+      key-path:
+    security:
+      timestamp-skew-sec: 60
+      nonce-ttl-sec: 300
+      max-frame-bytes: 1048576
 
 # Spring
 spring: 

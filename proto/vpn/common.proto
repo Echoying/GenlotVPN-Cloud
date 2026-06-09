@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package vpn;
+
+option java_package = "com.ruoyi.vpn.protocol";
+option java_multiple_files = true;
+
+// VPN 线路信息
+message VpnLine {
+  string app_id = 1;
+  string app_name = 2;
+  string host = 3;
+  string srv_port = 4;
+  string spa_port = 5;
+  string spa_key = 6;
+}

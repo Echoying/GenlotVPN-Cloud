@@ -1,0 +1,191 @@
+#include "ControllerService.h"
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QUrl>
+
+namespace vpn {
+
+namespace {
+
+QString extractControllerError(const QJsonObject &obj, const QString &fallback)
+{
+    const QString messages = obj.value(QStringLiteral("messages")).toString().trimmed();
+    if (!messages.isEmpty()) {
+        return messages;
+    }
+    const QString message = obj.value(QStringLiteral("message")).toString().trimmed();
+    if (!message.isEmpty()) {
+        return message;
+    }
+    const QString msg = obj.value(QStringLiteral("msg")).toString().trimmed();
+    if (!msg.isEmpty()) {
+        return msg;
+    }
+    return fallback;
+}
+
+} // namespace
+
+ControllerService::ControllerService(QObject *parent) : QObject(parent) {}
+
+QVariantMap ControllerService::serverToJson(const QVariantMap &server)
+{
+    QVariantMap obj;
+    obj[QStringLiteral("host")] = server.value(QStringLiteral("host")).toString();
+    obj[QStringLiteral("srvPort")] = server.value(QStringLiteral("srvPort")).toString();
+    obj[QStringLiteral("spaPort")] = server.value(QStringLiteral("spaPort")).toString();
+    obj[QStringLiteral("spaKey")] = server.value(QStringLiteral("spaKey")).toString();
+    obj[QStringLiteral("enablePortMapping")] = false;
+    obj[QStringLiteral("mappingPort")] = server.value(QStringLiteral("srvPort")).toString();
+    obj[QStringLiteral("device_spa_enable")] = false;
+    return obj;
+}
+
+void ControllerService::postJson(const QString &path, const QJsonDocument &doc,
+                                 std::function<void(const QJsonObject &)> onSuccess)
+{
+    QNetworkRequest req(QUrl(m_baseUrl + path));
+    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    auto *reply = m_nam.post(req, doc.toJson());
+    connect(reply, &QNetworkReply::finished, this, [this, reply, onSuccess = std::move(onSuccess)]() {
+        reply->deleteLater();
+        if (reply->error() != QNetworkReply::NoError) {
+            emit operationFailed(reply->errorString());
+            return;
+        }
+        const QJsonObject obj = QJsonDocument::fromJson(reply->readAll()).object();
+        if (obj.value(QStringLiteral("code")).toString() != QStringLiteral("200")) {
+            emit operationFailed(extractControllerError(obj, QStringLiteral("控制器请求失败")));
+            return;
+        }
+        onSuccess(obj);
+    });
+}
+
+void ControllerService::getJson(const QString &path, std::function<void(const QJsonObject &)> onSuccess)
+{
+    QNetworkRequest req(QUrl(m_baseUrl + path));
+    auto *reply = m_nam.get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, onSuccess = std::move(onSuccess)]() {
+        reply->deleteLater();
+        if (reply->error() != QNetworkReply::NoError) {
+            emit operationFailed(QStringLiteral("无法连接本地控制器(127.0.0.1:30303)，请确保易安联 Agent 已启动"));
+            return;
+        }
+        const QJsonObject obj = QJsonDocument::fromJson(reply->readAll()).object();
+        if (obj.value(QStringLiteral("code")).toString() != QStringLiteral("200")) {
+            emit operationFailed(extractControllerError(obj, QStringLiteral("控制器请求失败")));
+            return;
+        }
+        onSuccess(obj);
+    });
+}
+
+void ControllerService::detectServer(const QVariantMap &server)
+{
+    QJsonArray arr;
+    arr.append(QJsonObject::fromVariantMap(serverToJson(server)));
+    postJson(QStringLiteral("/api/v1/control/detect"), QJsonDocument(arr), [this](const QJsonObject &obj) {
+        const QJsonArray data = obj.value(QStringLiteral("data")).toArray();
+        if (data.isEmpty()) {
+            emit operationFailed(QStringLiteral("探测未返回数据"));
+            return;
+        }
+        emit detectSucceeded(data.first().toObject().toVariantMap());
+    });
+}
+
+void ControllerService::selectServer(const QVariantMap &server)
+{
+    postJson(QStringLiteral("/api/v1/control/select"), QJsonDocument(QJsonObject::fromVariantMap(serverToJson(server))),
+             [this](const QJsonObject &obj) {
+        emit selectSucceeded(obj.value(QStringLiteral("data")).toObject().toVariantMap());
+    });
+}
+
+void ControllerService::fetchVersions(const QVariantMap &server)
+{
+    postJson(QStringLiteral("/api/v1/version/latestServer"),
+             QJsonDocument(QJsonObject::fromVariantMap(serverToJson(server))),
+             [this](const QJsonObject &serverObj) {
+        getJson(QStringLiteral("/api/v1/version/current"), [this, serverObj](const QJsonObject &clientObj) {
+            const QString sv = serverObj.value(QStringLiteral("data")).toObject().value(QStringLiteral("version")).toString();
+            const QString cv = clientObj.value(QStringLiteral("data")).toObject().value(QStringLiteral("localVersion")).toString();
+            emit versionsReady(sv, cv);
+        });
+    });
+}
+
+void ControllerService::loginWithAccount(const QString &username, const QString &encryptedPassword)
+{
+    QJsonObject body;
+    body[QStringLiteral("username")] = username;
+    body[QStringLiteral("password")] = encryptedPassword;
+    postJson(QStringLiteral("/api/v1/user/loginWithAccount"), QJsonDocument(body), [this](const QJsonObject &) {
+        emit loginControllerSucceeded();
+    });
+}
+
+void ControllerService::fetchUserInfo()
+{
+    getJson(QStringLiteral("/api/v1/user/info"), [this](const QJsonObject &obj) {
+        const QString name = obj.value(QStringLiteral("data")).toObject().value(QStringLiteral("name")).toString();
+        emit userInfoReady(name);
+    });
+}
+
+void ControllerService::fetchGatewayList()
+{
+    getJson(QStringLiteral("/api/v1/gateway/list"), [this](const QJsonObject &obj) {
+        const QJsonObject data = obj.value(QStringLiteral("data")).toObject();
+        const QJsonArray list = data.value(QStringLiteral("list")).toArray();
+        QVariantList gateways;
+        for (const QJsonValue &v : list) {
+            gateways.append(v.toObject().toVariantMap());
+        }
+        emit gatewayListReady(gateways, data.value(QStringLiteral("turnOn")).toBool(),
+                              data.value(QStringLiteral("tunCode")).toInt());
+    });
+}
+
+void ControllerService::turnOnGateway(bool turnOn)
+{
+    QJsonObject body;
+    body[QStringLiteral("turnOn")] = turnOn;
+    postJson(QStringLiteral("/api/v1/gateway/turnOn"), QJsonDocument(body), [this](const QJsonObject &) {
+        fetchGatewayList();
+    });
+}
+
+void ControllerService::switchGateway(const QString &gatewayId)
+{
+    QJsonObject body;
+    body[QStringLiteral("gatewayID")] = gatewayId;
+    postJson(QStringLiteral("/api/v1/gateway/switch"), QJsonDocument(body), [this](const QJsonObject &) {
+        fetchGatewayList();
+    });
+}
+
+void ControllerService::fetchAppList(const QString &serviceName)
+{
+    QJsonObject body;
+    body[QStringLiteral("serviceName")] = serviceName;
+    postJson(QStringLiteral("/api/v1/user/getUserGroupedServiceList"), QJsonDocument(body), [this](const QJsonObject &obj) {
+        const QJsonArray data = obj.value(QStringLiteral("data")).toArray();
+        QVariantList apps;
+        for (const QJsonValue &v : data) {
+            apps.append(v.toObject().toVariantMap());
+        }
+        emit appListReady(apps);
+    });
+}
+
+void ControllerService::controllerLogout()
+{
+    postJson(QStringLiteral("/api/v1/user/logout"), QJsonDocument(QJsonObject()), [](const QJsonObject &) {});
+}
+
+} // namespace vpn

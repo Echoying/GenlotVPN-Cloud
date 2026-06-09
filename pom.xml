@@ -296,10 +296,18 @@
                 <version>${ruoyi.version}</version>
             </dependency>
 
+            <!-- VPN TCP Protobuf 协议 -->
+            <dependency>
+                <groupId>com.ruoyi</groupId>
+                <artifactId>ruoyi-vpn-protocol</artifactId>
+                <version>${ruoyi.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
     <modules>
+        <module>ruoyi-vpn-protocol</module>
         <module>ruoyi-auth</module>
         <module>ruoyi-vpn-auth</module>
         <module>ruoyi-gateway</module>

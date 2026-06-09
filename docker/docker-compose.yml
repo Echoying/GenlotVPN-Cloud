@@ -175,6 +175,7 @@ services:
       dockerfile: dockerfile
     ports:
       - "9400:9400"
+      - "9443:9443"
     depends_on:
       - ruoyi-redis
     links:

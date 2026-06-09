@@ -1,5 +1,5 @@
-# 选线钉钉验证码 — 追加到 Nacos 配置 ruoyi-vpn-auth-dev.yml（或对应环境）
-# 部署后需重启 ruoyi-vpn-auth
+# 选线钉钉验证码 — 已合并到 sql/update/ruoyi-vpn-auth-dev.yml
+# 启用钉钉时修改 dingtalk.robot 段并重启 ruoyi-vpn-auth
 
 dingtalk:
   robot:

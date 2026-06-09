@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package vpn;
+
+import "vpn/common.proto";
+
+option java_package = "com.ruoyi.vpn.protocol";
+option java_multiple_files = true;
+
+message ListPublicLinesRequest {}
+
+message ListPublicLinesResponse {
+  repeated VpnLine lines = 1;
+}
+
+message GetAuthorizedLinesRequest {}
+
+message GetAuthorizedLinesResponse {
+  repeated VpnLine lines = 1;
+}
+
+message GetUserCredentialsRequest {
+  string app_id = 1;
+}
+
+message GetUserCredentialsResponse {
+  string username = 1;
+  string password = 2;
+}
