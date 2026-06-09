@@ -1,5 +1,6 @@
 #include "VpnFlowController.h"
 #include "AppLogger.h"
+#include "../transport/TcpClient.h"
 #include <QGuiApplication>
 #include <QClipboard>
 #include <QTimer>
@@ -715,23 +716,30 @@ QString VpnFlowController::connectionModeLabel() const
 
 void VpnFlowController::reloadServerSettings()
 {
-    const QVariantMap saved = m_storage->loadServer();
-    m_serverHost = saved.value(QStringLiteral("host")).toString();
-    m_serverPort = static_cast<quint16>(saved.value(QStringLiteral("port")).toUInt());
-    m_serverUseTls = saved.value(QStringLiteral("useTls")).toBool();
     m_certPinSha256.clear();
     m_certPinSha256Backup.clear();
 
+    // exe 同目录 config.json 优先（打包部署）；QSettings 仅作缺省回退
     const QVariantMap cfg = m_storage->loadConfigFile();
-    if (!cfg.value(QStringLiteral("serverHost")).toString().isEmpty()) {
-        m_serverHost = cfg.value(QStringLiteral("serverHost")).toString();
+    const QVariantMap saved = m_storage->loadServer();
+
+    m_serverHost = cfg.value(QStringLiteral("serverHost")).toString();
+    if (m_serverHost.isEmpty()) {
+        m_serverHost = saved.value(QStringLiteral("host")).toString();
     }
+
     if (cfg.contains(QStringLiteral("serverPort"))) {
         m_serverPort = static_cast<quint16>(cfg.value(QStringLiteral("serverPort")).toUInt());
+    } else {
+        m_serverPort = static_cast<quint16>(saved.value(QStringLiteral("port")).toUInt());
     }
+
     if (cfg.contains(QStringLiteral("useTls"))) {
         m_serverUseTls = cfg.value(QStringLiteral("useTls")).toBool();
+    } else {
+        m_serverUseTls = saved.value(QStringLiteral("useTls")).toBool();
     }
+
     m_certPinSha256 = cfg.value(QStringLiteral("certPinSha256")).toString();
     m_certPinSha256Backup = cfg.value(QStringLiteral("certPinSha256Backup")).toString();
 
@@ -746,9 +754,14 @@ void VpnFlowController::reloadServerSettings()
 void VpnFlowController::bootstrapServer()
 {
     reloadServerSettings();
+    TcpClient::logLocalTlsCapabilities();
     m_cloud->configure(m_serverHost, m_serverPort, m_serverUseTls,
                        m_certPinSha256, m_certPinSha256Backup);
     setServerEndpoint(QStringLiteral("%1:%2").arg(m_serverHost).arg(m_serverPort));
+    addLog(QStringLiteral("info"),
+           QStringLiteral("云端连接模式: %1（config.json useTls=%2）")
+               .arg(connectionModeLabel())
+               .arg(m_serverUseTls ? QStringLiteral("true") : QStringLiteral("false")));
     emit serverConfigChanged();
 }
 

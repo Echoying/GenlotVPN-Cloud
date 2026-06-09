@@ -53,7 +53,8 @@ set(SOURCES
     ${PROTO_SRCS}
 )
 
-qt_add_executable(GenlotVPN ${SOURCES})
+# WIN32：使用 GUI 子系统，避免运行时弹出黑色 cmd 窗口
+qt_add_executable(GenlotVPN WIN32 ${SOURCES})
 
 if(MSVC)
     if(EXISTS "${CMAKE_SOURCE_DIR}/assets/images/genlot-app.ico")
@@ -141,10 +142,27 @@ add_custom_command(TARGET GenlotVPN POST_BUILD
     COMMENT "Copy config.json next to GenlotVPN executable"
 )
 if(GENLOT_PROTOBUF_DLL)
+    get_filename_component(GENLOT_PROTOBUF_BIN_DIR "${GENLOT_PROTOBUF_DLL}" DIRECTORY)
     add_custom_command(TARGET GenlotVPN POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${GENLOT_PROTOBUF_DLL}"
             $<TARGET_FILE_DIR:GenlotVPN>/libprotobuf.dll
         COMMENT "Copy libprotobuf.dll next to GenlotVPN executable"
     )
+    if(EXISTS "${GENLOT_PROTOBUF_BIN_DIR}/zlib.dll")
+        add_custom_command(TARGET GenlotVPN POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${GENLOT_PROTOBUF_BIN_DIR}/zlib.dll"
+                $<TARGET_FILE_DIR:GenlotVPN>/zlib.dll
+            COMMENT "Copy zlib.dll (libprotobuf runtime dependency)"
+        )
+    endif()
 endif()
+
+# QML 模块元数据（qmldir/qmltypes）需与 exe 同目录，否则 Release 打包后无法解析自定义页面类型
+add_custom_command(TARGET GenlotVPN POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_BINARY_DIR}/GenlotVPN
+        $<TARGET_FILE_DIR:GenlotVPN>/GenlotVPN
+    COMMENT "Copy GenlotVPN QML module next to executable"
+)

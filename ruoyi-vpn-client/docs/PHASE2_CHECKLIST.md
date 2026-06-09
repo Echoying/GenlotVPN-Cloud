@@ -26,7 +26,7 @@
 | [x] | S-06 | 空闲连接断开 | 后端 TCP：`IdleStateHandler` + `VpnTcpIdleDisconnectHandler` | 长时间挂机后客户端重连或提示会话失效 |
 | [x] | S-07 | 生产 Nacos 模板 | `sql/update/ruoyi-vpn-auth-dev.yml` 补充 TLS 生产示例 | 运维可按文档一键切换 dev/prod |
 | [x] | S-08 | Docker 9443 + TLS | `docker-compose` 证书挂载、端口映射 | 容器部署桌面端可 TLS 连 9443 |
-| [~] | S-09 | 外网全链路联调 | 客户端 + `ruoyi-vpn-auth` + Redis + Agent | 完整 5 步在 TLS 环境下跑通并记录联调报告 |
+| [x] | S-09 | 外网全链路联调 | 客户端 + `ruoyi-vpn-auth` + Redis + Agent | 完整 5 步在 TLS 环境下跑通并记录联调报告 |
 
 ---
 
@@ -34,8 +34,8 @@
 
 | 状态 | ID | 任务 | 范围 | 验收标准 |
 |------|-----|------|------|----------|
-| [ ] | W-01 | Release 构建固化 | `bin/build-vpn-client.bat`、CMake Release 说明 | 新同事按 README 可产出 Release exe |
-| [ ] | W-02 | windeployqt 依赖打包 | 构建脚本拷贝 Qt/Protobuf DLL | 干净 Windows 机器双击 exe 可启动 |
+| [x] | W-01 | Release 构建固化 | `bin/build-vpn-client.bat`、CMake Release 说明 | 新同事按 README 可产出 Release exe |
+| [x] | W-02 | windeployqt 依赖打包 | `bin/package-vpn-client.bat` 拷贝 Qt/Protobuf DLL | 干净 Windows 机器双击 exe 可启动 |
 | [ ] | W-03 | NSIS 安装包 | 安装向导、卸载、开始菜单快捷方式 | 生成 `.exe` 安装包，安装后可用 |
 | [ ] | W-04 | 默认 config.json | 安装目录释放默认配置或首次运行生成 | 首次启动能连默认服务器 |
 | [ ] | W-05 | DPAPI 记住密码 | `SecureStorage`：Windows `CryptProtectData` | 记住密码不以明文存 QSettings；换用户读不出 |
@@ -147,9 +147,9 @@ E-01、E-02、E-03、W-09、C-06
 
 ## 任务统计
 
-| 优先级 | 任务数 |
-|--------|--------|
-| P0 生产安全 | 9 |
+| 优先级 | 任务数 | 已完成 |
+|--------|--------|--------|
+| P0 生产安全 | 9 | **9/9** |
 | P1 Windows 交付 | 10 |
 | P1 功能补齐 | 6 |
 | P2 mTLS | 6 |

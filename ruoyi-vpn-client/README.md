@@ -23,20 +23,43 @@ Windows/macOS 跨平台 VPN 登录客户端。UI 风格对齐 [Genlot 官网](ht
 
 **暂未安装 Qt/Protobuf 时**：可先只构建后端 `mvn package -pl ruoyi-vpn-auth -am -DskipTests`，Web 端 `ruoyi-vpn-ui` 仍可 HTTP 登录；桌面客户端待环境就绪后再编译。
 
-## 构建
+## 构建（Release）
+
+**推荐：一键脚本（W-01）**
 
 ```bat
-set CMAKE_PREFIX_PATH=C:\Qt\6.6.0\msvc2019_64
-set PATH=%PATH%;C:\path\to\protobuf\bin
+set CMAKE_PREFIX_PATH=D:\apps\Qt\6.11.1\msvc2022_64
+set Protobuf_ROOT=D:\anaconda3\Library
+bin\check-vpn-client-deps.bat
 bin\build-vpn-client.bat
 ```
 
-或手动：
+产物：`ruoyi-vpn-client\build-msvc2022\Release\GenlotVPN.exe`
 
-```bash
+**打包依赖（W-02，windeployqt + libprotobuf.dll）**
+
+必须先 **Release 构建**（不要用 Debug，否则干净机器会闪退并提示 QML debugging）。
+
+```bat
+bin\package-vpn-client.bat
+```
+
+或构建并打包一步完成：
+
+```bat
+bin\build-vpn-client.bat --package
+```
+
+可分发目录：`ruoyi-vpn-client\dist\GenlotVPN-win64\`（含 Qt DLL、`config.json`，可在无开发环境的 Windows 机器运行）
+
+**手动 CMake（与脚本等价）**
+
+```bat
 cd ruoyi-vpn-client
-cmake -B build -DCMAKE_PREFIX_PATH=C:/Qt/6.6/msvc2019_64 -DProtobuf_ROOT=C:/path/to/protobuf
-cmake --build build --config Release
+cmake -B build-msvc2022 -G "Visual Studio 17 2022" -A x64 ^
+  -DCMAKE_PREFIX_PATH=D:/apps/Qt/6.11.1/msvc2022_64 ^
+  -DProtobuf_ROOT=D:/anaconda3/Library
+cmake --build build-msvc2022 --config Release
 ```
 
 **重要（Qt Creator）**：

@@ -2,8 +2,111 @@
 #include "core/AppLogger.h"
 #include <QSslConfiguration>
 #include <QTimer>
+#include <QStringList>
 
 namespace vpn {
+
+namespace {
+
+QString humanizeConnectError(const QString &raw, bool useTls)
+{
+    const QString err = raw.trimmed();
+    if (err.isEmpty()) {
+        return useTls ? QStringLiteral("TLS 连接失败，请检查证书指纹与服务端 TLS 配置")
+                      : QStringLiteral("网络连接失败");
+    }
+
+    const QString lower = err.toLower();
+    const bool protocolRelated = lower.contains(QStringLiteral("protocol"))
+                                 || lower.contains(QStringLiteral("ssl"))
+                                 || lower.contains(QStringLiteral("tls"))
+                                 || err.contains(QStringLiteral("协议"));
+    if (err.contains(QStringLiteral("不支持的功能"))
+        || lower.contains(QStringLiteral("unsupported function"))) {
+        return QStringLiteral(
+            "TLS 握手失败（Windows 与服务器 TLS 特性不兼容）。请重启 ruoyi-vpn-auth 使服务端支持 TLS 1.2+1.3，"
+            "并确认 config.json 中 useTls 为 true。");
+    }
+    if (protocolRelated) {
+        if (useTls) {
+            return QStringLiteral("TLS 握手失败（%1）").arg(err);
+        }
+        return QStringLiteral(
+            "连接失败：服务端已启用 TLS，请在 config.json 设 useTls 为 true 并填写 certPinSha256。");
+    }
+    return err;
+}
+
+QString sslProtocolLabel(QSsl::SslProtocol protocol)
+{
+    switch (protocol) {
+    case QSsl::TlsV1_0:
+        return QStringLiteral("TLSv1.0");
+    case QSsl::TlsV1_1:
+        return QStringLiteral("TLSv1.1");
+    case QSsl::TlsV1_2:
+        return QStringLiteral("TLSv1.2");
+    case QSsl::TlsV1_3:
+        return QStringLiteral("TLSv1.3");
+    case QSsl::DtlsV1_0:
+        return QStringLiteral("DTLSv1.0");
+    case QSsl::DtlsV1_2:
+        return QStringLiteral("DTLSv1.2");
+    case QSsl::DtlsV1_2OrLater:
+        return QStringLiteral("DTLSv1.2+");
+    case QSsl::TlsV1_2OrLater:
+        return QStringLiteral("TLSv1.2+");
+    case QSsl::SecureProtocols:
+        return QStringLiteral("SecureProtocols");
+    case QSsl::AnyProtocol:
+        return QStringLiteral("AnyProtocol");
+    default:
+        return QStringLiteral("Unknown(%1)").arg(static_cast<int>(protocol));
+    }
+}
+
+} // namespace
+
+void TcpClient::logLocalTlsCapabilities()
+{
+    auto *logger = AppLogger::instance();
+    if (!QSslSocket::supportsSsl()) {
+        logger->warn(QStringLiteral("[TLS] 本机未检测到可用的 SSL/TLS 后端"));
+        return;
+    }
+
+    const QString backend = QSslSocket::activeBackend();
+    const QString runtimeVer = QSslSocket::sslLibraryVersionString();
+    const QString buildVer = QSslSocket::sslLibraryBuildVersionString();
+
+    const QStringList backends = QSslSocket::availableBackends();
+    if (!backends.isEmpty()) {
+        logger->info(QStringLiteral("[TLS] 可用后端: %1").arg(backends.join(QStringLiteral(", "))));
+    }
+
+    QStringList versions;
+    for (const QSsl::SslProtocol protocol : QSslSocket::supportedProtocols(backend)) {
+        versions.append(sslProtocolLabel(protocol));
+    }
+    versions.removeDuplicates();
+
+    logger->info(QStringLiteral("[TLS] 当前后端: %1").arg(backend.isEmpty() ? QStringLiteral("(未知)") : backend));
+    logger->info(QStringLiteral("[TLS] TLSv1.2 可用: %1").arg(
+        QSslSocket::isProtocolSupported(QSsl::TlsV1_2, backend) ? QStringLiteral("是") : QStringLiteral("否")));
+    logger->info(QStringLiteral("[TLS] TLSv1.3 可用: %1").arg(
+        QSslSocket::isProtocolSupported(QSsl::TlsV1_3, backend) ? QStringLiteral("是") : QStringLiteral("否")));
+    if (!runtimeVer.isEmpty()) {
+        logger->info(QStringLiteral("[TLS] 运行时库: %1").arg(runtimeVer));
+    }
+    if (!buildVer.isEmpty() && buildVer != runtimeVer) {
+        logger->info(QStringLiteral("[TLS] 构建时库: %1").arg(buildVer));
+    }
+    if (versions.isEmpty()) {
+        logger->warn(QStringLiteral("[TLS] 本机支持的协议版本: （无）"));
+    } else {
+        logger->info(QStringLiteral("[TLS] 本机支持的协议版本: %1").arg(versions.join(QStringLiteral(", "))));
+    }
+}
 
 TcpClient::TcpClient(QObject *parent) : QObject(parent)
 {
@@ -75,11 +178,11 @@ void TcpClient::startConnect()
     m_tlsReady = false;
     m_connectTimer.start();
     if (m_useTls) {
-        QSslConfiguration conf = m_socket.sslConfiguration();
-        conf.setProtocol(QSsl::TlsV1_3);
+        QSslConfiguration conf = QSslConfiguration::defaultConfiguration();
+        conf.setProtocol(QSsl::TlsV1_2OrLater);
         conf.setPeerVerifyMode(QSslSocket::VerifyNone);
         m_socket.setSslConfiguration(conf);
-        m_socket.connectToHostEncrypted(m_host, m_port);
+        m_socket.connectToHostEncrypted(m_host, m_port, QString());
     } else {
         m_socket.connectToHost(m_host, m_port);
     }
@@ -125,9 +228,11 @@ void TcpClient::onTlsReady()
 
 void TcpClient::onSslErrors(const QList<QSslError> &errors)
 {
-    Q_UNUSED(errors);
     if (!m_useTls) {
         return;
+    }
+    for (const QSslError &e : errors) {
+        AppLogger::instance()->warn(QStringLiteral("[云端] TLS 告警: %1").arg(e.errorString()));
     }
     if (m_pinner.hasPin() && m_pinner.verify(&m_socket)) {
         m_socket.ignoreSslErrors();
@@ -154,9 +259,7 @@ void TcpClient::onReadyRead()
 void TcpClient::onSocketError(QAbstractSocket::SocketError)
 {
     if (m_socket.state() == QAbstractSocket::ConnectingState || m_waitingResponse) {
-        failPending(m_socket.errorString().isEmpty()
-                        ? QStringLiteral("网络连接失败")
-                        : m_socket.errorString());
+        failPending(humanizeConnectError(m_socket.errorString(), m_useTls));
     }
 }
 

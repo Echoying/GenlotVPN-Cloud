@@ -1,5 +1,6 @@
 # Nacos 配置片段：生产启用 VPN TCP TLS
 # 合并到 ruoyi-vpn-auth-dev.yml 或 ruoyi-vpn-auth-prod.yml 后发布并重启 ruoyi-vpn-auth
+# 服务端需同时支持 TLS 1.2+1.3（代码已配置），避免 Windows 客户端 Schannel 报「不支持的功能」
 #
 # 证书生成：sh scripts/vpn-tls/gen-cert.sh
 # Pin 导出：sh scripts/vpn-tls/export-pin.sh docker/ruoyi/vpn/auth/certs/server.crt

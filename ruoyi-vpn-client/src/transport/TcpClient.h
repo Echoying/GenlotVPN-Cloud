@@ -30,6 +30,9 @@ public:
 
     bool isConnected() const;
 
+    /** 将本机 TLS 后端与支持的协议版本写入日志（启动时调用一次） */
+    static void logLocalTlsCapabilities();
+
 signals:
     void connectionError(const QString &message);
 

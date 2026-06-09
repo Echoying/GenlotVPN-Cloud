@@ -150,16 +150,33 @@ cd d:\cursor\genlot\GenlotVPN-Cloud
 bin\check-vpn-client-deps.bat
 ```
 
-## 七、构建客户端
+## 七、构建与打包客户端
 
 环境就绪后：
 
 ```powershell
-$env:CMAKE_PREFIX_PATH = "C:\Qt\6.6.3\msvc2019_64"   # 改成你的 Qt 路径
+$env:CMAKE_PREFIX_PATH = "D:\apps\Qt\6.11.1\msvc2022_64"   # 改成你的 Qt 路径
+$env:Protobuf_ROOT = "D:\anaconda3\Library"                 # 若用 Anaconda protobuf
+bin\check-vpn-client-deps.bat
 bin\build-vpn-client.bat
 ```
 
-产物：`ruoyi-vpn-client\build\Release\GenlotVPN.exe`（或 `build\GenlotVPN.exe`）
+**Release 产物：** `ruoyi-vpn-client\build-msvc2022\Release\GenlotVPN.exe`
+
+**打包为可分发目录（windeployqt）：**
+
+必须使用 **Release** 产物。若 Qt Creator 当前为 Debug，左下角切换为 Release 后重新构建。
+
+```powershell
+bin\package-vpn-client.bat
+# 或一步：bin\build-vpn-client.bat --package
+```
+
+若干净机器启动闪退并出现 `QML debugging is enabled`，说明误打包了 Debug 版 exe。
+
+输出：`ruoyi-vpn-client\dist\GenlotVPN-win64\`（含 `GenlotVPN.exe`、Qt 运行时 DLL、`libprotobuf.dll`、`config.json`）
+
+将整个 `GenlotVPN-win64` 文件夹拷贝到未安装 Qt 的 Windows 电脑即可试运行。
 
 ---
 
@@ -188,8 +205,12 @@ bin\build-vpn-client.bat
 **Q: 运行 exe 提示缺少 DLL**
 
 ```powershell
-C:\Qt\6.6.3\msvc2019_64\bin\windeployqt.exe build\Release\GenlotVPN.exe
+bin\package-vpn-client.bat
 ```
+
+脚本会自动执行 `windeployqt --release --compiler-runtime`，并复制 `libprotobuf.dll` 及其依赖（如 Anaconda 的 `zlib.dll`）。
+
+若仍提示缺某个 DLL，从 `Protobuf_ROOT\bin`（或 exe 同目录）手动补拷到 `dist\GenlotVPN-win64\`。
 
 **Q: 磁盘空间**
 

@@ -44,8 +44,9 @@ public class VpnTcpChannelInitializer extends ChannelInitializer<SocketChannel>
             {
                 throw new IllegalStateException("启用 TLS 时必须配置 vpn.tcp.tls.cert-path 与 key-path");
             }
+            // 同时开放 1.2/1.3：部分 Windows 10 + Qt Schannel 对「仅 TLS1.3」会报 SEC_E_UNSUPPORTED_FUNCTION
             this.sslContext = SslContextBuilder.forServer(new File(tls.getCertPath()), new File(tls.getKeyPath()))
-                    .protocols("TLSv1.3")
+                    .protocols("TLSv1.2", "TLSv1.3")
                     .build();
         }
     }

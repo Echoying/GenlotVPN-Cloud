@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
 echo ========================================
 echo   GenlotVPN Client - Dependency Check
@@ -32,6 +33,12 @@ if "%CMAKE_PREFIX_PATH%"=="" (
 ) else if exist "%CMAKE_PREFIX_PATH%\lib\cmake\Qt6\Qt6Config.cmake" (
   if exist "%CMAKE_PREFIX_PATH%\bin\Qt6Core.dll" (
     echo [OK] Qt6 at %CMAKE_PREFIX_PATH%
+    if exist "%CMAKE_PREFIX_PATH%\bin\windeployqt.exe" (
+      echo [OK] windeployqt
+    ) else (
+      echo [X] windeployqt.exe missing at %CMAKE_PREFIX_PATH%\bin
+      set /a MISSING+=1
+    )
   ) else (
     echo [X] Qt6Config found but Qt6Core.dll missing at %CMAKE_PREFIX_PATH%
     echo     Incomplete Qt install - use Qt Maintenance Tool.
@@ -60,5 +67,8 @@ if %MISSING% GTR 0 (
   echo Missing dependencies. Read: ruoyi-vpn-client\docs\WINDOWS_SETUP.md
   exit /b 1
 )
-echo All checks passed. Run: bin\build-vpn-client.bat
+echo All checks passed.
+echo   Build:   bin\build-vpn-client.bat
+echo   Package: bin\package-vpn-client.bat
+echo   Both:    bin\build-vpn-client.bat --package
 exit /b 0
