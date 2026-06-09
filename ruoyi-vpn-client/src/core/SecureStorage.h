@@ -17,7 +17,9 @@ public:
 
     Q_INVOKABLE QString configFilePath() const;
     Q_INVOKABLE QVariantMap loadConfigFile() const;
-    Q_INVOKABLE bool saveConfigHostPort(const QString &host, int port);
+    Q_INVOKABLE bool saveConfigServer(const QString &host, int port, bool useTls,
+                                      const QString &certPinSha256,
+                                      const QString &certPinSha256Backup = QString());
 
     Q_INVOKABLE void saveRememberedUser(const QString &username, const QString &password, bool remember);
     Q_INVOKABLE QVariantMap loadRememberedUser() const;

@@ -1,0 +1,21 @@
+# Nacos 配置片段：生产启用 VPN TCP TLS
+# 合并到 ruoyi-vpn-auth-dev.yml 或 ruoyi-vpn-auth-prod.yml 后发布并重启 ruoyi-vpn-auth
+#
+# 证书生成：sh scripts/vpn-tls/gen-cert.sh
+# Pin 导出：sh scripts/vpn-tls/export-pin.sh docker/ruoyi/vpn/auth/certs/server.crt
+#
+# Docker 容器内路径（已挂载 docker/ruoyi/vpn/auth/certs → /home/ruoyi/certs）
+# 本地 jar 运行请改为本机绝对路径
+
+vpn:
+  tcp:
+    tls:
+      enabled: true
+      cert-path: /home/ruoyi/certs/server.crt
+      key-path: /home/ruoyi/certs/server.key
+    security:
+      idle-timeout-minutes: 30
+    limits:
+      max-connections-per-ip: 5
+      login-max-attempts-per-ip: 10
+      login-rate-window-seconds: 60

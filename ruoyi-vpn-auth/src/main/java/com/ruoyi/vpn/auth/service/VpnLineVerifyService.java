@@ -1,5 +1,6 @@
 package com.ruoyi.vpn.auth.service;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -107,9 +108,29 @@ public class VpnLineVerifyService
 
         redisService.deleteObject(codeKey);
         redisService.deleteObject(keyErr(userId, appId));
+        // 验证已通过，清除发送冷却，避免退出重登后仍被 60 秒限制拦截
+        redisService.deleteObject(keyCooldown(userId, appId));
         int passedTtlMinutes = Math.max(verifyProperties.getCodeTtlMinutes(), 10);
         redisService.setCacheObject(keyPassed(userId, appId), "1", (long) passedTtlMinutes, TimeUnit.MINUTES);
         log.info("选线验证码校验通过 userId={} appId={}", userId, appId);
+    }
+
+    /**
+     * 退出登录时清除发送冷却，允许用户重新发送验证码
+     */
+    public void clearSendCooldown(Long userId)
+    {
+        if (userId == null)
+        {
+            return;
+        }
+        String pattern = KEY_COOLDOWN + userId + ":*";
+        Collection<String> keys = redisService.keys(pattern);
+        if (keys != null && !keys.isEmpty())
+        {
+            redisService.deleteObject(keys);
+            log.info("已清除选线验证码发送冷却 userId={} keys={}", userId, keys.size());
+        }
     }
 
     /**

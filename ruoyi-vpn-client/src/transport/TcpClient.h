@@ -4,7 +4,9 @@
 #include "FrameCodec.h"
 #include <QObject>
 #include <QByteArray>
+#include <QList>
 #include <QSslSocket>
+#include <QSslError>
 #include <QTimer>
 #include <QQueue>
 #include <functional>
@@ -19,7 +21,8 @@ class TcpClient : public QObject {
 public:
     explicit TcpClient(QObject *parent = nullptr);
 
-    void configure(const QString &host, quint16 port, bool useTls, const QString &certPinSha256);
+    void configure(const QString &host, quint16 port, bool useTls,
+                   const QString &certPinSha256, const QString &certPinSha256Backup = QString());
 
     using ResponseCallback = std::function<void(bool ok, const QByteArray &rpcResponseBytes, const QString &error)>;
 
@@ -32,6 +35,8 @@ signals:
 
 private slots:
     void onConnected();
+    void onEncrypted();
+    void onSslErrors(const QList<QSslError> &errors);
     void onReadyRead();
     void onSocketError(QAbstractSocket::SocketError error);
     void onConnectTimeout();
@@ -45,6 +50,7 @@ private:
     };
 
     void startConnect();
+    void onTlsReady();
     void writePendingEnvelope();
     void failPending(const QString &err);
     void finishActive(bool ok, const QByteArray &body, const QString &err);
@@ -57,6 +63,7 @@ private:
     QString m_host;
     quint16 m_port = 9443;
     bool m_useTls = false;
+    bool m_tlsReady = false;
     QByteArray m_readBuffer;
     QQueue<OutboundRequest> m_queue;
     ResponseCallback m_pendingCallback;

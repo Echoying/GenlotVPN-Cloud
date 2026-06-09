@@ -80,6 +80,9 @@ public class TcpRpcDispatcher
     @Autowired
     private AesUtils aesUtils;
 
+    @Autowired
+    private VpnTcpRateLimitService vpnTcpRateLimitService;
+
     public RpcResult dispatch(Envelope envelope, TcpSessionContext session)
     {
         MessageType type = envelope.getType();
@@ -168,6 +171,10 @@ public class TcpRpcDispatcher
 
     private RpcResult handleLogin(Envelope envelope, TcpSessionContext session) throws InvalidProtocolBufferException
     {
+        if (!vpnTcpRateLimitService.tryAcquireLogin(session.getClientIp()))
+        {
+            return RpcResult.fail("登录过于频繁，请稍后再试");
+        }
         LoginRequest req = LoginRequest.parseFrom(envelope.getPayload());
         vpnCaptchaService.checkCaptcha(req.getCode(), req.getUuid());
         VpnLoginUser userInfo = vpnLoginService.login(req.getUsername(), req.getPassword(), req.getAppId());
@@ -201,12 +208,21 @@ public class TcpRpcDispatcher
     {
         requireAuth(session, envelope);
         LogoutRequest.parseFrom(envelope.getPayload());
+        Long userId = session.getUserId();
         String token = resolveToken(envelope, session);
         if (StringUtils.isNotEmpty(token))
         {
+            if (userId == null)
+            {
+                userId = Long.parseLong(JwtUtils.getUserId(token));
+            }
             String username = JwtUtils.getUserName(token);
             AuthUtil.logoutByToken(token);
             vpnLoginService.logout(username);
+        }
+        if (userId != null)
+        {
+            vpnLineVerifyService.clearSendCooldown(userId);
         }
         session.clearSecrets();
         session.setAuthenticated(false);

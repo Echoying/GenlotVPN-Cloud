@@ -176,6 +176,8 @@ services:
     ports:
       - "9400:9400"
       - "9443:9443"
+    volumes:
+      - ./ruoyi/vpn/auth/certs:/home/ruoyi/certs:ro
     depends_on:
       - ruoyi-redis
     links:

@@ -9,12 +9,27 @@ Item {
     property int currentSection: 0
 
     readonly property var sections: [
-        { key: "server", title: "服务器" }
+        { key: "server", title: "服务器" },
+        { key: "security", title: "安全连接" }
     ]
 
-    function loadServerFields() {
+    function loadFields() {
         serverHostField.text = vpnFlow.serverHost || ""
         serverPortField.text = String(vpnFlow.serverPort || 9443)
+        tlsSwitch.checked = vpnFlow.serverUseTls
+        pinField.text = vpnFlow.certPinSha256 || ""
+        pinBackupField.text = vpnFlow.certPinSha256Backup || ""
+    }
+
+    function saveSettings() {
+        const port = parseInt(serverPortField.text, 10)
+        vpnFlow.applyServerConfig(
+            serverHostField.text,
+            port,
+            tlsSwitch.checked,
+            pinField.text,
+            pinBackupField.text
+        )
     }
 
     function goBack() {
@@ -43,8 +58,7 @@ Item {
             width: parent.width
             height: 44
             color: Theme.cardBg
-            border.color: Theme.settingsDivider
-            border.width: 0
+
             Rectangle {
                 anchors.bottom: parent.bottom
                 width: parent.width
@@ -142,66 +156,153 @@ Item {
                 height: parent.height
                 color: Theme.cardBg
 
-                Column {
+                Flickable {
                     anchors.fill: parent
                     anchors.margins: 24
-                    spacing: 18
-
-                    Text {
-                        text: root.sections[root.currentSection].title
-                        color: Theme.textPrimary
-                        font.pixelSize: 16
-                        font.bold: true
-                    }
+                    contentWidth: width
+                    contentHeight: panelColumn.height
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
 
                     Column {
+                        id: panelColumn
                         width: parent.width
-                        spacing: 14
-                        visible: root.currentSection === 0
+                        spacing: 18
+
+                        Text {
+                            text: root.sections[root.currentSection].title
+                            color: Theme.textPrimary
+                            font.pixelSize: 16
+                            font.bold: true
+                        }
 
                         Column {
                             width: parent.width
-                            spacing: 6
+                            spacing: 14
+                            visible: root.currentSection === 0
 
-                            Text {
-                                text: "服务器地址"
-                                color: Theme.textSecondary
-                                font.pixelSize: 12
-                            }
-
-                            FlatField {
-                                id: serverHostField
+                            Column {
                                 width: parent.width
-                                placeholderText: "请输入服务器地址"
+                                spacing: 6
+
+                                Text {
+                                    text: "服务器地址"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: 12
+                                }
+
+                                FlatField {
+                                    id: serverHostField
+                                    width: parent.width
+                                    placeholderText: "请输入服务器地址"
+                                }
+                            }
+
+                            Column {
+                                width: parent.width
+                                spacing: 6
+
+                                Text {
+                                    text: "端口"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: 12
+                                }
+
+                                FlatField {
+                                    id: serverPortField
+                                    width: Math.min(parent.width, 160)
+                                    placeholderText: "9443"
+                                    digitsOnly: true
+                                    maximumLength: 5
+                                }
+                            }
+
+                            Text {
+                                width: parent.width
+                                text: "当前模式: " + vpnFlow.connectionModeLabel
+                                color: Theme.textSecondary
+                                font.pixelSize: 12
+                            }
+
+                            PrimaryButton {
+                                text: "保存"
+                                width: 88
+                                enabled: !vpnFlow.loading
+                                onClicked: root.saveSettings()
                             }
                         }
 
                         Column {
                             width: parent.width
-                            spacing: 6
+                            spacing: 14
+                            visible: root.currentSection === 1
+
+                            Row {
+                                width: parent.width
+                                spacing: 10
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "启用 TLS"
+                                    color: Theme.textPrimary
+                                    font.pixelSize: 13
+                                }
+
+                                Switch {
+                                    id: tlsSwitch
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+
+                            Column {
+                                width: parent.width
+                                spacing: 6
+
+                                Text {
+                                    text: "证书指纹（主）"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: 12
+                                }
+
+                                FlatField {
+                                    id: pinField
+                                    width: parent.width
+                                    placeholderText: "64 位十六进制 SPKI SHA-256"
+                                    enabled: tlsSwitch.checked
+                                }
+                            }
+
+                            Column {
+                                width: parent.width
+                                spacing: 6
+
+                                Text {
+                                    text: "证书指纹（备用，可选）"
+                                    color: Theme.textSecondary
+                                    font.pixelSize: 12
+                                }
+
+                                FlatField {
+                                    id: pinBackupField
+                                    width: parent.width
+                                    placeholderText: "证书轮换时使用"
+                                    enabled: tlsSwitch.checked
+                                }
+                            }
 
                             Text {
-                                text: "端口"
+                                width: parent.width
+                                text: "启用 TLS 后必须填写主指纹。导出方式见文档 TLS_PINNING.md"
                                 color: Theme.textSecondary
-                                font.pixelSize: 12
+                                font.pixelSize: 11
+                                wrapMode: Text.Wrap
                             }
 
-                            FlatField {
-                                id: serverPortField
-                                width: Math.min(parent.width, 160)
-                                placeholderText: "9443"
-                                digitsOnly: true
-                                maximumLength: 5
-                            }
-                        }
-
-                        PrimaryButton {
-                            text: "保存"
-                            width: 88
-                            enabled: !vpnFlow.loading
-                            onClicked: {
-                                const port = parseInt(serverPortField.text, 10)
-                                vpnFlow.applyServerConfig(serverHostField.text, port)
+                            PrimaryButton {
+                                text: "保存"
+                                width: 88
+                                enabled: !vpnFlow.loading
+                                onClicked: root.saveSettings()
                             }
                         }
                     }
@@ -212,8 +313,8 @@ Item {
 
     onVisibleChanged: {
         if (visible)
-            loadServerFields()
+            loadFields()
     }
 
-    Component.onCompleted: loadServerFields()
+    Component.onCompleted: loadFields()
 }

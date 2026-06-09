@@ -9,9 +9,22 @@ namespace vpn {
 
 namespace {
 
+int parseSendCooldownSeconds(const QString &msg)
+{
+    static const QRegularExpression re(QStringLiteral("请(\\d+)秒后再发送"));
+    const QRegularExpressionMatch match = re.match(msg);
+    if (match.hasMatch()) {
+        return match.captured(1).toInt();
+    }
+    return 0;
+}
+
 bool isSessionExpiredMessage(const QString &msg)
 {
     if (msg.contains(QStringLiteral("验证码"))) {
+        return false;
+    }
+    if (msg.contains(QStringLiteral("秒后再发送"))) {
         return false;
     }
     return msg.contains(QStringLiteral("登录状态已过期"))
@@ -39,6 +52,19 @@ QString extractGatewayIp(const QVariantMap &item)
         }
     }
     return {};
+}
+
+bool isValidCertPin(const QString &pin)
+{
+    const QString trimmed = pin.trimmed();
+    if (trimmed.isEmpty()) {
+        return true;
+    }
+    if (trimmed.size() != 64) {
+        return false;
+    }
+    static const QRegularExpression hexPattern(QStringLiteral("^[0-9a-fA-F]{64}$"));
+    return hexPattern.match(trimmed).hasMatch();
 }
 
 QVariantList normalizeGateways(const QVariantList &gateways)
@@ -170,9 +196,20 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
             m_cloud->fetchCaptcha();
             return;
         }
-        if (m_lineVerifyPending || m_sendLineVerifyPending) {
-            m_lineVerifyPending = false;
+        if (m_sendLineVerifyPending) {
             m_sendLineVerifyPending = false;
+            const QString displayMsg = msg.trimmed().isEmpty()
+                                           ? QStringLiteral("发送验证码失败，请重试")
+                                           : msg.trimmed();
+            setVerifyError(displayMsg);
+            const int cooldown = parseSendCooldownSeconds(displayMsg);
+            if (cooldown > 0) {
+                startCountdown(cooldown);
+            }
+            return;
+        }
+        if (m_lineVerifyPending) {
+            m_lineVerifyPending = false;
             const QString displayMsg = msg.trimmed().isEmpty()
                                            ? QStringLiteral("验证码校验失败，请重试")
                                            : msg.trimmed();
@@ -275,13 +312,9 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
                 m_selectedGatewayId = firstId;
                 emit selectedGatewayIdChanged();
                 addLog(QStringLiteral("info"), QStringLiteral("正在自动开启网关..."));
-                m_autoTurnOnGatewayPending = true;
-                m_controller->switchGateway(firstId);
+                // 与 Web 端一致：登录后默认网关已选中，直接 turnOn，无需 switch
+                turnOnGateway(true);
             }
-        } else         if (m_autoTurnOnGatewayPending) {
-            m_autoTurnOnGatewayPending = false;
-            addLog(QStringLiteral("info"), QStringLiteral("网关切换完成，正在打开连接..."));
-            turnOnGateway(true);
         }
         addLog(QStringLiteral("info"), QStringLiteral("网关列表已更新，共 %1 个").arg(m_gateways.size()));
         emit gatewaysChanged();
@@ -313,9 +346,6 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
             m_switchingGatewayId.clear();
             emit switchingGatewayIdChanged();
         }
-        if (m_autoTurnOnGatewayPending) {
-            m_autoTurnOnGatewayPending = false;
-        }
         const QString errorMsg = msg.trimmed().isEmpty() ? QStringLiteral("控制器请求失败") : msg.trimmed();
         emit toast(errorMsg, true);
     });
@@ -325,6 +355,8 @@ void VpnFlowController::setVerifyDialogVisible(bool visible)
 {
     if (visible && !m_verifyDialogVisible) {
         setVerifyError(QString());
+    } else if (!visible && m_verifyDialogVisible) {
+        clearSendCountdown();
     }
     if (m_verifyDialogVisible != visible) {
         m_verifyDialogVisible = visible;
@@ -478,13 +510,14 @@ void VpnFlowController::refreshAppList()
 void VpnFlowController::doLogout()
 {
     addLog(QStringLiteral("info"), QStringLiteral("用户退出登录"));
-    finishLogout(true);
     m_controller->controllerLogout();
     m_cloud->logout();
+    finishLogout(true);
 }
 
 void VpnFlowController::finishLogout(bool clearUsername)
 {
+    clearSendCountdown();
     setVerifyDialogVisible(false);
     setLoggedIn(false);
     m_loginPending = false;
@@ -507,7 +540,6 @@ void VpnFlowController::finishLogout(bool clearUsername)
     m_selectedGatewayId.clear();
     m_switchingGatewayId.clear();
     m_autoGatewayInitPending = false;
-    m_autoTurnOnGatewayPending = false;
     m_autoConnectStarted = false;
     m_autoConnectPending = false;
 
@@ -564,6 +596,11 @@ void VpnFlowController::changePassword(const QString &username, const QString &o
 
 void VpnFlowController::goChooseLine()
 {
+    clearSendCountdown();
+    setVerifyDialogVisible(false);
+    m_lineVerifyPending = false;
+    m_sendLineVerifyPending = false;
+    setVerifyError(QString());
     emit navigateTo(QStringLiteral("choose"));
 }
 
@@ -617,9 +654,21 @@ void VpnFlowController::setLoading(bool v)
 
 void VpnFlowController::startCountdown(int seconds)
 {
+    clearSendCountdown();
     m_sendCountdown = seconds;
     emit sendCountdownChanged();
     m_countdownTimer->start();
+}
+
+void VpnFlowController::clearSendCountdown()
+{
+    if (m_countdownTimer->isActive()) {
+        m_countdownTimer->stop();
+    }
+    if (m_sendCountdown != 0) {
+        m_sendCountdown = 0;
+        emit sendCountdownChanged();
+    }
 }
 
 void VpnFlowController::setStatusMessage(const QString &msg)
@@ -654,6 +703,16 @@ void VpnFlowController::setServerEndpoint(const QString &endpoint)
     }
 }
 
+QString VpnFlowController::connectionModeLabel() const
+{
+    if (m_serverUseTls) {
+        return m_certPinSha256.isEmpty()
+                   ? QStringLiteral("TLS（未配置指纹）")
+                   : QStringLiteral("TLS + Pin");
+    }
+    return QStringLiteral("明文 TCP");
+}
+
 void VpnFlowController::reloadServerSettings()
 {
     const QVariantMap saved = m_storage->loadServer();
@@ -661,6 +720,7 @@ void VpnFlowController::reloadServerSettings()
     m_serverPort = static_cast<quint16>(saved.value(QStringLiteral("port")).toUInt());
     m_serverUseTls = saved.value(QStringLiteral("useTls")).toBool();
     m_certPinSha256.clear();
+    m_certPinSha256Backup.clear();
 
     const QVariantMap cfg = m_storage->loadConfigFile();
     if (!cfg.value(QStringLiteral("serverHost")).toString().isEmpty()) {
@@ -673,6 +733,7 @@ void VpnFlowController::reloadServerSettings()
         m_serverUseTls = cfg.value(QStringLiteral("useTls")).toBool();
     }
     m_certPinSha256 = cfg.value(QStringLiteral("certPinSha256")).toString();
+    m_certPinSha256Backup = cfg.value(QStringLiteral("certPinSha256Backup")).toString();
 
     if (m_serverHost.isEmpty()) {
         m_serverHost = QStringLiteral("127.0.0.1");
@@ -685,7 +746,8 @@ void VpnFlowController::reloadServerSettings()
 void VpnFlowController::bootstrapServer()
 {
     reloadServerSettings();
-    m_cloud->configure(m_serverHost, m_serverPort, m_serverUseTls, m_certPinSha256);
+    m_cloud->configure(m_serverHost, m_serverPort, m_serverUseTls,
+                       m_certPinSha256, m_certPinSha256Backup);
     setServerEndpoint(QStringLiteral("%1:%2").arg(m_serverHost).arg(m_serverPort));
     emit serverConfigChanged();
 }
@@ -696,10 +758,13 @@ QVariantMap VpnFlowController::currentServerConfig() const
     config[QStringLiteral("host")] = m_serverHost;
     config[QStringLiteral("port")] = m_serverPort;
     config[QStringLiteral("useTls")] = m_serverUseTls;
+    config[QStringLiteral("certPinSha256")] = m_certPinSha256;
+    config[QStringLiteral("certPinSha256Backup")] = m_certPinSha256Backup;
     return config;
 }
 
-bool VpnFlowController::applyServerConfig(const QString &host, int port)
+bool VpnFlowController::applyServerConfig(const QString &host, int port, bool useTls,
+                                          const QString &certPin, const QString &certPinBackup)
 {
     const QString trimmedHost = host.trimmed();
     if (trimmedHost.isEmpty()) {
@@ -711,24 +776,42 @@ bool VpnFlowController::applyServerConfig(const QString &host, int port)
         return false;
     }
 
+    const QString trimmedPin = certPin.trimmed();
+    const QString trimmedBackupPin = certPinBackup.trimmed();
+    if (useTls && trimmedPin.isEmpty()) {
+        emit toast(QStringLiteral("启用 TLS 时必须填写证书指纹"), true);
+        return false;
+    }
+    if (!isValidCertPin(trimmedPin) || !isValidCertPin(trimmedBackupPin)) {
+        emit toast(QStringLiteral("证书指纹须为 64 位十六进制"), true);
+        return false;
+    }
+
     m_serverHost = trimmedHost;
     m_serverPort = static_cast<quint16>(port);
+    m_serverUseTls = useTls;
+    m_certPinSha256 = trimmedPin;
+    m_certPinSha256Backup = trimmedBackupPin;
 
     m_storage->saveServer(m_serverHost, m_serverPort, m_serverUseTls);
-    if (!m_storage->saveConfigHostPort(m_serverHost, port)) {
+    if (!m_storage->saveConfigServer(m_serverHost, port, m_serverUseTls,
+                                     m_certPinSha256, m_certPinSha256Backup)) {
         AppLogger::instance()->error(QStringLiteral("[设置] 写入 config.json 失败: %1").arg(m_storage->configFilePath()));
         emit toast(QStringLiteral("保存 config.json 失败"), true);
         return false;
     }
 
-    m_cloud->configure(m_serverHost, m_serverPort, m_serverUseTls, m_certPinSha256);
+    m_cloud->configure(m_serverHost, m_serverPort, m_serverUseTls,
+                       m_certPinSha256, m_certPinSha256Backup);
     setServerEndpoint(QStringLiteral("%1:%2").arg(m_serverHost).arg(m_serverPort));
     emit serverConfigChanged();
 
     m_publicLines.clear();
     emit publicLinesChanged();
-    setStatusMessage(QStringLiteral("服务器 %1:%2").arg(m_serverHost).arg(m_serverPort));
-    addLog(QStringLiteral("info"), QStringLiteral("服务器已更新: %1:%2").arg(m_serverHost).arg(m_serverPort));
+    const QString mode = connectionModeLabel();
+    setStatusMessage(QStringLiteral("服务器 %1:%2（%3）").arg(m_serverHost).arg(m_serverPort).arg(mode));
+    addLog(QStringLiteral("info"),
+           QStringLiteral("服务器已更新: %1:%2（%3）").arg(m_serverHost).arg(m_serverPort).arg(mode));
     loadPublicLines();
     return true;
 }

@@ -50,6 +50,8 @@ cmake --build build --config Release
 
 ## 配置 config.json
 
+**开发（明文 TCP）：**
+
 ```json
 {
   "serverHost": "10.9.2.177",
@@ -59,8 +61,11 @@ cmake --build build --config Release
 }
 ```
 
-开发环境：`vpn.tcp.tls.enabled=false`（明文 TCP）。  
-生产环境：启用 TLS 并配置证书 Pinning。
+**生产（TLS + Pinning）：** 见 [`resources/config.prod.example.json`](resources/config.prod.example.json)，完整步骤见 **[docs/TLS_PINNING.md](docs/TLS_PINNING.md)**。
+
+- 证书生成：`scripts/vpn-tls/gen-cert.bat`
+- Pin 导出：`scripts/vpn-tls/export-pin.bat`
+- 设置页：**安全连接** → 启用 TLS → 填写证书指纹
 
 ## 联调步骤
 
@@ -71,7 +76,9 @@ cmake --build build --config Release
 
 ## 安全说明
 
+- 云端传输：生产环境 **TLS 1.3 + 证书 Pinning**（自签证书以 SPKI 指纹为信任锚）
 - 登录后 RPC 携带 **HMAC-SHA256(session_key)**
+- 启用 TLS 时必须配置 `certPinSha256`（64 位 hex）
 - 记住密码暂用 QSettings（生产应换 DPAPI/Keychain）
 - 控制器密码使用服务端 AES 密文，**客户端不解密**，直接传给 Agent
 

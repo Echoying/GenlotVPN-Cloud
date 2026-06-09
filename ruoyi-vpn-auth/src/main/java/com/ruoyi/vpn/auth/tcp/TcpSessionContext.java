@@ -17,6 +17,10 @@ public class TcpSessionContext
 
     private boolean authenticated;
 
+    private String clientIp;
+
+    private long lastActivityMs;
+
     public byte[] getSessionKey()
     {
         return sessionKey;
@@ -65,6 +69,26 @@ public class TcpSessionContext
     public void setAuthenticated(boolean authenticated)
     {
         this.authenticated = authenticated;
+    }
+
+    public String getClientIp()
+    {
+        return clientIp;
+    }
+
+    public void setClientIp(String clientIp)
+    {
+        this.clientIp = clientIp;
+    }
+
+    public long getLastActivityMs()
+    {
+        return lastActivityMs;
+    }
+
+    public void setLastActivityMs(long lastActivityMs)
+    {
+        this.lastActivityMs = lastActivityMs;
     }
 
     public void clearSecrets()

@@ -1,20 +1,24 @@
 #pragma once
 
-#include <QSslCertificate>
+#include <QByteArray>
 #include <QSslSocket>
 #include <QString>
 
 namespace vpn {
 
-/** TLS 证书 Pinning */
+/** TLS 证书 Pinning（SPKI SHA-256，支持主/备指纹） */
 class CertificatePinner {
 public:
-    explicit CertificatePinner(QString expectedSpkiSha256);
+    CertificatePinner(QString primarySpkiSha256, QString backupSpkiSha256 = QString());
 
+    bool hasPin() const;
     bool verify(QSslSocket *socket) const;
 
 private:
-    QString m_pin;
+    bool matchesPin(const QByteArray &hashHex) const;
+
+    QString m_primaryPin;
+    QString m_backupPin;
 };
 
 } // namespace vpn

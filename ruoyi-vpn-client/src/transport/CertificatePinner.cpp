@@ -4,14 +4,41 @@
 
 namespace vpn {
 
-CertificatePinner::CertificatePinner(QString expectedSpkiSha256)
-    : m_pin(std::move(expectedSpkiSha256))
+namespace {
+
+QString normalizePin(QString pin)
 {
+    return pin.trimmed().toLower();
+}
+
+} // namespace
+
+CertificatePinner::CertificatePinner(QString primarySpkiSha256, QString backupSpkiSha256)
+    : m_primaryPin(normalizePin(std::move(primarySpkiSha256)))
+    , m_backupPin(normalizePin(std::move(backupSpkiSha256)))
+{
+}
+
+bool CertificatePinner::hasPin() const
+{
+    return !m_primaryPin.isEmpty();
+}
+
+bool CertificatePinner::matchesPin(const QByteArray &hashHex) const
+{
+    const QByteArray normalized = hashHex.toLower();
+    if (!m_primaryPin.isEmpty() && normalized == m_primaryPin.toLatin1()) {
+        return true;
+    }
+    if (!m_backupPin.isEmpty() && normalized == m_backupPin.toLatin1()) {
+        return true;
+    }
+    return false;
 }
 
 bool CertificatePinner::verify(QSslSocket *socket) const
 {
-    if (m_pin.isEmpty()) {
+    if (!hasPin()) {
         return true;
     }
     const auto certs = socket->peerCertificateChain();
@@ -21,7 +48,7 @@ bool CertificatePinner::verify(QSslSocket *socket) const
     const QSslKey pubKey = certs.first().publicKey();
     const QByteArray spki = pubKey.toDer();
     const QByteArray hash = QCryptographicHash::hash(spki, QCryptographicHash::Sha256).toHex();
-    return hash.compare(m_pin.toLatin1(), Qt::CaseInsensitive) == 0;
+    return matchesPin(hash);
 }
 
 } // namespace vpn

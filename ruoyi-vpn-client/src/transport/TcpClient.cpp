@@ -1,4 +1,5 @@
 #include "TcpClient.h"
+#include "core/AppLogger.h"
 #include <QSslConfiguration>
 #include <QTimer>
 
@@ -15,17 +16,20 @@ TcpClient::TcpClient(QObject *parent) : QObject(parent)
     connect(&m_responseTimer, &QTimer::timeout, this, &TcpClient::onResponseTimeout);
 
     connect(&m_socket, &QSslSocket::connected, this, &TcpClient::onConnected);
+    connect(&m_socket, &QSslSocket::encrypted, this, &TcpClient::onEncrypted);
+    connect(&m_socket, &QSslSocket::sslErrors, this, &TcpClient::onSslErrors);
     connect(&m_socket, &QSslSocket::readyRead, this, &TcpClient::onReadyRead);
     connect(&m_socket, &QSslSocket::errorOccurred, this, &TcpClient::onSocketError);
     connect(&m_socket, &QSslSocket::disconnected, this, &TcpClient::onDisconnected);
 }
 
-void TcpClient::configure(const QString &host, quint16 port, bool useTls, const QString &certPinSha256)
+void TcpClient::configure(const QString &host, quint16 port, bool useTls,
+                          const QString &certPinSha256, const QString &certPinSha256Backup)
 {
     m_host = host;
     m_port = port;
     m_useTls = useTls;
-    m_pinner = CertificatePinner(certPinSha256);
+    m_pinner = CertificatePinner(certPinSha256, certPinSha256Backup);
 }
 
 void TcpClient::sendEnvelope(const QByteArray &envelopeBytes, ResponseCallback callback)
@@ -41,7 +45,7 @@ void TcpClient::sendEnvelope(const QByteArray &envelopeBytes, ResponseCallback c
     m_waitingResponse = true;
     m_responseTimer.start();
 
-    if (m_socket.state() == QAbstractSocket::ConnectedState) {
+    if (m_socket.state() == QAbstractSocket::ConnectedState && (!m_useTls || m_tlsReady)) {
         writePendingEnvelope();
         return;
     }
@@ -54,7 +58,7 @@ void TcpClient::sendEnvelope(const QByteArray &envelopeBytes, ResponseCallback c
 
 bool TcpClient::isConnected() const
 {
-    return m_socket.state() == QAbstractSocket::ConnectedState;
+    return m_socket.state() == QAbstractSocket::ConnectedState && (!m_useTls || m_tlsReady);
 }
 
 void TcpClient::startConnect()
@@ -63,10 +67,17 @@ void TcpClient::startConnect()
         failPending(QStringLiteral("未配置服务器地址"));
         return;
     }
+    if (m_useTls && !m_pinner.hasPin()) {
+        failPending(QStringLiteral("已启用 TLS，请配置证书指纹（certPinSha256）"));
+        return;
+    }
+
+    m_tlsReady = false;
     m_connectTimer.start();
     if (m_useTls) {
         QSslConfiguration conf = m_socket.sslConfiguration();
         conf.setProtocol(QSsl::TlsV1_3);
+        conf.setPeerVerifyMode(QSslSocket::VerifyNone);
         m_socket.setSslConfiguration(conf);
         m_socket.connectToHostEncrypted(m_host, m_port);
     } else {
@@ -88,12 +99,43 @@ void TcpClient::writePendingEnvelope()
 void TcpClient::onConnected()
 {
     m_connectTimer.stop();
-    if (m_useTls && !m_pinner.verify(&m_socket)) {
-        m_socket.abort();
-        failPending(QStringLiteral("证书 Pinning 校验失败"));
-        return;
+    if (!m_useTls) {
+        onTlsReady();
+    }
+}
+
+void TcpClient::onEncrypted()
+{
+    onTlsReady();
+}
+
+void TcpClient::onTlsReady()
+{
+    if (m_useTls) {
+        if (!m_pinner.verify(&m_socket)) {
+            AppLogger::instance()->error(QStringLiteral("[云端] 证书 Pinning 校验失败"));
+            m_socket.abort();
+            failPending(QStringLiteral("证书 Pinning 校验失败"));
+            return;
+        }
+        m_tlsReady = true;
     }
     writePendingEnvelope();
+}
+
+void TcpClient::onSslErrors(const QList<QSslError> &errors)
+{
+    Q_UNUSED(errors);
+    if (!m_useTls) {
+        return;
+    }
+    if (m_pinner.hasPin() && m_pinner.verify(&m_socket)) {
+        m_socket.ignoreSslErrors();
+        return;
+    }
+    AppLogger::instance()->error(QStringLiteral("[云端] TLS 证书校验失败"));
+    m_socket.abort();
+    failPending(QStringLiteral("TLS 证书校验失败"));
 }
 
 void TcpClient::onReadyRead()
@@ -137,6 +179,7 @@ void TcpClient::onResponseTimeout()
 
 void TcpClient::onDisconnected()
 {
+    m_tlsReady = false;
     if (m_waitingResponse) {
         failPending(QStringLiteral("连接已断开"));
     }
@@ -164,7 +207,7 @@ void TcpClient::dispatchNext()
     m_waitingResponse = true;
     m_responseTimer.start();
 
-    if (m_socket.state() == QAbstractSocket::ConnectedState) {
+    if (m_socket.state() == QAbstractSocket::ConnectedState && (!m_useTls || m_tlsReady)) {
         writePendingEnvelope();
     } else if (m_socket.state() == QAbstractSocket::ConnectingState) {
         m_connectTimer.start();
@@ -178,6 +221,7 @@ void TcpClient::failPending(const QString &err)
     m_connectTimer.stop();
     m_responseTimer.stop();
     m_pendingEnvelope.clear();
+    m_tlsReady = false;
     emit connectionError(err);
     if (m_waitingResponse && m_pendingCallback) {
         finishActive(false, {}, err);

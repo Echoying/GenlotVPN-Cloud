@@ -33,6 +33,10 @@ class VpnFlowController : public QObject {
     Q_PROPERTY(QString serverEndpoint READ serverEndpoint NOTIFY serverEndpointChanged)
     Q_PROPERTY(QString serverHost READ serverHost NOTIFY serverConfigChanged)
     Q_PROPERTY(int serverPort READ serverPort NOTIFY serverConfigChanged)
+    Q_PROPERTY(bool serverUseTls READ serverUseTls NOTIFY serverConfigChanged)
+    Q_PROPERTY(QString certPinSha256 READ certPinSha256 NOTIFY serverConfigChanged)
+    Q_PROPERTY(QString certPinSha256Backup READ certPinSha256Backup NOTIFY serverConfigChanged)
+    Q_PROPERTY(QString connectionModeLabel READ connectionModeLabel NOTIFY serverConfigChanged)
     Q_PROPERTY(bool loggedIn READ loggedIn NOTIFY loggedInChanged)
     Q_PROPERTY(QString loginError READ loginError NOTIFY loginErrorChanged)
     Q_PROPERTY(QString verifyError READ verifyError NOTIFY verifyErrorChanged)
@@ -59,6 +63,10 @@ public:
     QString serverEndpoint() const { return m_serverEndpoint; }
     QString serverHost() const { return m_serverHost; }
     int serverPort() const { return m_serverPort; }
+    bool serverUseTls() const { return m_serverUseTls; }
+    QString certPinSha256() const { return m_certPinSha256; }
+    QString certPinSha256Backup() const { return m_certPinSha256Backup; }
+    QString connectionModeLabel() const;
     bool loggedIn() const { return m_loggedIn; }
     QString loginError() const { return m_loginError; }
     QString verifyError() const { return m_verifyError; }
@@ -87,7 +95,8 @@ public:
     Q_INVOKABLE bool isHttpUrl(const QString &url) const;
     Q_INVOKABLE QString gatewayIp(const QVariant &gateway) const;
     Q_INVOKABLE QVariantMap currentServerConfig() const;
-    Q_INVOKABLE bool applyServerConfig(const QString &host, int port);
+    Q_INVOKABLE bool applyServerConfig(const QString &host, int port, bool useTls,
+                                       const QString &certPin, const QString &certPinBackup = QString());
     void bootstrapServer();
     void setServerEndpoint(const QString &endpoint);
 
@@ -121,6 +130,7 @@ private:
     void addLog(const QString &type, const QString &message);
     void setLoading(bool v);
     void startCountdown(int seconds);
+    void clearSendCountdown();
     void setStatusMessage(const QString &msg);
     void setLoginError(const QString &msg);
     void setVerifyError(const QString &msg);
@@ -153,6 +163,7 @@ private:
     quint16 m_serverPort = 9443;
     bool m_serverUseTls = false;
     QString m_certPinSha256;
+    QString m_certPinSha256Backup;
     bool m_loggedIn = false;
     bool m_loginPending = false;
     bool m_lineVerifyPending = false;
@@ -166,7 +177,6 @@ private:
     QString m_selectedGatewayId;
     QString m_switchingGatewayId;
     bool m_autoGatewayInitPending = false;
-    bool m_autoTurnOnGatewayPending = false;
 };
 
 } // namespace vpn

@@ -43,6 +43,11 @@ nbdist/
 node_modules/
 
 ######################################################################
+# VPN TCP TLS 私钥（证书公钥可本地生成，勿提交私钥）
+docker/ruoyi/vpn/auth/certs/*.key
+docker/ruoyi/vpn/auth/certs/server.crt
+
+######################################################################
 # Others
 *.log
 *.xml.versionsBackup

@@ -19,14 +19,27 @@ vpn:
     enabled: true
     port: 9443
     tls:
-      # 开发/内网联调可 false；生产必须 true 并配置证书
+      # 开发/内网联调可 false；生产见 ruoyi-vpn-auth-prod-tls.yml
       enabled: false
       cert-path:
       key-path:
+      # --- 生产 TLS 示例（取消注释并设 enabled: true）---
+      # enabled: true
+      # cert-path: /home/ruoyi/certs/server.crt
+      # key-path: /home/ruoyi/certs/server.key
+      # 本地 jar: cert-path: D:/cursor/genlot/GenlotVPN-Cloud/docker/ruoyi/vpn/auth/certs/server.crt
     security:
       timestamp-skew-sec: 60
       nonce-ttl-sec: 300
       max-frame-bytes: 1048576
+      # 读空闲断开：30 分钟无入站 RPC 流量则断开（0=不启用）
+      idle-timeout-minutes: 30
+    limits:
+      # 单 IP 最大并发 TCP 连接数（0=不限制）
+      max-connections-per-ip: 5
+      # 单 IP 登录频率：60 秒内最多 10 次 Login RPC
+      login-max-attempts-per-ip: 10
+      login-rate-window-seconds: 60
   line-verify:
     code-ttl-minutes: 5
     send-cooldown-seconds: 60

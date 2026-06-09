@@ -20,6 +20,8 @@ public class VpnTcpProperties
 
     private final Security security = new Security();
 
+    private final Limits limits = new Limits();
+
     public boolean isEnabled()
     {
         return enabled;
@@ -48,6 +50,11 @@ public class VpnTcpProperties
     public Security getSecurity()
     {
         return security;
+    }
+
+    public Limits getLimits()
+    {
+        return limits;
     }
 
     public static class Tls
@@ -129,6 +136,61 @@ public class VpnTcpProperties
         public void setMaxFrameBytes(int maxFrameBytes)
         {
             this.maxFrameBytes = maxFrameBytes;
+        }
+
+        /** 读空闲断开（分钟），0 表示不启用 */
+        private int idleTimeoutMinutes = 30;
+
+        public int getIdleTimeoutMinutes()
+        {
+            return idleTimeoutMinutes;
+        }
+
+        public void setIdleTimeoutMinutes(int idleTimeoutMinutes)
+        {
+            this.idleTimeoutMinutes = idleTimeoutMinutes;
+        }
+    }
+
+    public static class Limits
+    {
+        /** 单 IP 最大并发 TCP 连接数，0 表示不限制 */
+        private int maxConnectionsPerIp = 5;
+
+        /** 单 IP 登录尝试次数上限（窗口内） */
+        private int loginMaxAttemptsPerIp = 10;
+
+        /** 登录频率统计窗口（秒） */
+        private int loginRateWindowSeconds = 60;
+
+        public int getMaxConnectionsPerIp()
+        {
+            return maxConnectionsPerIp;
+        }
+
+        public void setMaxConnectionsPerIp(int maxConnectionsPerIp)
+        {
+            this.maxConnectionsPerIp = maxConnectionsPerIp;
+        }
+
+        public int getLoginMaxAttemptsPerIp()
+        {
+            return loginMaxAttemptsPerIp;
+        }
+
+        public void setLoginMaxAttemptsPerIp(int loginMaxAttemptsPerIp)
+        {
+            this.loginMaxAttemptsPerIp = loginMaxAttemptsPerIp;
+        }
+
+        public int getLoginRateWindowSeconds()
+        {
+            return loginRateWindowSeconds;
+        }
+
+        public void setLoginRateWindowSeconds(int loginRateWindowSeconds)
+        {
+            this.loginRateWindowSeconds = loginRateWindowSeconds;
         }
     }
 }

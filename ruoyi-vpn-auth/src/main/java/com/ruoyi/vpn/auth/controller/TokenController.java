@@ -71,11 +71,13 @@ public class TokenController
         String token = SecurityUtils.getToken(request);
         if (StringUtils.isNotEmpty(token))
         {
+            Long userId = Long.parseLong(JwtUtils.getUserId(token));
             String username = JwtUtils.getUserName(token);
             // 删除用户缓存记录
             AuthUtil.logoutByToken(token);
             // 记录用户退出日志
             vpnLoginService.logout(username);
+            vpnLineVerifyService.clearSendCooldown(userId);
         }
         return R.ok();
     }

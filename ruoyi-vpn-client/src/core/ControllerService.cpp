@@ -174,7 +174,13 @@ void ControllerService::turnOnGateway(bool turnOn)
 void ControllerService::switchGateway(const QString &gatewayId)
 {
     QJsonObject body;
-    body[QStringLiteral("gatewayID")] = gatewayId;
+    bool ok = false;
+    const qint64 idNum = gatewayId.toLongLong(&ok);
+    if (ok) {
+        body[QStringLiteral("gatewayID")] = idNum;
+    } else {
+        body[QStringLiteral("gatewayID")] = gatewayId;
+    }
     postJson(QStringLiteral("/api/v1/gateway/switch"), QJsonDocument(body), [this](const QJsonObject &) {
         fetchGatewayList();
     });

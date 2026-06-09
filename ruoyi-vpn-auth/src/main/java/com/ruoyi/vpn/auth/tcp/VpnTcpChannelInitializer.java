@@ -1,31 +1,42 @@
 package com.ruoyi.vpn.auth.tcp;
 
 import java.io.File;
+import java.util.concurrent.TimeUnit;
+import javax.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.vpn.auth.config.VpnTcpProperties;
-import com.ruoyi.common.redis.service.RedisService;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.timeout.IdleStateHandler;
 
 /**
  * TCP Channel 初始化
  */
+@Component
 public class VpnTcpChannelInitializer extends ChannelInitializer<SocketChannel>
 {
-    private final SslContext sslContext;
+    @Autowired
+    private VpnTcpProperties properties;
 
-    private final VpnTcpProperties properties;
+    @Autowired
+    private VpnTcpBusinessHandler businessHandler;
 
-    private final VpnTcpBusinessHandler businessHandler;
+    @Autowired
+    private VpnTcpConnectionLimitHandler connectionLimitHandler;
 
-    public VpnTcpChannelInitializer(VpnTcpProperties properties, RedisService redisService,
-            TcpRpcDispatcher rpcDispatcher) throws Exception
+    @Autowired
+    private VpnTcpIdleDisconnectHandler idleDisconnectHandler;
+
+    private SslContext sslContext;
+
+    @PostConstruct
+    public void initSslContext() throws Exception
     {
-        this.properties = properties;
-        this.businessHandler = new VpnTcpBusinessHandler(properties, redisService, rpcDispatcher);
         if (properties.getTls().isEnabled())
         {
             VpnTcpProperties.Tls tls = properties.getTls();
@@ -37,10 +48,6 @@ public class VpnTcpChannelInitializer extends ChannelInitializer<SocketChannel>
                     .protocols("TLSv1.3")
                     .build();
         }
-        else
-        {
-            this.sslContext = null;
-        }
     }
 
     @Override
@@ -50,6 +57,13 @@ public class VpnTcpChannelInitializer extends ChannelInitializer<SocketChannel>
         if (sslContext != null)
         {
             pipeline.addLast("ssl", sslContext.newHandler(ch.alloc()));
+        }
+        pipeline.addLast("connectionLimit", connectionLimitHandler);
+        int idleMinutes = properties.getSecurity().getIdleTimeoutMinutes();
+        if (idleMinutes > 0)
+        {
+            pipeline.addLast("idleState", new IdleStateHandler(idleMinutes, 0, 0, TimeUnit.MINUTES));
+            pipeline.addLast("idleDisconnect", idleDisconnectHandler);
         }
         pipeline.addLast("frameDecoder", new VpnFrameDecoder(properties));
         pipeline.addLast("frameEncoder", new VpnFrameEncoder());

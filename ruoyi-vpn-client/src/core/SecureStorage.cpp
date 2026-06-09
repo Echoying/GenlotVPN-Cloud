@@ -30,19 +30,26 @@ QVariantMap SecureStorage::loadConfigFile() const
     result[QStringLiteral("serverPort")] = cfg.value(QStringLiteral("serverPort")).toInt(9443);
     result[QStringLiteral("useTls")] = cfg.value(QStringLiteral("useTls")).toBool(false);
     result[QStringLiteral("certPinSha256")] = cfg.value(QStringLiteral("certPinSha256")).toString();
+    result[QStringLiteral("certPinSha256Backup")] = cfg.value(QStringLiteral("certPinSha256Backup")).toString();
     return result;
 }
 
-bool SecureStorage::saveConfigHostPort(const QString &host, int port)
+bool SecureStorage::saveConfigServer(const QString &host, int port, bool useTls,
+                                     const QString &certPinSha256,
+                                     const QString &certPinSha256Backup)
 {
     QJsonObject cfg;
-    const QVariantMap existing = loadConfigFile();
     cfg[QStringLiteral("serverHost")] = host.trimmed();
     cfg[QStringLiteral("serverPort")] = port;
-    cfg[QStringLiteral("useTls")] = existing.value(QStringLiteral("useTls"), false).toBool();
-    const QString pin = existing.value(QStringLiteral("certPinSha256")).toString();
+    cfg[QStringLiteral("useTls")] = useTls;
+
+    const QString pin = certPinSha256.trimmed();
     if (!pin.isEmpty()) {
         cfg[QStringLiteral("certPinSha256")] = pin;
+    }
+    const QString backupPin = certPinSha256Backup.trimmed();
+    if (!backupPin.isEmpty()) {
+        cfg[QStringLiteral("certPinSha256Backup")] = backupPin;
     }
 
     QFile file(configFilePath());

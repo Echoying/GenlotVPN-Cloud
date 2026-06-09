@@ -1,6 +1,6 @@
 {
   "serverHost": "10.9.2.177",
   "serverPort": 9443,
-  "useTls": false,
-  "certPinSha256": ""
+  "useTls": true,
+  "certPinSha256": "cfaed547fc3b72894931ddcd7f94090bb909e95357510d3a79c94345f5e4d6fb"
 }

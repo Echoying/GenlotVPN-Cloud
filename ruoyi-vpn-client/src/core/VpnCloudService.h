@@ -22,7 +22,8 @@ class VpnCloudService : public QObject {
 public:
     explicit VpnCloudService(QObject *parent = nullptr);
 
-    void configure(const QString &host, quint16 port, bool useTls, const QString &certPinSha256);
+    void configure(const QString &host, quint16 port, bool useTls, const QString &certPinSha256,
+                   const QString &certPinSha256Backup = QString());
 
     Q_INVOKABLE void fetchPublicLines();
     Q_INVOKABLE void fetchCaptcha();

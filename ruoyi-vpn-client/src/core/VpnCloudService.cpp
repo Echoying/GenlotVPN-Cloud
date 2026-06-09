@@ -65,12 +65,13 @@ VpnCloudService::VpnCloudService(QObject *parent) : QObject(parent)
 {
 }
 
-void VpnCloudService::configure(const QString &host, quint16 port, bool useTls, const QString &certPinSha256)
+void VpnCloudService::configure(const QString &host, quint16 port, bool useTls, const QString &certPinSha256,
+                                const QString &certPinSha256Backup)
 {
     m_host = host;
     m_port = port;
     m_useTls = useTls;
-    m_tcp.configure(host, port, useTls, certPinSha256);
+    m_tcp.configure(host, port, useTls, certPinSha256, certPinSha256Backup);
 }
 
 RpcResult VpnCloudService::parseEnvelopeResponse(const QByteArray &envelopeBytes)
@@ -293,14 +294,24 @@ void VpnCloudService::clearSession()
 
 void VpnCloudService::logout()
 {
-    clearSession();
 #ifdef VPN_HAS_PROTO
+    if (!hasSession()) {
+        clearSession();
+        emit logoutSucceeded();
+        return;
+    }
     vpn::LogoutRequest req;
     sendRpc(static_cast<int>(vpn::MessageType::LOGOUT), serializeProto(req),
-            [this](const RpcResult &) {
+            [this](const RpcResult &r) {
+        clearSession();
+        if (!r.ok) {
+            const QString msg = r.msg.isEmpty() ? QStringLiteral("退出登录请求失败") : r.msg.trimmed();
+            emitCloudError(msg);
+        }
         emit logoutSucceeded();
     });
 #else
+    clearSession();
     emit logoutSucceeded();
 #endif
 }

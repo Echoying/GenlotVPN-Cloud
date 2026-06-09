@@ -11,6 +11,8 @@ import com.ruoyi.vpn.auth.config.VpnTcpProperties;
 import com.ruoyi.vpn.protocol.Envelope;
 import com.ruoyi.vpn.protocol.MessageType;
 import com.ruoyi.vpn.protocol.RpcResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -19,6 +21,7 @@ import io.netty.util.AttributeKey;
 /**
  * TCP 业务处理器：安全校验 + RPC 分发
  */
+@Component
 @ChannelHandler.Sharable
 public class VpnTcpBusinessHandler extends SimpleChannelInboundHandler<byte[]>
 {
@@ -29,19 +32,14 @@ public class VpnTcpBusinessHandler extends SimpleChannelInboundHandler<byte[]>
 
     private static final String NONCE_REDIS_PREFIX = "vpn_tcp_nonce:";
 
-    private final VpnTcpProperties properties;
+    @Autowired
+    private VpnTcpProperties properties;
 
-    private final RedisService redisService;
+    @Autowired
+    private RedisService redisService;
 
-    private final TcpRpcDispatcher rpcDispatcher;
-
-    public VpnTcpBusinessHandler(VpnTcpProperties properties, RedisService redisService,
-            TcpRpcDispatcher rpcDispatcher)
-    {
-        this.properties = properties;
-        this.redisService = redisService;
-        this.rpcDispatcher = rpcDispatcher;
-    }
+    @Autowired
+    private TcpRpcDispatcher rpcDispatcher;
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, byte[] frame) throws Exception
@@ -51,8 +49,11 @@ public class VpnTcpBusinessHandler extends SimpleChannelInboundHandler<byte[]>
         if (session == null)
         {
             session = new TcpSessionContext();
+            String clientIp = ctx.channel().attr(VpnTcpConnectionLimitHandler.CLIENT_IP_KEY).get();
+            session.setClientIp(clientIp);
             ctx.channel().attr(SESSION_KEY).set(session);
         }
+        session.setLastActivityMs(System.currentTimeMillis());
 
         RpcResponse response;
         try

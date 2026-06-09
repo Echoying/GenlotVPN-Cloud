@@ -10,3 +10,4 @@
 # 说明：
 # - server.port=9400 为 HTTP（Web 登录），在 bootstrap.yml，无需改网关
 # - vpn.tcp.port=9443 为桌面客户端 TCP，直连 ruoyi-vpn-auth，不经 ruoyi-vpn-gateway
+# - 生产 TLS：见 ruoyi-vpn-auth-prod-tls.yml 与 ruoyi-vpn-client/docs/TLS_PINNING.md
