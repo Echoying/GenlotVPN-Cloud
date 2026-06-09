@@ -1,4 +1,5 @@
 #include "ControllerService.h"
+#include "AppLogger.h"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -50,15 +51,19 @@ void ControllerService::postJson(const QString &path, const QJsonDocument &doc,
     QNetworkRequest req(QUrl(m_baseUrl + path));
     req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
     auto *reply = m_nam.post(req, doc.toJson());
-    connect(reply, &QNetworkReply::finished, this, [this, reply, onSuccess = std::move(onSuccess)]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, path, onSuccess = std::move(onSuccess)]() {
         reply->deleteLater();
         if (reply->error() != QNetworkReply::NoError) {
-            emit operationFailed(reply->errorString());
+            const QString err = reply->errorString();
+            AppLogger::instance()->error(QStringLiteral("[控制器] POST %1 失败: %2").arg(path, err));
+            emit operationFailed(err);
             return;
         }
         const QJsonObject obj = QJsonDocument::fromJson(reply->readAll()).object();
         if (obj.value(QStringLiteral("code")).toString() != QStringLiteral("200")) {
-            emit operationFailed(extractControllerError(obj, QStringLiteral("控制器请求失败")));
+            const QString err = extractControllerError(obj, QStringLiteral("控制器请求失败"));
+            AppLogger::instance()->error(QStringLiteral("[控制器] POST %1 失败: %2").arg(path, err));
+            emit operationFailed(err);
             return;
         }
         onSuccess(obj);
@@ -69,15 +74,19 @@ void ControllerService::getJson(const QString &path, std::function<void(const QJ
 {
     QNetworkRequest req(QUrl(m_baseUrl + path));
     auto *reply = m_nam.get(req);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, onSuccess = std::move(onSuccess)]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, path, onSuccess = std::move(onSuccess)]() {
         reply->deleteLater();
         if (reply->error() != QNetworkReply::NoError) {
-            emit operationFailed(QStringLiteral("无法连接本地控制器(127.0.0.1:30303)，请确保易安联 Agent 已启动"));
+            const QString err = QStringLiteral("无法连接本地控制器(127.0.0.1:30303)，请确保易安联 Agent 已启动");
+            AppLogger::instance()->error(QStringLiteral("[控制器] GET %1 失败: %2").arg(path, reply->errorString()));
+            emit operationFailed(err);
             return;
         }
         const QJsonObject obj = QJsonDocument::fromJson(reply->readAll()).object();
         if (obj.value(QStringLiteral("code")).toString() != QStringLiteral("200")) {
-            emit operationFailed(extractControllerError(obj, QStringLiteral("控制器请求失败")));
+            const QString err = extractControllerError(obj, QStringLiteral("控制器请求失败"));
+            AppLogger::instance()->error(QStringLiteral("[控制器] GET %1 失败: %2").arg(path, err));
+            emit operationFailed(err);
             return;
         }
         onSuccess(obj);
@@ -91,7 +100,9 @@ void ControllerService::detectServer(const QVariantMap &server)
     postJson(QStringLiteral("/api/v1/control/detect"), QJsonDocument(arr), [this](const QJsonObject &obj) {
         const QJsonArray data = obj.value(QStringLiteral("data")).toArray();
         if (data.isEmpty()) {
-            emit operationFailed(QStringLiteral("探测未返回数据"));
+            const QString err = QStringLiteral("探测未返回数据");
+            AppLogger::instance()->error(QStringLiteral("[控制器] POST /api/v1/control/detect 失败: %1").arg(err));
+            emit operationFailed(err);
             return;
         }
         emit detectSucceeded(data.first().toObject().toVariantMap());

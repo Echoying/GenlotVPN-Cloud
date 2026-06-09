@@ -48,6 +48,7 @@ set(SOURCES
     src/core/ControllerService.cpp
     src/core/SessionManager.cpp
     src/core/SecureStorage.cpp
+    src/core/AppLogger.cpp
     src/core/VpnFlowController.cpp
     ${PROTO_SRCS}
 )
@@ -85,6 +86,7 @@ qt_add_qml_module(GenlotVPN
         qml/pages/LoginPage.qml
         qml/pages/ConnectLinePage.qml
         qml/pages/AppListPage.qml
+        qml/pages/SettingsPage.qml
     RESOURCES
         assets/images/genlot-logo.svg
         assets/images/genlot-logo-official.png

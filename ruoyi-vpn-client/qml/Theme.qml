@@ -46,6 +46,18 @@ QtObject {
     readonly property int chooseLineWindowMinWidth: 520
     readonly property int chooseLineWindowMinHeight: 300
 
+    // 设置页
+    readonly property int settingsWindowWidth: 680
+    readonly property int settingsWindowHeight: 420
+    readonly property int settingsWindowMinWidth: 560
+    readonly property int settingsWindowMinHeight: 360
+    readonly property int settingsNavWidth: 168
+
+    // 设置页扁平配色
+    readonly property color settingsSidebarBg: "#F5F7FA"
+    readonly property color settingsSidebarActive: "#FFFFFF"
+    readonly property color settingsDivider: "#E4E9F0"
+
     // 应用列表页放大窗口
     readonly property int appListWindowWidth: 920
     readonly property int appListWindowHeight: 620

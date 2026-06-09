@@ -1,4 +1,8 @@
 #include "SecureStorage.h"
+#include <QCoreApplication>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QVariantMap>
 
 namespace vpn {
@@ -7,6 +11,46 @@ SecureStorage::SecureStorage(QObject *parent)
     : QObject(parent)
     , m_settings(QStringLiteral("Genlot"), QStringLiteral("GenlotVPN"))
 {
+}
+
+QString SecureStorage::configFilePath() const
+{
+    return QCoreApplication::applicationDirPath() + QStringLiteral("/config.json");
+}
+
+QVariantMap SecureStorage::loadConfigFile() const
+{
+    QVariantMap result;
+    QFile file(configFilePath());
+    if (!file.open(QIODevice::ReadOnly)) {
+        return result;
+    }
+    const QJsonObject cfg = QJsonDocument::fromJson(file.readAll()).object();
+    result[QStringLiteral("serverHost")] = cfg.value(QStringLiteral("serverHost")).toString();
+    result[QStringLiteral("serverPort")] = cfg.value(QStringLiteral("serverPort")).toInt(9443);
+    result[QStringLiteral("useTls")] = cfg.value(QStringLiteral("useTls")).toBool(false);
+    result[QStringLiteral("certPinSha256")] = cfg.value(QStringLiteral("certPinSha256")).toString();
+    return result;
+}
+
+bool SecureStorage::saveConfigHostPort(const QString &host, int port)
+{
+    QJsonObject cfg;
+    const QVariantMap existing = loadConfigFile();
+    cfg[QStringLiteral("serverHost")] = host.trimmed();
+    cfg[QStringLiteral("serverPort")] = port;
+    cfg[QStringLiteral("useTls")] = existing.value(QStringLiteral("useTls"), false).toBool();
+    const QString pin = existing.value(QStringLiteral("certPinSha256")).toString();
+    if (!pin.isEmpty()) {
+        cfg[QStringLiteral("certPinSha256")] = pin;
+    }
+
+    QFile file(configFilePath());
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        return false;
+    }
+    file.write(QJsonDocument(cfg).toJson(QJsonDocument::Indented));
+    return true;
 }
 
 void SecureStorage::saveServer(const QString &host, quint16 port, bool useTls)

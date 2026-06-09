@@ -35,6 +35,14 @@ ApplicationWindow {
     Connections {
         target: vpnFlow
         function onNavigateTo(page) {
+            if (page === "settings") {
+                window.width = Theme.settingsWindowWidth
+                window.height = Theme.settingsWindowHeight
+                window.minimumWidth = Theme.settingsWindowMinWidth
+                window.minimumHeight = Theme.settingsWindowMinHeight
+                stackView.push(settingsPageComponent)
+                return
+            }
             if (page === "applist") {
                 window.width = Theme.appListWindowWidth
                 window.height = Theme.appListWindowHeight
@@ -114,6 +122,7 @@ ApplicationWindow {
         height: toastBar.isError ? 44 : 36
         radius: Theme.buttonRadius
         color: isError ? Theme.danger : Theme.navy
+        z: 20
 
         Row {
             anchors.centerIn: parent
@@ -147,4 +156,5 @@ ApplicationWindow {
     Component { id: loginPageComponent; LoginPage {} }
     Component { id: connectPageComponent; ConnectLinePage {} }
     Component { id: appListPageComponent; AppListPage {} }
+    Component { id: settingsPageComponent; SettingsPage {} }
 }

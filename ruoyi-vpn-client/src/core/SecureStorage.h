@@ -15,6 +15,10 @@ public:
     Q_INVOKABLE void saveServer(const QString &host, quint16 port, bool useTls);
     Q_INVOKABLE QVariantMap loadServer() const;
 
+    Q_INVOKABLE QString configFilePath() const;
+    Q_INVOKABLE QVariantMap loadConfigFile() const;
+    Q_INVOKABLE bool saveConfigHostPort(const QString &host, int port);
+
     Q_INVOKABLE void saveRememberedUser(const QString &username, const QString &password, bool remember);
     Q_INVOKABLE QVariantMap loadRememberedUser() const;
 

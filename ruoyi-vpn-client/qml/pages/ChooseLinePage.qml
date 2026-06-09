@@ -5,6 +5,10 @@ import GenlotVPN 1.0
 Item {
     id: root
 
+    function openSettings() {
+        vpnFlow.goToSettings()
+    }
+
     PageShell {
         anchors.fill: parent
         spacious: true
@@ -42,6 +46,18 @@ Item {
                 onRefreshRequested: vpnFlow.loadPublicLines()
             }
         }
+    }
+
+    GhostButton {
+        id: settingsBtn
+        z: 20
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: 10
+        anchors.rightMargin: 12
+        text: "设置"
+        emphasized: true
+        onClicked: root.openSettings()
     }
 
     Component.onCompleted: vpnFlow.loadPublicLines()

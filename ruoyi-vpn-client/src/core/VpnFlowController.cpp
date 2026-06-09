@@ -1,4 +1,5 @@
 #include "VpnFlowController.h"
+#include "AppLogger.h"
 #include <QGuiApplication>
 #include <QClipboard>
 #include <QTimer>
@@ -65,6 +66,8 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     , m_session(session)
     , m_storage(storage)
 {
+    bootstrapServer();
+
     m_countdownTimer = new QTimer(this);
     m_countdownTimer->setInterval(1000);
     connect(m_countdownTimer, &QTimer::timeout, this, [this]() {
@@ -82,8 +85,10 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         setLoading(false);
         if (lines.isEmpty()) {
             setStatusMessage(QStringLiteral("服务器未返回可用线路，请确认 yianlian 模块线路已启用"));
+            addLog(QStringLiteral("warn"), QStringLiteral("未获取到可用线路"));
         } else {
             setStatusMessage(QStringLiteral("共 %1 条线路").arg(lines.size()));
+            addLog(QStringLiteral("info"), QStringLiteral("加载线路成功，共 %1 条").arg(lines.size()));
         }
         emit publicLinesChanged();
     });
@@ -98,6 +103,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         m_loginPending = false;
         setLoginError(QString());
         setLoggedIn(true);
+        addLog(QStringLiteral("info"), QStringLiteral("云端登录成功"));
         emit navigateTo(QStringLiteral("connect"));
         if (m_autoConnectPending) {
             m_autoConnectPending = false;
@@ -131,6 +137,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         m_lineVerifyPending = false;
         setVerifyError(QString());
         setVerifyDialogVisible(false);
+        addLog(QStringLiteral("info"), QStringLiteral("钉钉验证通过，开始连接控制器"));
         emit toast(QStringLiteral("验证通过"), false);
         onConnectChainAfterVerify();
     });
@@ -170,7 +177,6 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
                                            ? QStringLiteral("验证码校验失败，请重试")
                                            : msg.trimmed();
             setVerifyError(displayMsg);
-            addLog(QStringLiteral("error"), displayMsg);
             return;
         }
         if (m_verifyDialogVisible && !isSessionExpiredMessage(msg)) {
@@ -178,7 +184,6 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
                                            ? QStringLiteral("验证失败，请重试")
                                            : msg.trimmed();
             setVerifyError(displayMsg);
-            addLog(QStringLiteral("error"), displayMsg);
             return;
         }
         if (isSessionExpiredMessage(msg)) {
@@ -197,7 +202,6 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
             return;
         }
         setStatusMessage(msg);
-        addLog(QStringLiteral("error"), msg);
         emit toast(msg, true);
     });
 
@@ -274,10 +278,12 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
                 m_autoTurnOnGatewayPending = true;
                 m_controller->switchGateway(firstId);
             }
-        } else if (m_autoTurnOnGatewayPending) {
+        } else         if (m_autoTurnOnGatewayPending) {
             m_autoTurnOnGatewayPending = false;
+            addLog(QStringLiteral("info"), QStringLiteral("网关切换完成，正在打开连接..."));
             turnOnGateway(true);
         }
+        addLog(QStringLiteral("info"), QStringLiteral("网关列表已更新，共 %1 个").arg(m_gateways.size()));
         emit gatewaysChanged();
     });
     connect(m_controller, &ControllerService::appListReady, this, [this](const QVariantList &apps) {
@@ -298,6 +304,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
             }
         }
         m_apps = normalized;
+        addLog(QStringLiteral("info"), QStringLiteral("应用列表已加载，共 %1 个").arg(normalized.size()));
         emit appsChanged();
     });
     connect(m_controller, &ControllerService::operationFailed, this, [this](const QString &msg) {
@@ -309,8 +316,8 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         if (m_autoTurnOnGatewayPending) {
             m_autoTurnOnGatewayPending = false;
         }
-        addLog(QStringLiteral("error"), msg);
-        emit toast(msg, true);
+        const QString errorMsg = msg.trimmed().isEmpty() ? QStringLiteral("控制器请求失败") : msg.trimmed();
+        emit toast(errorMsg, true);
     });
 }
 
@@ -330,6 +337,7 @@ void VpnFlowController::loadPublicLines()
     if (m_loading) {
         return;
     }
+    addLog(QStringLiteral("info"), QStringLiteral("正在加载公开线路..."));
     setLoading(true);
     setStatusMessage(QStringLiteral("正在连接 %1 ...").arg(m_serverEndpoint));
     m_cloud->fetchPublicLines();
@@ -341,6 +349,7 @@ void VpnFlowController::selectPublicLine(const QVariantMap &line)
     m_pendingLine = line;
     m_session->setPendingLine(line);
     emit pendingLineChanged();
+    addLog(QStringLiteral("info"), QStringLiteral("已选择线路: %1").arg(line.value(QStringLiteral("appName")).toString()));
     emit navigateTo(QStringLiteral("login"));
 }
 
@@ -364,6 +373,7 @@ void VpnFlowController::doLogin(const QString &username, const QString &password
     m_storage->saveRememberedUser(username, password, rememberMe);
     m_username = username;
     emit usernameChanged();
+    addLog(QStringLiteral("info"), QStringLiteral("正在登录云端，用户: %1").arg(username));
     setLoading(true);
     m_loginPending = true;
     m_autoConnectPending = true;
@@ -433,7 +443,12 @@ void VpnFlowController::onConnectChainAfterVerify()
 void VpnFlowController::proceedControllerConnect(const QVariantMap &line)
 {
     setLoading(true);
+    const QString host = line.value(QStringLiteral("host")).toString();
+    const QString port = line.value(QStringLiteral("srvPort")).toString();
     addLog(QStringLiteral("info"), QStringLiteral("开始检测线路: %1").arg(line.value(QStringLiteral("appName")).toString()));
+    if (!host.isEmpty()) {
+        addLog(QStringLiteral("info"), QStringLiteral("目标地址: %1:%2").arg(host, port));
+    }
     m_controller->detectServer(line);
 }
 
@@ -450,6 +465,7 @@ void VpnFlowController::switchGateway(const QString &gatewayId)
     }
     m_switchingGatewayId = id;
     emit switchingGatewayIdChanged();
+    addLog(QStringLiteral("info"), QStringLiteral("正在切换网关: %1").arg(id));
     m_controller->switchGateway(id);
 }
 
@@ -461,6 +477,7 @@ void VpnFlowController::refreshAppList()
 
 void VpnFlowController::doLogout()
 {
+    addLog(QStringLiteral("info"), QStringLiteral("用户退出登录"));
     finishLogout(true);
     m_controller->controllerLogout();
     m_cloud->logout();
@@ -487,7 +504,6 @@ void VpnFlowController::finishLogout(bool clearUsername)
     m_verifyLine.clear();
     m_gateways.clear();
     m_apps.clear();
-    m_logs.clear();
     m_selectedGatewayId.clear();
     m_switchingGatewayId.clear();
     m_autoGatewayInitPending = false;
@@ -503,7 +519,6 @@ void VpnFlowController::finishLogout(bool clearUsername)
     emit selectedLineChanged();
     emit gatewaysChanged();
     emit appsChanged();
-    emit logsChanged();
     emit usernameChanged();
     emit selectedGatewayIdChanged();
     emit switchingGatewayIdChanged();
@@ -552,6 +567,11 @@ void VpnFlowController::goChooseLine()
     emit navigateTo(QStringLiteral("choose"));
 }
 
+void VpnFlowController::goToSettings()
+{
+    emit navigateTo(QStringLiteral("settings"));
+}
+
 void VpnFlowController::copyToClipboard(const QString &text)
 {
     const QString trimmed = text.trimmed();
@@ -580,12 +600,11 @@ QString VpnFlowController::gatewayIp(const QVariant &gateway) const
 
 void VpnFlowController::addLog(const QString &type, const QString &message)
 {
-    QVariantMap entry;
-    entry[QStringLiteral("type")] = type;
-    entry[QStringLiteral("time")] = QDateTime::currentDateTime().toString(QStringLiteral("HH:mm:ss"));
-    entry[QStringLiteral("message")] = message;
-    m_logs.append(entry);
-    emit logsChanged();
+    if (type.trimmed().toLower() == QStringLiteral("error")) {
+        AppLogger::instance()->error(message);
+        return;
+    }
+    AppLogger::instance()->log(type, message);
 }
 
 void VpnFlowController::setLoading(bool v)
@@ -633,6 +652,85 @@ void VpnFlowController::setServerEndpoint(const QString &endpoint)
         m_serverEndpoint = endpoint;
         emit serverEndpointChanged();
     }
+}
+
+void VpnFlowController::reloadServerSettings()
+{
+    const QVariantMap saved = m_storage->loadServer();
+    m_serverHost = saved.value(QStringLiteral("host")).toString();
+    m_serverPort = static_cast<quint16>(saved.value(QStringLiteral("port")).toUInt());
+    m_serverUseTls = saved.value(QStringLiteral("useTls")).toBool();
+    m_certPinSha256.clear();
+
+    const QVariantMap cfg = m_storage->loadConfigFile();
+    if (!cfg.value(QStringLiteral("serverHost")).toString().isEmpty()) {
+        m_serverHost = cfg.value(QStringLiteral("serverHost")).toString();
+    }
+    if (cfg.contains(QStringLiteral("serverPort"))) {
+        m_serverPort = static_cast<quint16>(cfg.value(QStringLiteral("serverPort")).toUInt());
+    }
+    if (cfg.contains(QStringLiteral("useTls"))) {
+        m_serverUseTls = cfg.value(QStringLiteral("useTls")).toBool();
+    }
+    m_certPinSha256 = cfg.value(QStringLiteral("certPinSha256")).toString();
+
+    if (m_serverHost.isEmpty()) {
+        m_serverHost = QStringLiteral("127.0.0.1");
+    }
+    if (m_serverPort == 0) {
+        m_serverPort = 9443;
+    }
+}
+
+void VpnFlowController::bootstrapServer()
+{
+    reloadServerSettings();
+    m_cloud->configure(m_serverHost, m_serverPort, m_serverUseTls, m_certPinSha256);
+    setServerEndpoint(QStringLiteral("%1:%2").arg(m_serverHost).arg(m_serverPort));
+    emit serverConfigChanged();
+}
+
+QVariantMap VpnFlowController::currentServerConfig() const
+{
+    QVariantMap config;
+    config[QStringLiteral("host")] = m_serverHost;
+    config[QStringLiteral("port")] = m_serverPort;
+    config[QStringLiteral("useTls")] = m_serverUseTls;
+    return config;
+}
+
+bool VpnFlowController::applyServerConfig(const QString &host, int port)
+{
+    const QString trimmedHost = host.trimmed();
+    if (trimmedHost.isEmpty()) {
+        emit toast(QStringLiteral("请输入服务器地址"), true);
+        return false;
+    }
+    if (port <= 0 || port > 65535) {
+        emit toast(QStringLiteral("请输入有效端口号（1-65535）"), true);
+        return false;
+    }
+
+    m_serverHost = trimmedHost;
+    m_serverPort = static_cast<quint16>(port);
+
+    m_storage->saveServer(m_serverHost, m_serverPort, m_serverUseTls);
+    if (!m_storage->saveConfigHostPort(m_serverHost, port)) {
+        AppLogger::instance()->error(QStringLiteral("[设置] 写入 config.json 失败: %1").arg(m_storage->configFilePath()));
+        emit toast(QStringLiteral("保存 config.json 失败"), true);
+        return false;
+    }
+
+    m_cloud->configure(m_serverHost, m_serverPort, m_serverUseTls, m_certPinSha256);
+    setServerEndpoint(QStringLiteral("%1:%2").arg(m_serverHost).arg(m_serverPort));
+    emit serverConfigChanged();
+
+    m_publicLines.clear();
+    emit publicLinesChanged();
+    setStatusMessage(QStringLiteral("服务器 %1:%2").arg(m_serverHost).arg(m_serverPort));
+    addLog(QStringLiteral("info"), QStringLiteral("服务器已更新: %1:%2").arg(m_serverHost).arg(m_serverPort));
+    loadPublicLines();
+    return true;
 }
 
 void VpnFlowController::setLoggedIn(bool v)

@@ -11,32 +11,7 @@ Item {
         progress: 0.4
         statusText: vpnFlow.loading && !vpnFlow.verifyDialogVisible
                     ? "正在连接 " + (vpnFlow.pendingLine.appName || "")
-                    : (vpnFlow.logs.length > 0 ? vpnFlow.logs[vpnFlow.logs.length - 1].message : "")
-
-        Rectangle {
-            width: parent.width
-            height: 120
-            radius: Theme.buttonRadius
-            color: Theme.logBg
-            border.color: Theme.logBorder
-            border.width: 1
-            visible: vpnFlow.logs.length > 0
-
-            ListView {
-                anchors.fill: parent
-                anchors.margins: 8
-                clip: true
-                model: vpnFlow.logs
-                spacing: 2
-                delegate: Text {
-                    width: parent.width
-                    text: modelData.time + "  " + modelData.message
-                    color: modelData.type === "error" ? Theme.danger : Theme.logText
-                    font.pixelSize: 11
-                    wrapMode: Text.Wrap
-                }
-            }
-        }
+                    : vpnFlow.statusMessage
 
         ActionRow {
             width: parent.width

@@ -1,4 +1,5 @@
 #include "VpnCloudService.h"
+#include "AppLogger.h"
 #include "TcpHmacUtils.h"
 #include <QDateTime>
 #include <QUuid>
@@ -15,6 +16,12 @@
 namespace vpn {
 
 namespace {
+
+void emitCloudError(const QString &message)
+{
+    const QString err = message.trimmed().isEmpty() ? QStringLiteral("云端请求失败") : message.trimmed();
+    AppLogger::instance()->error(QStringLiteral("[云端] %1").arg(err));
+}
 
 #ifdef VPN_HAS_PROTO
 QByteArray serializeProto(const google::protobuf::Message &message)
@@ -124,18 +131,24 @@ QByteArray VpnCloudService::buildEnvelope(int messageType, const QByteArray &pay
 void VpnCloudService::sendRpc(int messageType, const QByteArray &payload, RpcCallback callback)
 {
 #ifndef VPN_HAS_PROTO
+    emitCloudError(QStringLiteral("Protobuf 代码未生成，请先编译项目"));
     emit requestFailed(QStringLiteral("Protobuf 代码未生成，请先编译项目"));
     return;
 #else
     const QByteArray envelope = buildEnvelope(messageType, payload);
     m_tcp.sendEnvelope(envelope, [this, callback = std::move(callback)](bool ok, const QByteArray &body, const QString &err) {
         if (!ok) {
-            emit requestFailed(err.isEmpty() ? QStringLiteral("TCP 连接失败") : err);
+            const QString msg = err.isEmpty() ? QStringLiteral("TCP 连接失败") : err;
+            emitCloudError(msg);
+            emit requestFailed(msg);
             return;
         }
         const RpcResult result = parseEnvelopeResponse(body);
         if (!result.ok) {
-            emit requestFailed(result.msg.isEmpty() ? QStringLiteral("请求失败") : result.msg.trimmed());
+            const QString msg = result.msg.isEmpty() ? QStringLiteral("请求失败") : result.msg.trimmed();
+            emitCloudError(msg);
+            emit requestFailed(msg);
+            return;
         }
         callback(result);
     });
@@ -145,6 +158,7 @@ void VpnCloudService::sendRpc(int messageType, const QByteArray &payload, RpcCal
 void VpnCloudService::fetchPublicLines()
 {
 #ifndef VPN_HAS_PROTO
+    emitCloudError(QStringLiteral("Protobuf 未生成，请重新编译客户端"));
     emit requestFailed(QStringLiteral("Protobuf 未生成，请重新编译客户端"));
     return;
 #else

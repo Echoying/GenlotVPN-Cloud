@@ -75,6 +75,13 @@ cmake --build build --config Release
 - 记住密码暂用 QSettings（生产应换 DPAPI/Keychain）
 - 控制器密码使用服务端 AES 密文，**客户端不解密**，直接传给 Agent
 
+## 日志
+
+- 日志仅写入本地文件，界面不展示
+- 全量日志：`<exe目录>/logs/genlot-vpn-YYYY-MM-DD.log`
+- **报错专用**：`<exe目录>/logs/genlot-vpn-error-YYYY-MM-DD.log`（ERROR 级别双写并立即刷盘）
+- 云端 TCP/RPC、本地控制器 HTTP 请求失败均会写入报错日志
+
 ## 协议
 
 见 [`../proto/README.md`](../proto/README.md)

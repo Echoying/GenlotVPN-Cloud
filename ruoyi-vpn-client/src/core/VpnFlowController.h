@@ -18,7 +18,6 @@ namespace vpn {
 class VpnFlowController : public QObject {
     Q_OBJECT
     Q_PROPERTY(QVariantList publicLines READ publicLines NOTIFY publicLinesChanged)
-    Q_PROPERTY(QVariantList logs READ logs NOTIFY logsChanged)
     Q_PROPERTY(QVariantList gateways READ gateways NOTIFY gatewaysChanged)
     Q_PROPERTY(QVariantList apps READ apps NOTIFY appsChanged)
     Q_PROPERTY(QVariantMap pendingLine READ pendingLine NOTIFY pendingLineChanged)
@@ -32,6 +31,8 @@ class VpnFlowController : public QObject {
     Q_PROPERTY(int sendCountdown READ sendCountdown NOTIFY sendCountdownChanged)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
     Q_PROPERTY(QString serverEndpoint READ serverEndpoint NOTIFY serverEndpointChanged)
+    Q_PROPERTY(QString serverHost READ serverHost NOTIFY serverConfigChanged)
+    Q_PROPERTY(int serverPort READ serverPort NOTIFY serverConfigChanged)
     Q_PROPERTY(bool loggedIn READ loggedIn NOTIFY loggedInChanged)
     Q_PROPERTY(QString loginError READ loginError NOTIFY loginErrorChanged)
     Q_PROPERTY(QString verifyError READ verifyError NOTIFY verifyErrorChanged)
@@ -43,7 +44,6 @@ public:
                                SessionManager *session, SecureStorage *storage, QObject *parent = nullptr);
 
     QVariantList publicLines() const { return m_publicLines; }
-    QVariantList logs() const { return m_logs; }
     QVariantList gateways() const { return m_gateways; }
     QVariantList apps() const { return m_apps; }
     QVariantMap pendingLine() const { return m_pendingLine; }
@@ -57,6 +57,8 @@ public:
     int sendCountdown() const { return m_sendCountdown; }
     QString statusMessage() const { return m_statusMessage; }
     QString serverEndpoint() const { return m_serverEndpoint; }
+    QString serverHost() const { return m_serverHost; }
+    int serverPort() const { return m_serverPort; }
     bool loggedIn() const { return m_loggedIn; }
     QString loginError() const { return m_loginError; }
     QString verifyError() const { return m_verifyError; }
@@ -80,14 +82,17 @@ public:
     Q_INVOKABLE void changePassword(const QString &username, const QString &oldPwd,
                                     const QString &newPwd, const QString &confirmPwd);
     Q_INVOKABLE void goChooseLine();
+    Q_INVOKABLE void goToSettings();
     Q_INVOKABLE void copyToClipboard(const QString &text);
     Q_INVOKABLE bool isHttpUrl(const QString &url) const;
     Q_INVOKABLE QString gatewayIp(const QVariant &gateway) const;
+    Q_INVOKABLE QVariantMap currentServerConfig() const;
+    Q_INVOKABLE bool applyServerConfig(const QString &host, int port);
+    void bootstrapServer();
     void setServerEndpoint(const QString &endpoint);
 
 signals:
     void publicLinesChanged();
-    void logsChanged();
     void gatewaysChanged();
     void appsChanged();
     void pendingLineChanged();
@@ -99,6 +104,7 @@ signals:
     void sendCountdownChanged();
     void statusMessageChanged();
     void serverEndpointChanged();
+    void serverConfigChanged();
     void loggedInChanged();
     void loginErrorChanged();
     void verifyErrorChanged();
@@ -120,6 +126,7 @@ private:
     void setVerifyError(const QString &msg);
     void setLoggedIn(bool v);
     void proceedControllerConnect(const QVariantMap &line);
+    void reloadServerSettings();
     void finishLogout(bool clearUsername);
 
     VpnCloudService *m_cloud;
@@ -128,7 +135,6 @@ private:
     SecureStorage *m_storage;
 
     QVariantList m_publicLines;
-    QVariantList m_logs;
     QVariantList m_gateways;
     QVariantList m_apps;
     QVariantMap m_pendingLine;
@@ -143,6 +149,10 @@ private:
     int m_sendCountdown = 0;
     QString m_statusMessage;
     QString m_serverEndpoint;
+    QString m_serverHost;
+    quint16 m_serverPort = 9443;
+    bool m_serverUseTls = false;
+    QString m_certPinSha256;
     bool m_loggedIn = false;
     bool m_loginPending = false;
     bool m_lineVerifyPending = false;
