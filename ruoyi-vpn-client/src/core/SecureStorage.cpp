@@ -1,4 +1,6 @@
 #include "SecureStorage.h"
+#include "AppLogger.h"
+#include "../windows/DpapiProtector.h"
 #include <QCoreApplication>
 #include <QFile>
 #include <QJsonDocument>
@@ -6,6 +8,42 @@
 #include <QVariantMap>
 
 namespace vpn {
+
+namespace {
+
+QString defaultConfigTemplatePath()
+{
+    return QCoreApplication::applicationDirPath() + QStringLiteral("/config.default.json");
+}
+
+QByteArray embeddedDefaultConfigJson()
+{
+    return QByteArray(
+        "{\n"
+        "  \"serverHost\": \"10.9.2.177\",\n"
+        "  \"serverPort\": 9443,\n"
+        "  \"useTls\": true,\n"
+        "  \"certPinSha256\": \"cfaed547fc3b72894931ddcd7f94090bb909e95357510d3a79c94345f5e4d6fb\",\n"
+        "  \"certPinSha256Backup\": \"\"\n"
+        "}\n");
+}
+
+bool writeBytesToConfig(const QString &path, const QByteArray &bytes)
+{
+    QFile out(path);
+    if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        return false;
+    }
+    out.write(bytes);
+    return true;
+}
+
+bool isConfigUsable(const QVariantMap &cfg)
+{
+    return !cfg.value(QStringLiteral("serverHost")).toString().trimmed().isEmpty();
+}
+
+} // namespace
 
 SecureStorage::SecureStorage(QObject *parent)
     : QObject(parent)
@@ -16,6 +54,24 @@ SecureStorage::SecureStorage(QObject *parent)
 QString SecureStorage::configFilePath() const
 {
     return QCoreApplication::applicationDirPath() + QStringLiteral("/config.json");
+}
+
+bool SecureStorage::ensureDefaultConfigFile()
+{
+    const QString path = configFilePath();
+    if (QFile::exists(path) && isConfigUsable(loadConfigFile())) {
+        return false;
+    }
+
+    const QString templatePath = defaultConfigTemplatePath();
+    if (QFile::exists(templatePath)) {
+        if (QFile::exists(path)) {
+            QFile::remove(path);
+        }
+        return QFile::copy(templatePath, path);
+    }
+
+    return writeBytesToConfig(path, embeddedDefaultConfigJson());
 }
 
 QVariantMap SecureStorage::loadConfigFile() const
@@ -76,26 +132,65 @@ QVariantMap SecureStorage::loadServer() const
     return m;
 }
 
+void SecureStorage::clearRememberedUser()
+{
+    m_settings.remove(QStringLiteral("user/username"));
+    m_settings.remove(QStringLiteral("user/password"));
+    m_settings.remove(QStringLiteral("user/passwordProtected"));
+    m_settings.setValue(QStringLiteral("user/remember"), false);
+}
+
+QString SecureStorage::loadRememberedPassword() const
+{
+    const QByteArray protectedB64 = m_settings.value(QStringLiteral("user/passwordProtected")).toByteArray();
+    if (!protectedB64.isEmpty()) {
+        const QByteArray plain = DpapiProtector::unprotect(QByteArray::fromBase64(protectedB64));
+        if (!plain.isEmpty()) {
+            return QString::fromUtf8(plain);
+        }
+        AppLogger::instance()->warn(QStringLiteral("[存储] DPAPI 解密记住密码失败，可能已换用户登录"));
+        return {};
+    }
+
+    // 兼容旧版明文，下次保存时会迁移为 DPAPI
+    return m_settings.value(QStringLiteral("user/password")).toString();
+}
+
 void SecureStorage::saveRememberedUser(const QString &username, const QString &password, bool remember)
 {
     if (!remember) {
-        m_settings.remove(QStringLiteral("user/username"));
-        m_settings.remove(QStringLiteral("user/password"));
+        clearRememberedUser();
+        return;
+    }
+
+    m_settings.setValue(QStringLiteral("user/username"), username.trimmed());
+    m_settings.setValue(QStringLiteral("user/remember"), true);
+    m_settings.remove(QStringLiteral("user/password"));
+
+    const QByteArray protectedBytes = DpapiProtector::protect(password.toUtf8());
+    if (protectedBytes.isEmpty()) {
+        AppLogger::instance()->error(QStringLiteral("[存储] DPAPI 加密记住密码失败"));
+        m_settings.remove(QStringLiteral("user/passwordProtected"));
         m_settings.setValue(QStringLiteral("user/remember"), false);
         return;
     }
-    m_settings.setValue(QStringLiteral("user/username"), username);
-    // 生产环境应使用 DPAPI/Keychain；此处简化存储
-    m_settings.setValue(QStringLiteral("user/password"), password);
-    m_settings.setValue(QStringLiteral("user/remember"), true);
+
+    m_settings.setValue(QStringLiteral("user/passwordProtected"),
+                       QString::fromLatin1(protectedBytes.toBase64()));
 }
 
 QVariantMap SecureStorage::loadRememberedUser() const
 {
     QVariantMap m;
+    const bool remember = m_settings.value(QStringLiteral("user/remember"), false).toBool();
+    m[QStringLiteral("remember")] = remember;
+    if (!remember) {
+        m[QStringLiteral("username")] = QString();
+        m[QStringLiteral("password")] = QString();
+        return m;
+    }
     m[QStringLiteral("username")] = m_settings.value(QStringLiteral("user/username")).toString();
-    m[QStringLiteral("password")] = m_settings.value(QStringLiteral("user/password")).toString();
-    m[QStringLiteral("remember")] = m_settings.value(QStringLiteral("user/remember"), false).toBool();
+    m[QStringLiteral("password")] = loadRememberedPassword();
     return m;
 }
 

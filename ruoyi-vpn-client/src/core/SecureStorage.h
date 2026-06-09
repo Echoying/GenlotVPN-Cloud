@@ -6,7 +6,7 @@
 
 namespace vpn {
 
-/** 本地配置与记住密码（Windows 使用 QSettings + 简单存储） */
+/** 本地配置；记住的密码经 Windows DPAPI 加密后存入 QSettings */
 class SecureStorage : public QObject {
     Q_OBJECT
 public:
@@ -16,6 +16,8 @@ public:
     Q_INVOKABLE QVariantMap loadServer() const;
 
     Q_INVOKABLE QString configFilePath() const;
+    /** 若缺少或无效的 config.json，从 config.default.json 生成；返回 true 表示已写入 */
+    Q_INVOKABLE bool ensureDefaultConfigFile();
     Q_INVOKABLE QVariantMap loadConfigFile() const;
     Q_INVOKABLE bool saveConfigServer(const QString &host, int port, bool useTls,
                                       const QString &certPinSha256,
@@ -25,6 +27,9 @@ public:
     Q_INVOKABLE QVariantMap loadRememberedUser() const;
 
 private:
+    void clearRememberedUser();
+    QString loadRememberedPassword() const;
+
     QSettings m_settings;
 };
 

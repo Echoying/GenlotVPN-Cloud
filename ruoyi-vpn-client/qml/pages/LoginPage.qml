@@ -88,6 +88,27 @@ Item {
             text: "记住密码"
             checked: false
             font.pixelSize: 13
+            spacing: 8
+
+            indicator: Rectangle {
+                implicitWidth: 16
+                implicitHeight: 16
+                x: rememberBox.leftPadding
+                y: parent.height / 2 - height / 2
+                radius: 2
+                color: "transparent"
+                border.color: Theme.textPrimary
+                border.width: 1
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "✓"
+                    color: Theme.textPrimary
+                    font.pixelSize: 11
+                    font.bold: true
+                    visible: rememberBox.checked
+                }
+            }
 
             contentItem: Text {
                 text: rememberBox.text

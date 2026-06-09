@@ -37,8 +37,8 @@
 | [x] | W-01 | Release 构建固化 | `bin/build-vpn-client.bat`、CMake Release 说明 | 新同事按 README 可产出 Release exe |
 | [x] | W-02 | windeployqt 依赖打包 | `bin/package-vpn-client.bat` 拷贝 Qt/Protobuf DLL | 干净 Windows 机器双击 exe 可启动 |
 | [ ] | W-03 | NSIS 安装包 | 安装向导、卸载、开始菜单快捷方式 | 生成 `.exe` 安装包，安装后可用 |
-| [ ] | W-04 | 默认 config.json | 安装目录释放默认配置或首次运行生成 | 首次启动能连默认服务器 |
-| [ ] | W-05 | DPAPI 记住密码 | `SecureStorage`：Windows `CryptProtectData` | 记住密码不以明文存 QSettings；换用户读不出 |
+| [x] | W-04 | 默认 config.json | 安装目录释放默认配置或首次运行生成 | 首次启动能连默认服务器 |
+| [x] | W-05 | DPAPI 记住密码 | `SecureStorage`：Windows `CryptProtectData` | 记住密码不以明文存 QSettings；换用户读不出 |
 | [ ] | W-06 | Token / 会话安全存储 | 评估是否将 session 相关敏感项迁入 Credential Manager | 明文密码、session_key 不落盘 |
 | [ ] | W-07 | 单实例锁 | 启动时检测已有进程 | 重复打开提示或聚焦已有窗口 |
 | [ ] | W-08 | 系统托盘 | 最小化到托盘、右键退出/打开 | 关闭窗口可最小化到托盘而非直接退出 |

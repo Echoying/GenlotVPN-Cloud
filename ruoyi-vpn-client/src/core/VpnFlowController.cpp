@@ -753,6 +753,10 @@ void VpnFlowController::reloadServerSettings()
 
 void VpnFlowController::bootstrapServer()
 {
+    if (m_storage->ensureDefaultConfigFile()) {
+        addLog(QStringLiteral("info"),
+               QStringLiteral("已生成默认 config.json: %1").arg(m_storage->configFilePath()));
+    }
     reloadServerSettings();
     TcpClient::logLocalTlsCapabilities();
     m_cloud->configure(m_serverHost, m_serverPort, m_serverUseTls,

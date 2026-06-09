@@ -48,6 +48,7 @@ set(SOURCES
     src/core/ControllerService.cpp
     src/core/SessionManager.cpp
     src/core/SecureStorage.cpp
+    src/windows/DpapiProtector.cpp
     src/core/AppLogger.cpp
     src/core/VpnFlowController.cpp
     ${PROTO_SRCS}
@@ -99,6 +100,9 @@ target_link_libraries(GenlotVPN PRIVATE
     Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Network
     ${Protobuf_LIBRARIES}
 )
+if(WIN32)
+    target_link_libraries(GenlotVPN PRIVATE crypt32)
+endif()
 
 target_include_directories(GenlotVPN PRIVATE src ${CMAKE_CURRENT_BINARY_DIR})
 target_compile_definitions(GenlotVPN PRIVATE VPN_HAS_PROTO=1)
@@ -123,13 +127,15 @@ option(GENLOT_ALLOW_DEBUG_PROTOBUF "允许 Debug 构建链接 Release 版 libpro
 if(MSVC AND GENLOT_PROTOBUF_DLL AND NOT GENLOT_ALLOW_DEBUG_PROTOBUF)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         message(FATAL_ERROR
-            "当前为 Debug 构建，但 Anaconda/vcpkg 的 libprotobuf.dll 为 Release 版，"
-            "运行时会崩溃 (0xC0000005)。\n"
-            "请在 Qt Creator 左下角切换为 Release 后重新构建；"
-            "或传入 -DGENLOT_ALLOW_DEBUG_PROTOBUF=ON 强行继续。")
+            "GenlotVPN 必须使用 Release 构建。\n"
+            "Qt Creator：左下角构建类型选 Release → 菜单「构建」→「清除 CMake 配置」→ 重新运行 CMake。\n"
+            "原因：Anaconda 的 libprotobuf.dll 为 Release 版，Debug 链接后运行会崩溃 (0xC0000005)。\n"
+            "若确需 Debug，在 CMake 参数中添加：-DGENLOT_ALLOW_DEBUG_PROTOBUF=ON")
     endif()
     if(CMAKE_CONFIGURATION_TYPES)
-        message(STATUS "提示：使用 Visual Studio 生成器时请选择 Release 配置运行 GenlotVPN。")
+        message(STATUS "提示：多配置生成器请选择 Release 配置构建 GenlotVPN。")
+    elseif(CMAKE_BUILD_TYPE)
+        message(STATUS "GenlotVPN 构建类型: ${CMAKE_BUILD_TYPE}")
     endif()
 endif()
 
@@ -140,6 +146,12 @@ add_custom_command(TARGET GenlotVPN POST_BUILD
         ${CMAKE_SOURCE_DIR}/resources/config.json
         $<TARGET_FILE_DIR:GenlotVPN>/config.json
     COMMENT "Copy config.json next to GenlotVPN executable"
+)
+add_custom_command(TARGET GenlotVPN POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/resources/config.default.json
+        $<TARGET_FILE_DIR:GenlotVPN>/config.default.json
+    COMMENT "Copy config.default.json (first-run template)"
 )
 if(GENLOT_PROTOBUF_DLL)
     get_filename_component(GENLOT_PROTOBUF_BIN_DIR "${GENLOT_PROTOBUF_DLL}" DIRECTORY)

@@ -142,9 +142,11 @@ if "!PROTO_COPIED!"=="0" (
 )
 echo [OK] Protobuf runtime DLLs
 
-copy /y "resources\config.json" "%DIST%\config.json" >nul
-copy /y "resources\config.prod.example.json" "%DIST%\config.prod.example.json" >nul
-copy /y "resources\config.dev.example.json" "%DIST%\config.dev.example.json" >nul
+copy /y "resources\config.default.json" "%DIST%\config.default.json" >nul
+if not exist "%DIST%\config.default.json" (
+  echo [X] Missing config.default.json in package output
+  exit /b 1
+)
 echo [OK] config files
 
 echo.

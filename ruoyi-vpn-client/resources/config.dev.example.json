@@ -1,7 +1,0 @@
-{
-  "serverHost": "10.9.2.177",
-  "serverPort": 9443,
-  "useTls": false,
-  "certPinSha256": "",
-  "certPinSha256Backup": ""
-}

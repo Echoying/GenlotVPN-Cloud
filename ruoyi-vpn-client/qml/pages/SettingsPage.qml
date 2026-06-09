@@ -43,8 +43,7 @@ Item {
             StackView.view.pop()
     }
 
-    anchors.fill: parent
-
+    // StackView 子项勿设 anchors，由 StackView 自动铺满视口
     Rectangle {
         anchors.fill: parent
         color: Theme.windowBg
