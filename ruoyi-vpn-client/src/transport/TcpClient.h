@@ -30,6 +30,9 @@ public:
 
     bool isConnected() const;
 
+    /** 断开连接并清空待发队列（会话失效或退出登录时调用） */
+    void resetConnection();
+
     /** 将本机 TLS 后端与支持的协议版本写入日志（启动时调用一次） */
     static void logLocalTlsCapabilities();
 

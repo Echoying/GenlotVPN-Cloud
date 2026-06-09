@@ -162,12 +162,21 @@ void ControllerService::fetchGatewayList()
     });
 }
 
+void ControllerService::fetchTunnelStatus()
+{
+    getJson(QStringLiteral("/api/v1/tunnel/status"), [this](const QJsonObject &obj) {
+        const QJsonObject data = obj.value(QStringLiteral("data")).toObject();
+        emit tunnelStatusReady(data.value(QStringLiteral("status")).toInt(),
+                               data.value(QStringLiteral("reConnect")).toBool());
+    });
+}
+
 void ControllerService::turnOnGateway(bool turnOn)
 {
     QJsonObject body;
     body[QStringLiteral("turnOn")] = turnOn;
     postJson(QStringLiteral("/api/v1/gateway/turnOn"), QJsonDocument(body), [this](const QJsonObject &) {
-        fetchGatewayList();
+        emit gatewayTurnOnFinished();
     });
 }
 
@@ -182,7 +191,7 @@ void ControllerService::switchGateway(const QString &gatewayId)
         body[QStringLiteral("gatewayID")] = gatewayId;
     }
     postJson(QStringLiteral("/api/v1/gateway/switch"), QJsonDocument(body), [this](const QJsonObject &) {
-        fetchGatewayList();
+        emit gatewaySwitchFinished();
     });
 }
 

@@ -40,8 +40,8 @@
 | [x] | W-04 | 默认 config.json | 安装目录释放默认配置或首次运行生成 | 首次启动能连默认服务器 |
 | [x] | W-05 | DPAPI 记住密码 | `SecureStorage`：Windows `CryptProtectData` | 记住密码不以明文存 QSettings；换用户读不出 |
 | [ ] | W-06 | Token / 会话安全存储 | 评估是否将 session 相关敏感项迁入 Credential Manager | 明文密码、session_key 不落盘 |
-| [ ] | W-07 | 单实例锁 | 启动时检测已有进程 | 重复打开提示或聚焦已有窗口 |
-| [ ] | W-08 | 系统托盘 | 最小化到托盘、右键退出/打开 | 关闭窗口可最小化到托盘而非直接退出 |
+| [x] | W-07 | 单实例锁 | 启动时检测已有进程 | 重复打开提示或聚焦已有窗口 |
+| [x] | W-08 | 系统托盘 | 最小化到托盘、右键退出/打开 | 关闭窗口可最小化到托盘而非直接退出 |
 | [ ] | W-09 | 应用图标与版本号 | exe 属性、关于页或标题显示版本 | 版本与 git tag / 构建号一致 |
 | [ ] | W-10 | 安装与运维文档 | `docs/DEPLOY_WINDOWS.md` | 含防火墙 9443、Agent 30303、日志路径 |
 
@@ -51,10 +51,10 @@
 
 | 状态 | ID | 任务 | 范围 | 验收标准 |
 |------|-----|------|------|----------|
-| [ ] | C-01 | 网关列表轮询 | 参考 `ruoyi-vpn-ui` `pollGatewayList` | 连接控制器后网关 IP 自动刷新至就绪 |
-| [ ] | C-02 | 网关切换体验 | `AppListPage` 切换网关反馈 | 切换中有 loading，失败有 toast + error 日志 |
+| [x] | C-01 | 网关列表轮询 | 参考 `ruoyi-vpn-ui` `pollGatewayList` | 连接控制器后网关 IP 自动刷新至就绪 |
+| [x] | C-02 | 网关切换体验 | `AppListPage` 切换网关反馈 | 切换中有 loading，失败有 toast + error 日志 |
 | [ ] | C-03 | 改密流程回归 | `LoginPage` 改密弹窗 | 改密成功/失败与 Web 行为一致 |
-| [ ] | C-04 | 会话过期统一处理 | `VpnFlowController` 各 RPC 失败分支 | 过期回登录页，状态清理干净 |
+| [x] | C-04 | 会话过期统一处理 | `VpnFlowController` 各 RPC 失败分支 | 过期回登录页，状态清理干净 |
 | [x] | C-05 | 证书 Pin 备用指纹 | `CertificatePinner` 支持主 Pin + 备用 Pin | 证书轮换窗口期新旧 Pin 均可连 |
 | [ ] | C-06 | 自动重连（可选） | TCP 断线后有限次重试 | 网络闪断可恢复，不无限循环 |
 

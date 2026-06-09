@@ -12,6 +12,12 @@
 
 namespace vpn {
 
+enum class GatewayPollTrigger {
+    None,
+    TurnOn,
+    Switch,
+};
+
 /**
  * VPN 五 step 流程编排，供 QML 绑定
  */
@@ -87,6 +93,7 @@ public:
     Q_INVOKABLE void switchGateway(const QString &gatewayId);
     Q_INVOKABLE void refreshAppList();
     Q_INVOKABLE void doLogout();
+    Q_INVOKABLE void shutdownAndQuit();
     Q_INVOKABLE void changePassword(const QString &username, const QString &oldPwd,
                                     const QString &newPwd, const QString &confirmPwd);
     Q_INVOKABLE void goChooseLine();
@@ -94,6 +101,7 @@ public:
     Q_INVOKABLE void copyToClipboard(const QString &text);
     Q_INVOKABLE bool isHttpUrl(const QString &url) const;
     Q_INVOKABLE QString gatewayIp(const QVariant &gateway) const;
+    Q_INVOKABLE bool isGatewaySwitching(const QString &gatewayId) const;
     Q_INVOKABLE QVariantMap currentServerConfig() const;
     Q_INVOKABLE bool applyServerConfig(const QString &host, int port, bool useTls,
                                        const QString &certPin, const QString &certPinBackup = QString());
@@ -138,6 +146,20 @@ private:
     void proceedControllerConnect(const QVariantMap &line);
     void reloadServerSettings();
     void finishLogout(bool clearUsername);
+    void handleSessionExpired(const QString &serverMsg);
+    bool hasActiveCloudSession() const;
+    void applyGatewayListUpdate(const QVariantList &gws, bool turnOn, int tunCode);
+    bool isGatewayDataReady(const QVariantList &gateways, int tunCode) const;
+    void applyTunnelStatusToSelectedGateway();
+    void startGatewayPolling(GatewayPollTrigger trigger = GatewayPollTrigger::TurnOn);
+    void stopGatewayPolling();
+    void clearGatewaySwitchingState();
+    void pollGatewayOnce();
+    void scheduleNextGatewayPoll(int delayMs);
+    void finishGatewayPolling(bool success);
+    void startTunnelStatusPolling();
+    void stopTunnelStatusPolling();
+    void refreshGatewayAndTunnelStatus();
 
     VpnCloudService *m_cloud;
     ControllerService *m_controller;
@@ -177,6 +199,18 @@ private:
     QString m_selectedGatewayId;
     QString m_switchingGatewayId;
     bool m_autoGatewayInitPending = false;
+    bool m_handlingSessionExpiry = false;
+
+    QTimer *m_tunnelStatusTimer = nullptr;
+    bool m_gatewayPolling = false;
+    GatewayPollTrigger m_gatewayPollTrigger = GatewayPollTrigger::None;
+    int m_gatewayPollAttempts = 0;
+    int m_tunnelStatus = -1;
+    bool m_tunnelReConnect = false;
+
+    static constexpr int GatewayPollIntervalMs = 3000;
+    static constexpr int GatewayPollMaxAttempts = 20;
+    static constexpr int TunnelStatusPollIntervalMs = 10000;
 };
 
 } // namespace vpn

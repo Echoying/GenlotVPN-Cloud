@@ -164,6 +164,21 @@ bool TcpClient::isConnected() const
     return m_socket.state() == QAbstractSocket::ConnectedState && (!m_useTls || m_tlsReady);
 }
 
+void TcpClient::resetConnection()
+{
+    m_connectTimer.stop();
+    m_responseTimer.stop();
+    m_queue.clear();
+    m_pendingEnvelope.clear();
+    m_pendingCallback = nullptr;
+    m_waitingResponse = false;
+    m_readBuffer.clear();
+    m_tlsReady = false;
+    if (m_socket.state() != QAbstractSocket::UnconnectedState) {
+        m_socket.abort();
+    }
+}
+
 void TcpClient::startConnect()
 {
     if (m_host.isEmpty() || m_port == 0) {

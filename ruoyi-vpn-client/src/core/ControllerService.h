@@ -20,6 +20,7 @@ public:
     Q_INVOKABLE void loginWithAccount(const QString &username, const QString &encryptedPassword);
     Q_INVOKABLE void fetchUserInfo();
     Q_INVOKABLE void fetchGatewayList();
+    Q_INVOKABLE void fetchTunnelStatus();
     Q_INVOKABLE void turnOnGateway(bool turnOn);
     Q_INVOKABLE void switchGateway(const QString &gatewayId);
     Q_INVOKABLE void fetchAppList(const QString &serviceName = QString());
@@ -32,6 +33,9 @@ signals:
     void loginControllerSucceeded();
     void userInfoReady(const QString &username);
     void gatewayListReady(const QVariantList &gateways, bool turnOn, int tunCode);
+    void tunnelStatusReady(int status, bool reConnect);
+    void gatewayTurnOnFinished();
+    void gatewaySwitchFinished();
     void appListReady(const QVariantList &apps);
     void operationFailed(const QString &message);
 

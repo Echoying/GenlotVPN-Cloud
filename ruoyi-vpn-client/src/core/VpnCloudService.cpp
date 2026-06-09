@@ -290,6 +290,7 @@ void VpnCloudService::clearSession()
 {
     m_accessToken.clear();
     m_sessionKey.clear();
+    m_tcp.resetConnection();
 }
 
 void VpnCloudService::logout()

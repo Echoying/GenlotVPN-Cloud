@@ -14,6 +14,19 @@ ApplicationWindow {
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowSystemMenuHint
            | Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint
 
+    onClosing: function(close) {
+        if (vpnTray.available) {
+            close.accepted = false
+            vpnTray.hideToTray()
+        }
+    }
+
+    onVisibilityChanged: {
+        if (vpnTray.available && visibility === Window.Minimized) {
+            Qt.callLater(vpnTray.hideToTray)
+        }
+    }
+
     Component.onCompleted: {
         window.width = Theme.chooseLineWindowWidth
         window.height = Theme.chooseLineWindowHeight

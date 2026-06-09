@@ -18,7 +18,7 @@ if(WIN32 AND NOT DEFINED Protobuf_ROOT AND EXISTS "D:/anaconda3/Library/include/
     set(Protobuf_ROOT "D:/anaconda3/Library" CACHE PATH "Protobuf 安装目录（Anaconda）")
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Network)
 find_package(Protobuf REQUIRED)
 if(NOT Protobuf_LIBRARIES AND NOT TARGET protobuf::libprotobuf)
     message(FATAL_ERROR
@@ -51,6 +51,8 @@ set(SOURCES
     src/windows/DpapiProtector.cpp
     src/core/AppLogger.cpp
     src/core/VpnFlowController.cpp
+    src/platform/SingleInstance.cpp
+    src/platform/TrayIcon.cpp
     ${PROTO_SRCS}
 )
 
@@ -97,7 +99,7 @@ qt_add_qml_module(GenlotVPN
 )
 
 target_link_libraries(GenlotVPN PRIVATE
-    Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Network
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Network
     ${Protobuf_LIBRARIES}
 )
 if(WIN32)

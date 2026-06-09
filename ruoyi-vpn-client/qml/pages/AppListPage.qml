@@ -115,13 +115,19 @@ Item {
                 model: vpnFlow.gateways
 
                 delegate: Rectangle {
+                    id: gatewayRow
                     width: parent.width
                     height: 40
-                    color: modelData.id === vpnFlow.selectedGatewayId
-                           ? "#EEF4FB"
-                           : (index % 2 === 0 ? Theme.listStripeA : Theme.listStripeB)
-                    border.color: modelData.id === vpnFlow.selectedGatewayId ? Theme.navySoft : Theme.cardBorder
-                    border.width: modelData.id === vpnFlow.selectedGatewayId ? 1 : 0
+
+                    readonly property bool isSelected: String(modelData.id) === vpnFlow.selectedGatewayId
+                    readonly property bool isSwitching: vpnFlow.isGatewaySwitching(String(modelData.id))
+
+                    color: isSwitching ? "#FFF8E8"
+                           : (isSelected ? "#EEF4FB"
+                              : (index % 2 === 0 ? Theme.listStripeA : Theme.listStripeB))
+                    border.color: isSwitching ? Theme.accent
+                                  : (isSelected ? Theme.navySoft : Theme.cardBorder)
+                    border.width: isSwitching || isSelected ? 1 : 0
 
                     Row {
                         anchors.fill: parent
@@ -131,15 +137,25 @@ Item {
                         Item {
                             width: parent.width * 0.22
                             height: parent.height
+
                             Text {
                                 anchors.centerIn: parent
-                                width: parent.width
+                                width: parent.width - (gatewayRow.isSwitching ? 16 : 0)
                                 text: modelData.name || "-"
                                 font.pixelSize: 12
                                 font.bold: true
                                 color: Theme.textPrimary
                                 horizontalAlignment: Text.AlignHCenter
                                 elide: Text.ElideRight
+                            }
+
+                            BusyIndicator {
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.rightMargin: 2
+                                visible: gatewayRow.isSwitching
+                                width: 14
+                                height: 14
                             }
                         }
 
@@ -162,10 +178,14 @@ Item {
                             height: parent.height
                             Text {
                                 anchors.centerIn: parent
-                                text: modelData.connected ? "已连接" : "未连接"
+                                text: gatewayRow.isSwitching
+                                      ? "切换中"
+                                      : (modelData.connected ? "已连接" : "未连接")
                                 font.pixelSize: 12
                                 font.bold: true
-                                color: modelData.connected ? Theme.success : Theme.danger
+                                color: gatewayRow.isSwitching
+                                       ? Theme.accent
+                                       : (modelData.connected ? Theme.success : Theme.danger)
                             }
                         }
 
@@ -177,9 +197,9 @@ Item {
                                 anchors.centerIn: parent
                                 implicitWidth: 56
                                 implicitHeight: 26
-                                visible: String(modelData.id) !== vpnFlow.selectedGatewayId
+                                visible: !gatewayRow.isSelected
                                 enabled: vpnFlow.switchingGatewayId === ""
-                                text: vpnFlow.switchingGatewayId === String(modelData.id) ? "切换中" : "切换"
+                                text: "切换"
                                 onClicked: vpnFlow.switchGateway(String(modelData.id))
 
                                 contentItem: Text {
@@ -194,11 +214,11 @@ Item {
 
                             Text {
                                 anchors.centerIn: parent
-                                visible: String(modelData.id) === vpnFlow.selectedGatewayId
-                                text: "当前"
+                                visible: gatewayRow.isSelected
+                                text: gatewayRow.isSwitching ? "切换中" : "当前"
                                 font.pixelSize: 12
                                 font.bold: true
-                                color: Theme.navySoft
+                                color: gatewayRow.isSwitching ? Theme.accent : Theme.navySoft
                             }
                         }
                     }

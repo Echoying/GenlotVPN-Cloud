@@ -1,4 +1,4 @@
-#include <QGuiApplication>
+#include <QApplication>
 #include <QIcon>
 #include <QQuickStyle>
 #include <QQuickWindow>
@@ -17,6 +17,8 @@
 #include "core/SessionManager.h"
 #include "core/SecureStorage.h"
 #include "core/VpnFlowController.h"
+#include "platform/SingleInstance.h"
+#include "platform/TrayIcon.h"
 
 namespace {
 
@@ -53,6 +55,41 @@ void showStartupError(const QString &message)
 #endif
 }
 
+void showAlreadyRunningNotice(const QString &message)
+{
+#ifdef Q_OS_WIN
+    MessageBoxW(nullptr,
+                reinterpret_cast<LPCWSTR>(message.utf16()),
+                L"Genlot VPN",
+                MB_OK | MB_ICONINFORMATION);
+#else
+    Q_UNUSED(message)
+#endif
+}
+
+void raiseApplicationWindow(QWindow *window)
+{
+    if (!window) {
+        return;
+    }
+    if (window->visibility() == QWindow::Minimized) {
+        window->showNormal();
+    } else {
+        window->show();
+    }
+    window->raise();
+    window->requestActivate();
+#ifdef Q_OS_WIN
+    const HWND hwnd = reinterpret_cast<HWND>(window->winId());
+    if (hwnd) {
+        if (IsIconic(hwnd)) {
+            ShowWindow(hwnd, SW_RESTORE);
+        }
+        SetForegroundWindow(hwnd);
+    }
+#endif
+}
+
 } // namespace
 
 int main(int argc, char *argv[])
@@ -63,11 +100,18 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
     QCoreApplication::setOrganizationName(QStringLiteral("Genlot"));
     QCoreApplication::setApplicationName(QStringLiteral("GenlotVPN"));
-    QGuiApplication app(argc, argv);
+    // 托盘右键菜单使用 QMenu（QWidget），须 QApplication 而非 QGuiApplication
+    QApplication app(argc, argv);
     qInstallMessageHandler(qtMessageHandler);
 
     vpn::AppLogger *appLogger = vpn::AppLogger::instance();
     appLogger->info(QStringLiteral("Genlot VPN 客户端启动"));
+
+    vpn::SingleInstance singleInstance(QStringLiteral("GenlotVPN_SingleInstance"));
+    if (!singleInstance.tryRun()) {
+        showAlreadyRunningNotice(QStringLiteral("Genlot VPN 已在运行中。"));
+        return 0;
+    }
     const QIcon appIcon(QStringLiteral(":/GenlotVPN/assets/images/genlot-app-icon-official.png"));
     if (!appIcon.isNull()) {
         app.setWindowIcon(appIcon);
@@ -82,10 +126,12 @@ int main(int argc, char *argv[])
     appLogger->info(QStringLiteral("云端地址: %1").arg(flow.serverEndpoint()));
 
     QQmlApplicationEngine engine;
+    vpn::TrayIcon trayIcon(appIcon);
     // 与 Qt Creator 一致：从 exe 同目录加载 GenlotVPN/qmldir（打包脚本会复制该目录）
     engine.addImportPath(QCoreApplication::applicationDirPath());
     engine.rootContext()->setContextProperty(QStringLiteral("vpnFlow"), &flow);
     engine.rootContext()->setContextProperty(QStringLiteral("vpnStorage"), &secureStorage);
+    engine.rootContext()->setContextProperty(QStringLiteral("vpnTray"), &trayIcon);
     engine.load(QUrl(QStringLiteral("qrc:/GenlotVPN/qml/main.qml")));
     if (engine.rootObjects().isEmpty()) {
         const QString err = QStringLiteral("界面加载失败，请确认安装目录下存在 GenlotVPN 文件夹。\n"
@@ -94,11 +140,18 @@ int main(int argc, char *argv[])
         showStartupError(err);
         return -1;
     }
-    if (auto *window = qobject_cast<QWindow *>(engine.rootObjects().value(0))) {
-        window->setFlags(window->flags() & ~Qt::WindowMaximizeButtonHint);
+    QWindow *mainWindow = qobject_cast<QWindow *>(engine.rootObjects().value(0));
+    if (mainWindow) {
+        mainWindow->setFlags(mainWindow->flags() & ~Qt::WindowMaximizeButtonHint);
         if (!appIcon.isNull()) {
-            window->setIcon(appIcon);
+            mainWindow->setIcon(appIcon);
         }
     }
+    trayIcon.attachWindow(mainWindow);
+    QObject::connect(&singleInstance, &vpn::SingleInstance::activateRequested, [&]() {
+        appLogger->info(QStringLiteral("[单实例] 收到置前请求"));
+        trayIcon.showMainWindow();
+    });
+    QObject::connect(&trayIcon, &vpn::TrayIcon::quitRequested, &flow, &vpn::VpnFlowController::shutdownAndQuit);
     return app.exec();
 }

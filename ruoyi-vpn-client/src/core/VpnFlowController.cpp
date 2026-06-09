@@ -1,6 +1,7 @@
 #include "VpnFlowController.h"
 #include "AppLogger.h"
 #include "../transport/TcpClient.h"
+#include <QCoreApplication>
 #include <QGuiApplication>
 #include <QClipboard>
 #include <QTimer>
@@ -22,19 +23,24 @@ int parseSendCooldownSeconds(const QString &msg)
 
 bool isSessionExpiredMessage(const QString &msg)
 {
-    if (msg.contains(QStringLiteral("验证码"))) {
+    const QString text = msg.trimmed();
+    if (text.isEmpty()) {
         return false;
     }
-    if (msg.contains(QStringLiteral("秒后再发送"))) {
+    // 钉钉验证码相关错误不算会话过期
+    if (text.contains(QStringLiteral("验证码"))) {
         return false;
     }
-    return msg.contains(QStringLiteral("登录状态已过期"))
-           || msg.contains(QStringLiteral("登录已过期"))
-           || msg.contains(QStringLiteral("凭证已过期"))
-           || msg.contains(QStringLiteral("未登录或会话已失效"))
-           || msg.contains(QStringLiteral("未登录"))
-           || msg.contains(QStringLiteral("会话已失效"))
-           || msg.contains(QStringLiteral("会话已过期"));
+    if (text.contains(QStringLiteral("秒后再发送"))) {
+        return false;
+    }
+    return text.contains(QStringLiteral("登录状态已过期"))
+           || text.contains(QStringLiteral("登录已过期"))
+           || text.contains(QStringLiteral("凭证已过期"))
+           || text.contains(QStringLiteral("未登录或会话已失效"))
+           || text.contains(QStringLiteral("会话已失效"))
+           || text.contains(QStringLiteral("会话已过期"))
+           || text.contains(QStringLiteral("消息完整性校验失败"));
 }
 
 QString extractGatewayIp(const QVariantMap &item)
@@ -53,6 +59,29 @@ QString extractGatewayIp(const QVariantMap &item)
         }
     }
     return {};
+}
+
+QString normalizeGatewayId(const QVariant &id)
+{
+    if (id.typeId() == QMetaType::QString) {
+        return id.toString().trimmed();
+    }
+    if (id.canConvert<qint64>()) {
+        return QString::number(id.toLongLong());
+    }
+    return id.toString().trimmed();
+}
+
+QString gatewayNameById(const QVariantList &gateways, const QString &gatewayId)
+{
+    const QString targetId = normalizeGatewayId(gatewayId);
+    for (const QVariant &value : gateways) {
+        const QVariantMap gw = value.toMap();
+        if (normalizeGatewayId(gw.value(QStringLiteral("id"))) == targetId) {
+            return gw.value(QStringLiteral("name")).toString();
+        }
+    }
+    return gatewayId;
 }
 
 bool isValidCertPin(const QString &pin)
@@ -97,6 +126,13 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
 
     m_countdownTimer = new QTimer(this);
     m_countdownTimer->setInterval(1000);
+
+    m_tunnelStatusTimer = new QTimer(this);
+    m_tunnelStatusTimer->setInterval(TunnelStatusPollIntervalMs);
+    connect(m_tunnelStatusTimer, &QTimer::timeout, this, [this]() {
+        refreshGatewayAndTunnelStatus();
+    });
+
     connect(m_countdownTimer, &QTimer::timeout, this, [this]() {
         if (m_sendCountdown <= 1) {
             m_countdownTimer->stop();
@@ -182,11 +218,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     connect(m_cloud, &VpnCloudService::requestFailed, this, [this](const QString &msg) {
         setLoading(false);
         m_autoConnectStarted = false;
-        if (m_changePasswordPending) {
-            m_changePasswordPending = false;
-            emit toast(msg, true);
-            return;
-        }
+
         if (m_loginPending) {
             m_loginPending = false;
             m_autoConnectPending = false;
@@ -195,6 +227,17 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
                                            : msg.trimmed();
             setLoginError(displayMsg);
             m_cloud->fetchCaptcha();
+            return;
+        }
+
+        if (isSessionExpiredMessage(msg) && hasActiveCloudSession()) {
+            handleSessionExpired(msg);
+            return;
+        }
+
+        if (m_changePasswordPending) {
+            m_changePasswordPending = false;
+            emit toast(msg, true);
             return;
         }
         if (m_sendLineVerifyPending) {
@@ -217,18 +260,11 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
             setVerifyError(displayMsg);
             return;
         }
-        if (m_verifyDialogVisible && !isSessionExpiredMessage(msg)) {
+        if (m_verifyDialogVisible) {
             const QString displayMsg = msg.trimmed().isEmpty()
                                            ? QStringLiteral("验证失败，请重试")
                                            : msg.trimmed();
             setVerifyError(displayMsg);
-            return;
-        }
-        if (isSessionExpiredMessage(msg)) {
-            if (m_loggedIn) {
-                finishLogout(false);
-                emit toast(QStringLiteral("登录已过期，请重新登录"), true);
-            }
             return;
         }
         if (!m_loggedIn) {
@@ -278,47 +314,43 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         m_controller->fetchUserInfo();
         m_controller->fetchGatewayList();
         m_controller->fetchAppList();
+        startTunnelStatusPolling();
     });
     connect(m_controller, &ControllerService::userInfoReady, this, [this](const QString &name) {
         m_username = name;
         emit usernameChanged();
     });
-    connect(m_controller, &ControllerService::gatewayListReady, this, [this](const QVariantList &gws, bool, int) {
-        m_gateways = normalizeGateways(gws);
+    connect(m_controller, &ControllerService::gatewayListReady, this,
+            [this](const QVariantList &gws, bool turnOn, int tunCode) {
+        applyGatewayListUpdate(gws, turnOn, tunCode);
+
+        if (m_gatewayPolling) {
+            if (isGatewayDataReady(m_gateways, tunCode)) {
+                finishGatewayPolling(true);
+            } else if (m_gatewayPollAttempts >= GatewayPollMaxAttempts) {
+                finishGatewayPolling(false);
+            } else {
+                scheduleNextGatewayPoll(GatewayPollIntervalMs);
+            }
+        }
+    });
+    connect(m_controller, &ControllerService::tunnelStatusReady, this, [this](int status, bool reConnect) {
+        m_tunnelStatus = status;
+        m_tunnelReConnect = reConnect;
+        applyTunnelStatusToSelectedGateway();
+    });
+    connect(m_controller, &ControllerService::gatewayTurnOnFinished, this, [this]() {
+        startGatewayPolling(GatewayPollTrigger::TurnOn);
+    });
+    connect(m_controller, &ControllerService::gatewaySwitchFinished, this, [this]() {
         if (!m_switchingGatewayId.isEmpty()) {
             m_selectedGatewayId = m_switchingGatewayId;
-            m_switchingGatewayId.clear();
             emit selectedGatewayIdChanged();
-            emit switchingGatewayIdChanged();
-        } else if (m_selectedGatewayId.isEmpty() && !gws.isEmpty()) {
-            m_selectedGatewayId = gws.first().toMap().value(QStringLiteral("id")).toString();
-            emit selectedGatewayIdChanged();
-        } else if (!m_selectedGatewayId.isEmpty()) {
-            bool found = false;
-            for (const QVariant &v : gws) {
-                if (v.toMap().value(QStringLiteral("id")).toString() == m_selectedGatewayId) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found && !gws.isEmpty()) {
-                m_selectedGatewayId = gws.first().toMap().value(QStringLiteral("id")).toString();
-                emit selectedGatewayIdChanged();
-            }
+            m_tunnelStatus = -1;
+            const QString name = gatewayNameById(m_gateways, m_switchingGatewayId);
+            addLog(QStringLiteral("info"), QStringLiteral("网关切换指令已下发: %1").arg(name));
         }
-        if (m_autoGatewayInitPending) {
-            m_autoGatewayInitPending = false;
-            if (!m_gateways.isEmpty()) {
-                const QString firstId = m_gateways.first().toMap().value(QStringLiteral("id")).toString();
-                m_selectedGatewayId = firstId;
-                emit selectedGatewayIdChanged();
-                addLog(QStringLiteral("info"), QStringLiteral("正在自动开启网关..."));
-                // 与 Web 端一致：登录后默认网关已选中，直接 turnOn，无需 switch
-                turnOnGateway(true);
-            }
-        }
-        addLog(QStringLiteral("info"), QStringLiteral("网关列表已更新，共 %1 个").arg(m_gateways.size()));
-        emit gatewaysChanged();
+        startGatewayPolling(GatewayPollTrigger::Switch);
     });
     connect(m_controller, &ControllerService::appListReady, this, [this](const QVariantList &apps) {
         QVariantList normalized;
@@ -343,11 +375,24 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     });
     connect(m_controller, &ControllerService::operationFailed, this, [this](const QString &msg) {
         setLoading(false);
-        if (!m_switchingGatewayId.isEmpty()) {
-            m_switchingGatewayId.clear();
-            emit switchingGatewayIdChanged();
+        if (m_gatewayPolling) {
+            if (m_gatewayPollAttempts >= GatewayPollMaxAttempts) {
+                finishGatewayPolling(false);
+            } else {
+                scheduleNextGatewayPoll(GatewayPollIntervalMs);
+            }
+            return;
+        }
+        if (!m_switchingGatewayId.isEmpty() && !m_gatewayPolling) {
+            const QString name = gatewayNameById(m_gateways, m_switchingGatewayId);
+            const QString errorMsg = msg.trimmed().isEmpty() ? QStringLiteral("切换网关失败") : msg.trimmed();
+            addLog(QStringLiteral("error"), QStringLiteral("切换网关失败 [%1]: %2").arg(name, errorMsg));
+            clearGatewaySwitchingState();
+            emit toast(QStringLiteral("切换网关失败：%1").arg(errorMsg), true);
+            return;
         }
         const QString errorMsg = msg.trimmed().isEmpty() ? QStringLiteral("控制器请求失败") : msg.trimmed();
+        addLog(QStringLiteral("error"), errorMsg);
         emit toast(errorMsg, true);
     });
 }
@@ -485,21 +530,237 @@ void VpnFlowController::proceedControllerConnect(const QVariantMap &line)
     m_controller->detectServer(line);
 }
 
+void VpnFlowController::applyGatewayListUpdate(const QVariantList &gws, bool turnOn, int tunCode)
+{
+    Q_UNUSED(turnOn)
+    Q_UNUSED(tunCode)
+    m_gateways = normalizeGateways(gws);
+    if (m_selectedGatewayId.isEmpty() && !gws.isEmpty()) {
+        m_selectedGatewayId = normalizeGatewayId(gws.first().toMap().value(QStringLiteral("id")));
+        emit selectedGatewayIdChanged();
+    } else if (!m_selectedGatewayId.isEmpty()) {
+        bool found = false;
+        const QString selectedId = normalizeGatewayId(m_selectedGatewayId);
+        for (const QVariant &v : gws) {
+            if (normalizeGatewayId(v.toMap().value(QStringLiteral("id"))) == selectedId) {
+                found = true;
+                break;
+            }
+        }
+        if (!found && !gws.isEmpty()) {
+            m_selectedGatewayId = normalizeGatewayId(gws.first().toMap().value(QStringLiteral("id")));
+            emit selectedGatewayIdChanged();
+        }
+    }
+    if (m_autoGatewayInitPending) {
+        m_autoGatewayInitPending = false;
+        if (!m_gateways.isEmpty()) {
+            const QString firstId = normalizeGatewayId(m_gateways.first().toMap().value(QStringLiteral("id")));
+            m_selectedGatewayId = firstId;
+            emit selectedGatewayIdChanged();
+            addLog(QStringLiteral("info"), QStringLiteral("正在自动开启网关..."));
+            turnOnGateway(true);
+        }
+    }
+    applyTunnelStatusToSelectedGateway();
+    addLog(QStringLiteral("info"), QStringLiteral("网关列表已更新，共 %1 个").arg(m_gateways.size()));
+    emit gatewaysChanged();
+}
+
+bool VpnFlowController::isGatewayDataReady(const QVariantList &gateways, int tunCode) const
+{
+    if (tunCode == 200) {
+        return true;
+    }
+    const QString selectedId = m_selectedGatewayId;
+    if (selectedId.isEmpty()) {
+        return false;
+    }
+    for (const QVariant &value : gateways) {
+        const QVariantMap gw = value.toMap();
+        if (normalizeGatewayId(gw.value(QStringLiteral("id"))) != normalizeGatewayId(selectedId)) {
+            continue;
+        }
+        const bool connected = gw.value(QStringLiteral("connected")).toBool();
+        const bool hasIp = !extractGatewayIp(gw).isEmpty();
+        return connected && hasIp;
+    }
+    return false;
+}
+
+void VpnFlowController::applyTunnelStatusToSelectedGateway()
+{
+    if (m_tunnelStatus < 0 || m_selectedGatewayId.isEmpty() || m_gateways.isEmpty()) {
+        return;
+    }
+
+    bool changed = false;
+    QVariantList updated = m_gateways;
+    for (int i = 0; i < updated.size(); ++i) {
+        QVariantMap gw = updated.at(i).toMap();
+        if (normalizeGatewayId(gw.value(QStringLiteral("id"))) != normalizeGatewayId(m_selectedGatewayId)) {
+            continue;
+        }
+        const bool connected = (m_tunnelStatus == 2);
+        if (gw.value(QStringLiteral("connected")).toBool() != connected) {
+            gw[QStringLiteral("connected")] = connected;
+            updated[i] = gw;
+            changed = true;
+        }
+        break;
+    }
+    if (changed) {
+        m_gateways = updated;
+        emit gatewaysChanged();
+    }
+}
+
+void VpnFlowController::startGatewayPolling(GatewayPollTrigger trigger)
+{
+    stopGatewayPolling();
+    m_gatewayPollTrigger = trigger;
+    m_gatewayPolling = true;
+    m_gatewayPollAttempts = 0;
+    if (trigger == GatewayPollTrigger::Switch) {
+        addLog(QStringLiteral("info"), QStringLiteral("切换网关后等待连接就绪..."));
+    } else {
+        addLog(QStringLiteral("info"), QStringLiteral("开始轮询网关状态..."));
+    }
+    pollGatewayOnce();
+}
+
+void VpnFlowController::stopGatewayPolling()
+{
+    m_gatewayPolling = false;
+    m_gatewayPollTrigger = GatewayPollTrigger::None;
+    m_gatewayPollAttempts = 0;
+}
+
+void VpnFlowController::clearGatewaySwitchingState()
+{
+    if (m_switchingGatewayId.isEmpty()) {
+        return;
+    }
+    m_switchingGatewayId.clear();
+    emit switchingGatewayIdChanged();
+}
+
+void VpnFlowController::pollGatewayOnce()
+{
+    if (!m_gatewayPolling) {
+        return;
+    }
+    ++m_gatewayPollAttempts;
+    if (m_gatewayPollAttempts > GatewayPollMaxAttempts) {
+        finishGatewayPolling(false);
+        return;
+    }
+    m_controller->fetchGatewayList();
+}
+
+void VpnFlowController::scheduleNextGatewayPoll(int delayMs)
+{
+    if (!m_gatewayPolling) {
+        return;
+    }
+    QTimer::singleShot(delayMs, this, [this]() { pollGatewayOnce(); });
+}
+
+void VpnFlowController::finishGatewayPolling(bool success)
+{
+    if (!m_gatewayPolling) {
+        return;
+    }
+    const bool afterSwitch = (m_gatewayPollTrigger == GatewayPollTrigger::Switch);
+    const QString switchingName = afterSwitch ? gatewayNameById(m_gateways, m_switchingGatewayId) : QString();
+    m_gatewayPolling = false;
+    m_gatewayPollTrigger = GatewayPollTrigger::None;
+
+    if (success) {
+        QString ip;
+        for (const QVariant &value : m_gateways) {
+            const QVariantMap gw = value.toMap();
+            if (normalizeGatewayId(gw.value(QStringLiteral("id"))) == normalizeGatewayId(m_selectedGatewayId)) {
+                ip = gatewayIp(value);
+                break;
+            }
+        }
+        if (afterSwitch) {
+            addLog(QStringLiteral("info"),
+                   QStringLiteral("网关切换完成: %1%2")
+                       .arg(switchingName,
+                            ip.isEmpty() ? QString() : QStringLiteral("，IP: %1").arg(ip)));
+            emit toast(QStringLiteral("已切换到 %1").arg(switchingName), false);
+        } else {
+            addLog(QStringLiteral("info"),
+                   QStringLiteral("网关已就绪%1").arg(ip.isEmpty() ? QString() : QStringLiteral("，IP: %1").arg(ip)));
+        }
+    } else if (afterSwitch) {
+        addLog(QStringLiteral("error"),
+               QStringLiteral("切换网关后连接超时 [%1]，请检查 Agent 或稍后重试").arg(switchingName));
+        emit toast(QStringLiteral("切换网关后连接超时"), true);
+    } else {
+        addLog(QStringLiteral("error"), QStringLiteral("网关连接超时，请检查 Agent 或稍后重试"));
+        emit toast(QStringLiteral("网关连接超时"), true);
+    }
+
+    if (afterSwitch) {
+        clearGatewaySwitchingState();
+        refreshGatewayAndTunnelStatus();
+    }
+}
+
+void VpnFlowController::startTunnelStatusPolling()
+{
+    stopTunnelStatusPolling();
+    refreshGatewayAndTunnelStatus();
+    m_tunnelStatusTimer->start();
+}
+
+void VpnFlowController::stopTunnelStatusPolling()
+{
+    if (m_tunnelStatusTimer && m_tunnelStatusTimer->isActive()) {
+        m_tunnelStatusTimer->stop();
+    }
+    m_tunnelStatus = -1;
+    m_tunnelReConnect = false;
+}
+
+void VpnFlowController::refreshGatewayAndTunnelStatus()
+{
+    // 网关连接轮询进行中时，列表由 pollGatewayOnce 刷新，此处仅拉隧道状态
+    if (!m_gatewayPolling) {
+        m_controller->fetchGatewayList();
+    }
+    m_controller->fetchTunnelStatus();
+}
+
 void VpnFlowController::turnOnGateway(bool on)
 {
+    if (!on) {
+        stopGatewayPolling();
+    }
     m_controller->turnOnGateway(on);
 }
 
 void VpnFlowController::switchGateway(const QString &gatewayId)
 {
-    const QString id = gatewayId.trimmed();
-    if (id.isEmpty() || id == m_selectedGatewayId || !m_switchingGatewayId.isEmpty()) {
+    const QString id = normalizeGatewayId(gatewayId);
+    if (id.isEmpty() || id == normalizeGatewayId(m_selectedGatewayId) || !m_switchingGatewayId.isEmpty()) {
         return;
     }
+    stopGatewayPolling();
     m_switchingGatewayId = id;
     emit switchingGatewayIdChanged();
-    addLog(QStringLiteral("info"), QStringLiteral("正在切换网关: %1").arg(id));
+    const QString name = gatewayNameById(m_gateways, id);
+    addLog(QStringLiteral("info"), QStringLiteral("正在切换网关: %1").arg(name));
     m_controller->switchGateway(id);
+}
+
+bool VpnFlowController::isGatewaySwitching(const QString &gatewayId) const
+{
+    return !m_switchingGatewayId.isEmpty()
+           && normalizeGatewayId(gatewayId) == normalizeGatewayId(m_switchingGatewayId);
 }
 
 void VpnFlowController::refreshAppList()
@@ -516,14 +777,64 @@ void VpnFlowController::doLogout()
     finishLogout(true);
 }
 
+void VpnFlowController::shutdownAndQuit()
+{
+    addLog(QStringLiteral("info"), QStringLiteral("正在退出应用"));
+    stopGatewayPolling();
+    stopTunnelStatusPolling();
+    m_controller->controllerLogout();
+    m_cloud->logout();
+    m_cloud->clearSession();
+    QTimer::singleShot(200, qApp, []() { QCoreApplication::quit(); });
+}
+
+bool VpnFlowController::hasActiveCloudSession() const
+{
+    return m_loggedIn || m_cloud->hasSession();
+}
+
+void VpnFlowController::handleSessionExpired(const QString &serverMsg)
+{
+    if (m_handlingSessionExpiry || !hasActiveCloudSession()) {
+        return;
+    }
+    m_handlingSessionExpiry = true;
+
+    const QString reason = serverMsg.trimmed().isEmpty()
+                               ? QStringLiteral("登录已过期")
+                               : serverMsg.trimmed();
+    addLog(QStringLiteral("error"), QStringLiteral("会话已失效: %1").arg(reason));
+
+    m_changePasswordPending = false;
+    m_loginPending = false;
+    m_lineVerifyPending = false;
+    m_sendLineVerifyPending = false;
+    m_autoConnectPending = false;
+    m_autoConnectStarted = false;
+    setLoading(false);
+
+    m_controller->controllerLogout();
+    finishLogout(false);
+
+    const QString toastMsg = reason.contains(QStringLiteral("请重新登录"))
+                                 ? reason
+                                 : QStringLiteral("登录已过期，请重新登录");
+    emit toast(toastMsg, true);
+
+    m_handlingSessionExpiry = false;
+}
+
 void VpnFlowController::finishLogout(bool clearUsername)
 {
+    stopGatewayPolling();
+    stopTunnelStatusPolling();
     clearSendCountdown();
     setVerifyDialogVisible(false);
     setLoggedIn(false);
     m_loginPending = false;
     m_lineVerifyPending = false;
     m_sendLineVerifyPending = false;
+    m_changePasswordPending = false;
     setLoginError(QString());
     setVerifyError(QString());
     m_cloud->clearSession();
@@ -539,7 +850,7 @@ void VpnFlowController::finishLogout(bool clearUsername)
     m_gateways.clear();
     m_apps.clear();
     m_selectedGatewayId.clear();
-    m_switchingGatewayId.clear();
+    clearGatewaySwitchingState();
     m_autoGatewayInitPending = false;
     m_autoConnectStarted = false;
     m_autoConnectPending = false;
