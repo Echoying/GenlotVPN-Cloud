@@ -90,6 +90,10 @@ cmake --build build-msvc2022 --config Release
 - Pin 导出：`scripts/vpn-tls/export-pin.bat`
 - 设置页：**安全连接** → 启用 TLS → 填写证书指纹
 
+## 部署与运维（Windows）
+
+生产/内网分发、防火墙、Agent、日志排障：**[docs/DEPLOY_WINDOWS.md](docs/DEPLOY_WINDOWS.md)**
+
 ## 联调步骤
 
 1. 启动 Nacos、Redis、`ruoyi-vpn-auth`（含 TCP 9443）
@@ -102,7 +106,7 @@ cmake --build build-msvc2022 --config Release
 - 云端传输：生产环境 **TLS 1.3 + 证书 Pinning**（自签证书以 SPKI 指纹为信任锚）
 - 登录后 RPC 携带 **HMAC-SHA256(session_key)**
 - 启用 TLS 时必须配置 `certPinSha256`（64 位 hex）
-- 记住密码暂用 QSettings（生产应换 DPAPI/Keychain）
+- 记住密码使用 Windows DPAPI 加密存储（macOS 计划 Keychain）
 - 控制器密码使用服务端 AES 密文，**客户端不解密**，直接传给 Agent
 
 ## 日志

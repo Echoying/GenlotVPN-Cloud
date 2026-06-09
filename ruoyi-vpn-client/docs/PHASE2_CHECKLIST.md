@@ -43,7 +43,7 @@
 | [x] | W-07 | 单实例锁 | 启动时检测已有进程 | 重复打开提示或聚焦已有窗口 |
 | [x] | W-08 | 系统托盘 | 最小化到托盘、右键退出/打开 | 关闭窗口可最小化到托盘而非直接退出 |
 | [ ] | W-09 | 应用图标与版本号 | exe 属性、关于页或标题显示版本 | 版本与 git tag / 构建号一致 |
-| [ ] | W-10 | 安装与运维文档 | `docs/DEPLOY_WINDOWS.md` | 含防火墙 9443、Agent 30303、日志路径 |
+| [x] | W-10 | 安装与运维文档 | `docs/DEPLOY_WINDOWS.md` | 含防火墙 9443、Agent 30303、日志路径 |
 
 ---
 
@@ -150,7 +150,7 @@ E-01、E-02、E-03、W-09、C-06
 | 优先级 | 任务数 | 已完成 |
 |--------|--------|--------|
 | P0 生产安全 | 9 | **9/9** |
-| P1 Windows 交付 | 10 |
+| P1 Windows 交付 | 10 | **8/10** |
 | P1 功能补齐 | 6 |
 | P2 mTLS | 6 |
 | P2 macOS | 8 |
@@ -163,6 +163,7 @@ E-01、E-02、E-03、W-09、C-06
 
 - 客户端 README：`../README.md`
 - Windows 环境：`WINDOWS_SETUP.md`
+- Windows 部署运维：`DEPLOY_WINDOWS.md`
 - TCP Nacos 示例：`../../sql/update/vpn_tcp_nacos_example.yml`
 - 协议说明：`../../proto/README.md`
 - 实施计划（Cursor Plan）：`VPN Qt 跨平台客户端`
