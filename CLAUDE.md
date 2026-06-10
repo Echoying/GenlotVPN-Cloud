@@ -183,12 +183,14 @@ Controller
 
 ## 数据库
 
-SQL 脚本位于 `sql/`：
-- `ry_20260402.sql` — RuoYi 框架表（数据库：`ry-cloud`）
-- `ry_config_20250902.sql` — Nacos 配置表（数据库：`ry-config`，包含所有服务配置）
-- `quartz.sql` — Quartz 调度器表
-- `vpn/` — VPN 相关表：`vpn_user`、`vpn_dept`、`vpn_service`、`vpn_service_group`、`vpn_role_yianlian_mapping`、`yal_dept_auth`
-- `update/` — 数据库结构迁移脚本
+SQL 脚本位于 `sql/`（由 `sql/export_init_db.py` 从测试库导出，可重入初始化）：
+- `ry-cloud.sql` — 业务库（数据库：`ry-cloud`）完整初始化：含框架表、VPN 业务表（`vpn_user`、`vpn_dept`、`vpn_service`、`vpn_service_group`、映射表、`yal_*_auth` 等）。框架种子数据（`sys_menu`、`sys_dict_*`、`sys_user` 等）保留；业务/日志/代码生成表仅建表结构、不含数据；`qrtz_*` 表由 `quartz.sql` 单独管理，不包含在此脚本内
+- `ry-config.sql` — Nacos 配置表（数据库：`ry-config`，含 `config_info` 等全部服务配置数据）
+- `quartz.sql` — Quartz 调度器表（`qrtz_*`，建在 `ry-cloud` 库中）
+- `update/*.yml` — Nacos 配置示例片段（TLS、选线验证码、TCP 等）
+- `export_init_db.py` — 数据库初始化脚本导出工具：连接测试库、按表黑名单导出结构+种子数据
+
+> 初始化顺序（MySQL `docker-entrypoint-initdb.d` 按文件名字母序）：`quartz.sql` → `ry-cloud.sql` → `ry-config.sql`。容器设 `MYSQL_DATABASE=ry-cloud`，故 `quartz.sql` 默认建在 `ry-cloud` 库。
 
 MySQL 5.7。Docker 凭据：root/root123456。
 

@@ -1,0 +1,54 @@
+# VPN 机（10.27.0.93）：vpn-gateway / vpn-auth + vpn-nginx
+# 采用 host 网络模式；中间件别名解析到 91；
+# 微服务显式注入 SPRING_CLOUD_NACOS_DISCOVERY_IP=本机，跨机 Feign 调用 yianlian/auth 可达。
+# 用法：sh deploy.sh vpn
+
+# 中间件别名 → 中间件机（91）
+x-middleware-hosts: &middleware-hosts
+  - "ruoyi-nacos:${MIDDLEWARE_HOST}"
+  - "ruoyi-redis:${MIDDLEWARE_HOST}"
+  - "ruoyi-mysql:${MIDDLEWARE_HOST}"
+
+services:
+  ruoyi-vpn-gateway:
+    container_name: ruoyi-vpn-gateway
+    build:
+      context: ./ruoyi/vpn/gateway
+      dockerfile: dockerfile
+    network_mode: host
+    environment:
+      - TZ=Asia/Shanghai
+      - SPRING_CLOUD_NACOS_DISCOVERY_IP=${VPN_HOST}
+    extra_hosts: *middleware-hosts
+
+  ruoyi-vpn-auth:
+    container_name: ruoyi-vpn-auth
+    build:
+      context: ./ruoyi/vpn/auth
+      dockerfile: dockerfile
+    network_mode: host
+    environment:
+      - TZ=Asia/Shanghai
+      - SPRING_CLOUD_NACOS_DISCOVERY_IP=${VPN_HOST}
+    extra_hosts: *middleware-hosts
+    volumes:
+      - ./ruoyi/vpn/auth/certs:/home/ruoyi/certs:ro
+
+  ruoyi-vpn-nginx:
+    container_name: ruoyi-vpn-nginx
+    image: nginx
+    build:
+      context: ./ruoyi/vpn/nginx
+    network_mode: host
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./ruoyi/vpn/nginx/html/dist:/home/ruoyi/projects/ruoyi-vpn-ui
+      - ./ruoyi/vpn/nginx/conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./ruoyi/vpn/nginx/logs:/var/log/nginx
+      - ./ruoyi/vpn/nginx/conf.d:/etc/nginx/conf.d
+    # nginx.conf 代理到 ruoyi-vpn-gateway:8090，解析到本机
+    extra_hosts:
+      - "ruoyi-vpn-gateway:${VPN_HOST}"
+    depends_on:
+      - ruoyi-vpn-gateway

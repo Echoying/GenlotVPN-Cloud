@@ -26,45 +26,50 @@ def copy_tree_contents(src_dir: Path, dst_dir: Path) -> None:
 def main() -> int:
     base = Path(__file__).resolve().parent
 
+    node91 = base / "node-91"
+    node92 = base / "node-92"
+    node93 = base / "node-93"
+
     print("begin copy sql")
-    copy_file(base.parent / "sql" / "ry_20260402.sql", base / "mysql" / "db")
-    copy_file(base.parent / "sql" / "ry_config_20250902.sql", base / "mysql" / "db")
+    copy_file(base.parent / "sql" / "ry-cloud.sql", node91 / "mysql" / "db")
+    copy_file(base.parent / "sql" / "ry-config.sql", node91 / "mysql" / "db")
+    copy_file(base.parent / "sql" / "quartz.sql", node91 / "mysql" / "db")
 
     print("begin copy html")
-    copy_tree_contents(base.parent / "ruoyi-ui" / "dist", base / "nginx" / "html" / "dist")
+    copy_tree_contents(base.parent / "ruoyi-ui" / "dist", node92 / "nginx" / "html" / "dist")
 
-    print("begin copy html")
-    copy_tree_contents(base.parent / "ruoyi-vpn-ui" / "dist", base / "vpn" / "nginx" / "html" / "dist")
+    print("begin copy vpn html")
+    copy_tree_contents(base.parent / "ruoyi-vpn-ui" / "dist", node93 / "ruoyi" / "vpn" / "nginx" / "html" / "dist")
 
     print("begin copy ruoyi-gateway")
-    copy_file(base.parent / "ruoyi-gateway" / "target" / "ruoyi-gateway.jar", base / "ruoyi" / "gateway" / "jar")
+    copy_file(base.parent / "ruoyi-gateway" / "target" / "ruoyi-gateway.jar", node92 / "ruoyi" / "gateway" / "jar")
 
     print("begin copy ruoyi-vpn-gateway")
-    copy_file(base.parent / "ruoyi-vpn-gateway" / "target" / "ruoyi-vpn-gateway.jar", base / "ruoyi" / "vpn" / "gateway" / "jar")
+    copy_file(base.parent / "ruoyi-vpn-gateway" / "target" / "ruoyi-vpn-gateway.jar", node93 / "ruoyi" / "vpn" / "gateway" / "jar")
 
     print("begin copy ruoyi-auth")
-    copy_file(base.parent / "ruoyi-auth" / "target" / "ruoyi-auth.jar", base / "ruoyi" / "auth" / "jar")
+    copy_file(base.parent / "ruoyi-auth" / "target" / "ruoyi-auth.jar", node92 / "ruoyi" / "auth" / "jar")
 
     print("begin copy ruoyi-vpn-auth")
-    copy_file(base.parent / "ruoyi-vpn-auth" / "target" / "ruoyi-vpn-auth.jar", base / "ruoyi" / "vpn" / "auth" / "jar")
+    copy_file(base.parent / "ruoyi-vpn-auth" / "target" / "ruoyi-vpn-auth.jar", node93 / "ruoyi" / "vpn" / "auth" / "jar")
 
     print("begin copy ruoyi-visual")
-    copy_file(base.parent / "ruoyi-visual" / "ruoyi-monitor" / "target" / "ruoyi-visual-monitor.jar", base / "ruoyi" / "visual" / "monitor" / "jar")
+    copy_file(base.parent / "ruoyi-visual" / "ruoyi-monitor" / "target" / "ruoyi-visual-monitor.jar", node92 / "ruoyi" / "visual" / "monitor" / "jar")
 
     print("begin copy ruoyi-modules-system")
-    copy_file(base.parent / "ruoyi-modules" / "ruoyi-system" / "target" / "ruoyi-modules-system.jar", base / "ruoyi" / "modules" / "system" / "jar")
+    copy_file(base.parent / "ruoyi-modules" / "ruoyi-system" / "target" / "ruoyi-modules-system.jar", node92 / "ruoyi" / "modules" / "system" / "jar")
 
     print("begin copy ruoyi-modules-file")
-    copy_file(base.parent / "ruoyi-modules" / "ruoyi-file" / "target" / "ruoyi-modules-file.jar", base / "ruoyi" / "modules" / "file" / "jar")
+    copy_file(base.parent / "ruoyi-modules" / "ruoyi-file" / "target" / "ruoyi-modules-file.jar", node92 / "ruoyi" / "modules" / "file" / "jar")
 
     print("begin copy ruoyi-modules-job")
-    copy_file(base.parent / "ruoyi-modules" / "ruoyi-job" / "target" / "ruoyi-modules-job.jar", base / "ruoyi" / "modules" / "job" / "jar")
+    copy_file(base.parent / "ruoyi-modules" / "ruoyi-job" / "target" / "ruoyi-modules-job.jar", node92 / "ruoyi" / "modules" / "job" / "jar")
 
     print("begin copy ruoyi-modules-gen")
-    copy_file(base.parent / "ruoyi-modules" / "ruoyi-gen" / "target" / "ruoyi-modules-gen.jar", base / "ruoyi" / "modules" / "gen" / "jar")
+    copy_file(base.parent / "ruoyi-modules" / "ruoyi-gen" / "target" / "ruoyi-modules-gen.jar", node92 / "ruoyi" / "modules" / "gen" / "jar")
 
     print("begin copy ruoyi-modules-yianlian")
-    copy_file(base.parent / "ruoyi-modules" / "ruoyi-yianlian" / "target" / "ruoyi-modules-yianlian.jar", base / "ruoyi" / "modules" / "yianlian" / "jar")
+    copy_file(base.parent / "ruoyi-modules" / "ruoyi-yianlian" / "target" / "ruoyi-modules-yianlian.jar", node92 / "ruoyi" / "modules" / "yianlian" / "jar")
 
     print("copy finished.")
     return 0

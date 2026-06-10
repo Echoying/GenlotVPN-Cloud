@@ -1,3 +1,0 @@
-# 追加到 Nacos 配置 ruoyi-vpn-gateway-dev.yml 的 security.ignore.whites（与 /vpn/login、/code 等同组）
-# 使登录前可选线路接口免鉴权
-- /vpn/lines
