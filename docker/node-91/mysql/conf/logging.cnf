@@ -1,0 +1,6 @@
+[mysqld]
+# 日志写入 compose 挂载的 /logs 目录
+log-error=/logs/error.log
+slow_query_log=1
+slow_query_log_file=/logs/slow.log
+long_query_time=2

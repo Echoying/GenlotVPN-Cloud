@@ -13,7 +13,16 @@ usage() {
 	exit 1
 }
 
+# 创建日志目录（nginx 非 root；Java 默认 root）
+prep(){
+	mkdir -p ruoyi/vpn/nginx/logs
+	mkdir -p ruoyi/vpn/gateway/logs ruoyi/vpn/auth/logs
+	chmod -R 777 ruoyi/vpn/nginx/logs 2>/dev/null || true
+	find ruoyi/vpn -type d -name logs -exec chmod 777 {} \; 2>/dev/null || true
+}
+
 up(){
+	prep
 	docker-compose up -d --build
 }
 
@@ -22,7 +31,7 @@ stop(){
 }
 
 rm(){
-	docker-compose rm
+	docker-compose rm -f
 }
 
 port(){
@@ -30,7 +39,7 @@ port(){
 	firewall-cmd --add-port=8090/tcp --permanent
 	firewall-cmd --add-port=9400/tcp --permanent
 	firewall-cmd --add-port=9443/tcp --permanent
-	service firewalld restart
+	firewall-cmd --reload
 }
 
 case "$1" in

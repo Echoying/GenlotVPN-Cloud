@@ -9,8 +9,7 @@
     <version>3.6.8</version>
 
     <name>ruoyi</name>
-    <url>http://www.ruoyi.vip</url>
-    <description>若依微服务系统</description>
+    <description>穗彩VPN微服务系统</description>
 
 
     <!-- 环境 -->
@@ -26,7 +25,7 @@
                 <!--当前环境-->
                 <profile.name>dev</profile.name>
                 <!--Nacos配置中心地址-->
-                <config.server-addr>10.9.2.177:8848</config.server-addr>
+                <config.server-addr>10.27.0.91:8848</config.server-addr>
                 <!--Nacos配置中心命名空间,用于支持多环境.这里必须使用ID，不能使用名称,默认为空-->
                 <config.namespace>dev</config.namespace>
                 <!--Nacos服务发现地址-->

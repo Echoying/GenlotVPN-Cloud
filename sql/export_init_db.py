@@ -15,7 +15,7 @@ import pymysql
 DB_HOST = "10.9.2.177"
 DB_PORT = 3306
 DB_USER = "root"
-DB_PASSWORD = "root123456"
+DB_PASSWORD = "root123456"  # 仅用于连接测试库 10.9.2.177 导出，与生产库密码无关
 
 OUT_DIR = Path(__file__).resolve().parent
 

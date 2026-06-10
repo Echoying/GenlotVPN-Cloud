@@ -1,0 +1,2 @@
+# Shell 脚本在 Linux 上执行，统一使用 LF
+*.sh text eol=lf

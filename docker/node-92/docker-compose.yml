@@ -20,6 +20,8 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_CLOUD_NACOS_DISCOVERY_IP=${APP_HOST}
     extra_hosts: *middleware-hosts
+    volumes:
+      - ./ruoyi/gateway/logs:/home/ruoyi/logs
 
   ruoyi-auth:
     container_name: ruoyi-auth
@@ -31,6 +33,8 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_CLOUD_NACOS_DISCOVERY_IP=${APP_HOST}
     extra_hosts: *middleware-hosts
+    volumes:
+      - ./ruoyi/auth/logs:/home/ruoyi/logs
 
   ruoyi-modules-system:
     container_name: ruoyi-modules-system
@@ -42,6 +46,8 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_CLOUD_NACOS_DISCOVERY_IP=${APP_HOST}
     extra_hosts: *middleware-hosts
+    volumes:
+      - ./ruoyi/modules/system/logs:/home/ruoyi/logs
 
   ruoyi-modules-gen:
     container_name: ruoyi-modules-gen
@@ -53,6 +59,8 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_CLOUD_NACOS_DISCOVERY_IP=${APP_HOST}
     extra_hosts: *middleware-hosts
+    volumes:
+      - ./ruoyi/modules/gen/logs:/home/ruoyi/logs
 
   ruoyi-modules-job:
     container_name: ruoyi-modules-job
@@ -64,6 +72,8 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_CLOUD_NACOS_DISCOVERY_IP=${APP_HOST}
     extra_hosts: *middleware-hosts
+    volumes:
+      - ./ruoyi/modules/job/logs:/home/ruoyi/logs
 
   ruoyi-modules-file:
     container_name: ruoyi-modules-file
@@ -77,6 +87,7 @@ services:
     extra_hosts: *middleware-hosts
     volumes:
       - ./ruoyi/uploadPath:/home/ruoyi/uploadPath
+      - ./ruoyi/modules/file/logs:/home/ruoyi/logs
 
   ruoyi-visual-monitor:
     container_name: ruoyi-visual-monitor
@@ -88,6 +99,8 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_CLOUD_NACOS_DISCOVERY_IP=${APP_HOST}
     extra_hosts: *middleware-hosts
+    volumes:
+      - ./ruoyi/visual/monitor/logs:/home/ruoyi/logs
 
   ruoyi-modules-yianlian:
     container_name: ruoyi-modules-yianlian
@@ -99,6 +112,8 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_CLOUD_NACOS_DISCOVERY_IP=${APP_HOST}
     extra_hosts: *middleware-hosts
+    volumes:
+      - ./ruoyi/modules/yianlian/logs:/home/ruoyi/logs
 
   ruoyi-nginx:
     container_name: ruoyi-nginx

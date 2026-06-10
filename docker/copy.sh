@@ -6,6 +6,28 @@ usage() {
 	exit 1
 }
 
+# 校验 JAR 是否为 Java 8 编译（class major version 52）
+check_jar_java8() {
+	jar_path="$1"
+	if [ ! -f "$jar_path" ]; then
+		echo "错误: 找不到 JAR: $jar_path"
+		exit 1
+	fi
+	python - "$jar_path" <<'PY' || exit 1
+import struct, sys, zipfile
+path = sys.argv[1]
+with zipfile.ZipFile(path) as z:
+    names = [n for n in z.namelist() if n.endswith("Application.class") and "BOOT-INF/classes" in n]
+    if not names:
+        print(f"错误: {path} 中未找到 Application.class")
+        sys.exit(1)
+    major = struct.unpack(">H", z.read(names[0])[6:8])[0]
+    if major != 52:
+        print(f"错误: {path} 为 Java class {major}，需要 Java 8（52）。请用 JDK 8 执行 mvn package。")
+        sys.exit(1)
+    print(f"OK Java8: {path}")
+PY
+}
 
 # copy sql -> node-91
 echo "begin copy sql "
@@ -49,3 +71,16 @@ cp ../ruoyi-vpn-gateway/target/ruoyi-vpn-gateway.jar ./node-93/ruoyi/vpn/gateway
 
 echo "begin copy ruoyi-vpn-auth "
 cp ../ruoyi-vpn-auth/target/ruoyi-vpn-auth.jar ./node-93/ruoyi/vpn/auth/jar
+
+echo "begin check jar java version (must be 52 / Java 8)"
+check_jar_java8 ./node-92/ruoyi/gateway/jar/ruoyi-gateway.jar
+check_jar_java8 ./node-92/ruoyi/auth/jar/ruoyi-auth.jar
+check_jar_java8 ./node-92/ruoyi/visual/monitor/jar/ruoyi-visual-monitor.jar
+check_jar_java8 ./node-92/ruoyi/modules/system/jar/ruoyi-modules-system.jar
+check_jar_java8 ./node-92/ruoyi/modules/file/jar/ruoyi-modules-file.jar
+check_jar_java8 ./node-92/ruoyi/modules/job/jar/ruoyi-modules-job.jar
+check_jar_java8 ./node-92/ruoyi/modules/gen/jar/ruoyi-modules-gen.jar
+check_jar_java8 ./node-92/ruoyi/modules/yianlian/jar/ruoyi-modules-yianlian.jar
+check_jar_java8 ./node-93/ruoyi/vpn/gateway/jar/ruoyi-vpn-gateway.jar
+check_jar_java8 ./node-93/ruoyi/vpn/auth/jar/ruoyi-vpn-auth.jar
+echo "all jars are Java 8"

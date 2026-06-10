@@ -192,7 +192,7 @@ SQL 脚本位于 `sql/`（由 `sql/export_init_db.py` 从测试库导出，可�
 
 > 初始化顺序（MySQL `docker-entrypoint-initdb.d` 按文件名字母序）：`quartz.sql` → `ry-cloud.sql` → `ry-config.sql`。容器设 `MYSQL_DATABASE=ry-cloud`，故 `quartz.sql` 默认建在 `ry-cloud` 库。
 
-MySQL 5.7。Docker 凭据：root/root123456。
+MySQL 5.7。root 密码见 `docker/node-91/docker-compose.yml` 中 `MYSQL_ROOT_PASSWORD`（须与 `nacos/conf/application.properties`、`ry-config.sql` 中数据源密码一致）。
 
 ## 注意事项
 

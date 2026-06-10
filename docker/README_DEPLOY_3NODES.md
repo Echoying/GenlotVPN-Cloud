@@ -93,8 +93,29 @@ sh deploy.sh stop   # 停止本机服务
 sh deploy.sh rm     # 删除本机容器
 ```
 
-## 九、注意事项
+## 九、日志目录（已映射到宿主机）
+
+各服务日志通过 compose `volumes` 落到 **node 目录下**，便于 `tail -f` 与日志轮转。
+
+| 节点 | 服务 | 宿主机路径 | 日志文件 |
+|------|------|------------|----------|
+| 91 | MySQL | `mysql/logs/` | `error.log`、`slow.log` |
+| 91 | Redis | `redis/logs/` | `redis.log` |
+| 91 | Nacos | `nacos/logs/` | Nacos 运行日志 |
+| 92 | Java 微服务 ×8 | `ruoyi/<模块>/logs/` | `ruoyi-*/info.log`、`error.log`（按日滚动） |
+| 92 | Nginx | `nginx/logs/` | `access.log`、`error.log` |
+| 93 | vpn-gateway / vpn-auth | `ruoyi/vpn/*/logs/` | 同上 |
+| 93 | vpn-nginx | `ruoyi/vpn/nginx/logs/` | `access.log`、`error.log` |
+
+Java 服务容器内写 `/home/ruoyi/logs/<服务名>/`，与 logback.xml 一致。首次启动后目录自动创建。
+
+```bash
+# 示例：查看 92 网关日志
+tail -f /data/genlotvpn/node-92/ruoyi/gateway/logs/ruoyi-gateway/info.log
+```
+
+## 十、注意事项
 
 - host 模式下 compose 中的 `ports:` 不生效，已全部移除；需保证同机端口无冲突（当前各服务端口唯一）。
 - node-93 的 `ruoyi-vpn-nginx` 使用本目录 `ruoyi/vpn/nginx/dockerfile` 构建（`build.context: ./ruoyi/vpn/nginx`）。
-- `ry_config` 中 `ruoyi-file-dev.yml` 的 `file.domain=http://127.0.0.1:9300` 等为既有配置；若跨机访问文件服务异常，在 Nacos 中改为 `http://10.27.0.92:9300`。
+- `ry_config` 中 `ruoyi-file-dev.yml` 的 `file.domain` 已设为 `http://10.27.0.92:9300`。

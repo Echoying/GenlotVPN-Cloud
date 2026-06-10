@@ -15,7 +15,7 @@ services:
       - ./mysql/db:/docker-entrypoint-initdb.d
     command: [
           'mysqld',
-          '--innodb-buffer-pool-size=80M',
+          '--innodb-buffer-pool-size=1G',
           '--character-set-server=utf8mb4',
           '--collation-server=utf8mb4_unicode_ci',
           '--default-time-zone=+8:00',
@@ -23,11 +23,11 @@ services:
         ]
     environment:
       MYSQL_DATABASE: 'ry-cloud'
-      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_ROOT_PASSWORD: Gv9mKp7Qx2nLw4sR8tYwZ6
 
   ruoyi-redis:
     container_name: ruoyi-redis
-    image: redis
+    image: redis:7.2
     build:
       context: ./redis
     network_mode: host
@@ -36,6 +36,7 @@ services:
     volumes:
       - ./redis/conf/redis.conf:/home/ruoyi/redis/redis.conf
       - ./redis/data:/data
+      - ./redis/logs:/home/ruoyi/redis/logs
     command: redis-server /home/ruoyi/redis/redis.conf
 
   ruoyi-nacos:

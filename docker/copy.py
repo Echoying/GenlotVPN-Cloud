@@ -1,7 +1,31 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import shutil
+import struct
 import sys
+import zipfile
+
+JAVA8_CLASS_MAJOR = 52
+
+
+def check_jar_java8(jar_path: Path) -> None:
+    """校验 Spring Boot JAR 主类是否为 Java 8 编译（class major 52）。"""
+    if not jar_path.exists():
+        raise FileNotFoundError(f"JAR 不存在: {jar_path}")
+    with zipfile.ZipFile(jar_path) as zf:
+        names = [
+            n for n in zf.namelist()
+            if n.endswith("Application.class") and "BOOT-INF/classes" in n
+        ]
+        if not names:
+            raise ValueError(f"{jar_path} 中未找到 Application.class")
+        major = struct.unpack(">H", zf.read(names[0])[6:8])[0]
+        if major != JAVA8_CLASS_MAJOR:
+            raise ValueError(
+                f"{jar_path} 为 Java class {major}，需要 Java 8（{JAVA8_CLASS_MAJOR}）。"
+                "请用 JDK 8 执行 mvn package。"
+            )
+    print(f"OK Java8: {jar_path}")
 
 
 def copy_file(src: Path, dst_dir: Path) -> None:
@@ -70,6 +94,22 @@ def main() -> int:
 
     print("begin copy ruoyi-modules-yianlian")
     copy_file(base.parent / "ruoyi-modules" / "ruoyi-yianlian" / "target" / "ruoyi-modules-yianlian.jar", node92 / "ruoyi" / "modules" / "yianlian" / "jar")
+
+    print("begin check jar java version (must be 52 / Java 8)")
+    jar_paths = [
+        node92 / "ruoyi" / "gateway" / "jar" / "ruoyi-gateway.jar",
+        node92 / "ruoyi" / "auth" / "jar" / "ruoyi-auth.jar",
+        node92 / "ruoyi" / "visual" / "monitor" / "jar" / "ruoyi-visual-monitor.jar",
+        node92 / "ruoyi" / "modules" / "system" / "jar" / "ruoyi-modules-system.jar",
+        node92 / "ruoyi" / "modules" / "file" / "jar" / "ruoyi-modules-file.jar",
+        node92 / "ruoyi" / "modules" / "job" / "jar" / "ruoyi-modules-job.jar",
+        node92 / "ruoyi" / "modules" / "gen" / "jar" / "ruoyi-modules-gen.jar",
+        node92 / "ruoyi" / "modules" / "yianlian" / "jar" / "ruoyi-modules-yianlian.jar",
+        node93 / "ruoyi" / "vpn" / "gateway" / "jar" / "ruoyi-vpn-gateway.jar",
+        node93 / "ruoyi" / "vpn" / "auth" / "jar" / "ruoyi-vpn-auth.jar",
+    ]
+    for jar_path in jar_paths:
+        check_jar_java8(jar_path)
 
     print("copy finished.")
     return 0

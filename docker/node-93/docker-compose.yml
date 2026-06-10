@@ -20,6 +20,8 @@ services:
       - TZ=Asia/Shanghai
       - SPRING_CLOUD_NACOS_DISCOVERY_IP=${VPN_HOST}
     extra_hosts: *middleware-hosts
+    volumes:
+      - ./ruoyi/vpn/gateway/logs:/home/ruoyi/logs
 
   ruoyi-vpn-auth:
     container_name: ruoyi-vpn-auth
@@ -33,6 +35,7 @@ services:
     extra_hosts: *middleware-hosts
     volumes:
       - ./ruoyi/vpn/auth/certs:/home/ruoyi/certs:ro
+      - ./ruoyi/vpn/auth/logs:/home/ruoyi/logs
 
   ruoyi-vpn-nginx:
     container_name: ruoyi-vpn-nginx
