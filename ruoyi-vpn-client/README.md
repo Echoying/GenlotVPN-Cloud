@@ -52,6 +52,8 @@ bin\build-vpn-client.bat --package
 
 可分发目录：`ruoyi-vpn-client\dist\GenlotVPN-win64\`（含 Qt DLL、`config.json`，可在无开发环境的 Windows 机器运行）
 
+版本号：修改 `CMakeLists.txt` 中 `project(GenlotVPN VERSION x.y.z)`；构建时自动附加 Git 短提交。界面见窗口标题与 **设置 → 关于**，exe 属性见「详细信息」。
+
 **手动 CMake（与脚本等价）**
 
 ```bat

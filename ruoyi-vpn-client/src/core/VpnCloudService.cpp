@@ -2,6 +2,7 @@
 #include "AppLogger.h"
 #include "TcpHmacUtils.h"
 #include <QDateTime>
+#include <QTimer>
 #include <QUuid>
 #include <QVariantMap>
 
@@ -16,6 +17,37 @@
 namespace vpn {
 
 namespace {
+
+bool isRetryableTcpError(const QString &err)
+{
+    const QString msg = err.trimmed();
+    if (msg.isEmpty()) {
+        return true;
+    }
+    if (msg.contains(QStringLiteral("Pinning"))
+        || msg.contains(QStringLiteral("指纹"))
+        || msg.contains(QStringLiteral("证书校验"))
+        || msg.contains(QStringLiteral("未配置"))
+        || msg.contains(QStringLiteral("Protobuf"))) {
+        return false;
+    }
+    static const QStringList keys = {
+        QStringLiteral("连接已断开"),
+        QStringLiteral("连接服务器超时"),
+        QStringLiteral("等待服务器响应超时"),
+        QStringLiteral("网络连接失败"),
+        QStringLiteral("TCP 连接失败"),
+        QStringLiteral("Connection refused"),
+        QStringLiteral("Connection reset"),
+        QStringLiteral("远程主机强迫关闭"),
+    };
+    for (const QString &key : keys) {
+        if (msg.contains(key)) {
+            return true;
+        }
+    }
+    return false;
+}
 
 void emitCloudError(const QString &message)
 {
@@ -72,6 +104,12 @@ void VpnCloudService::configure(const QString &host, quint16 port, bool useTls, 
     m_port = port;
     m_useTls = useTls;
     m_tcp.configure(host, port, useTls, certPinSha256, certPinSha256Backup);
+}
+
+void VpnCloudService::setReconnectPolicy(int maxRetries, int delayMs)
+{
+    m_reconnectMaxRetries = qMax(0, maxRetries);
+    m_reconnectDelayMs = qMax(100, delayMs);
 }
 
 RpcResult VpnCloudService::parseEnvelopeResponse(const QByteArray &envelopeBytes)
@@ -131,18 +169,43 @@ QByteArray VpnCloudService::buildEnvelope(int messageType, const QByteArray &pay
 
 void VpnCloudService::sendRpc(int messageType, const QByteArray &payload, RpcCallback callback)
 {
+    sendRpcWithRetry(messageType, payload, std::move(callback), 0);
+}
+
+void VpnCloudService::sendRpcWithRetry(int messageType, const QByteArray &payload, RpcCallback callback,
+                                       int retryCount)
+{
 #ifndef VPN_HAS_PROTO
     emitCloudError(QStringLiteral("Protobuf 代码未生成，请先编译项目"));
     emit requestFailed(QStringLiteral("Protobuf 代码未生成，请先编译项目"));
     return;
 #else
     const QByteArray envelope = buildEnvelope(messageType, payload);
-    m_tcp.sendEnvelope(envelope, [this, callback = std::move(callback)](bool ok, const QByteArray &body, const QString &err) {
+    m_tcp.sendEnvelope(envelope, [this, messageType, payload, callback = std::move(callback), retryCount](
+                                   bool ok, const QByteArray &body, const QString &err) mutable {
         if (!ok) {
-            const QString msg = err.isEmpty() ? QStringLiteral("TCP 连接失败") : err;
+            const QString msg = err.isEmpty() ? QStringLiteral("TCP 连接失败") : err.trimmed();
+            if (isRetryableTcpError(msg) && retryCount < m_reconnectMaxRetries) {
+                AppLogger::instance()->warn(
+                    QStringLiteral("[云端] 传输失败，%1ms 后重试 (%2/%3): %4")
+                        .arg(m_reconnectDelayMs)
+                        .arg(retryCount + 1)
+                        .arg(m_reconnectMaxRetries)
+                        .arg(msg));
+                m_tcp.resetConnection();
+                QTimer::singleShot(m_reconnectDelayMs, this,
+                                   [this, messageType, payload, callback = std::move(callback), retryCount]() mutable {
+                                       sendRpcWithRetry(messageType, payload, std::move(callback), retryCount + 1);
+                                   });
+                return;
+            }
             emitCloudError(msg);
             emit requestFailed(msg);
             return;
+        }
+        if (retryCount > 0) {
+            AppLogger::instance()->info(
+                QStringLiteral("[云端] 重连成功（经 %1 次重试后恢复）").arg(retryCount));
         }
         const RpcResult result = parseEnvelopeResponse(body);
         if (!result.ok) {

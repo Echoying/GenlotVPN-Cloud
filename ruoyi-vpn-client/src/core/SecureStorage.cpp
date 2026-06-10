@@ -24,7 +24,9 @@ QByteArray embeddedDefaultConfigJson()
         "  \"serverPort\": 9443,\n"
         "  \"useTls\": true,\n"
         "  \"certPinSha256\": \"cfaed547fc3b72894931ddcd7f94090bb909e95357510d3a79c94345f5e4d6fb\",\n"
-        "  \"certPinSha256Backup\": \"\"\n"
+        "  \"certPinSha256Backup\": \"\",\n"
+        "  \"tcpReconnectMaxRetries\": 3,\n"
+        "  \"tcpReconnectDelayMs\": 1500\n"
         "}\n");
 }
 
@@ -87,7 +89,39 @@ QVariantMap SecureStorage::loadConfigFile() const
     result[QStringLiteral("useTls")] = cfg.value(QStringLiteral("useTls")).toBool(false);
     result[QStringLiteral("certPinSha256")] = cfg.value(QStringLiteral("certPinSha256")).toString();
     result[QStringLiteral("certPinSha256Backup")] = cfg.value(QStringLiteral("certPinSha256Backup")).toString();
+    result[QStringLiteral("tcpReconnectMaxRetries")] =
+        cfg.contains(QStringLiteral("tcpReconnectMaxRetries"))
+            ? cfg.value(QStringLiteral("tcpReconnectMaxRetries")).toInt()
+            : kDefaultTcpReconnectMaxRetries;
+    result[QStringLiteral("tcpReconnectDelayMs")] =
+        cfg.contains(QStringLiteral("tcpReconnectDelayMs"))
+            ? cfg.value(QStringLiteral("tcpReconnectDelayMs")).toInt()
+            : kDefaultTcpReconnectDelayMs;
     return result;
+}
+
+bool SecureStorage::readConfigObject(QJsonObject *out) const
+{
+    if (!out) {
+        return false;
+    }
+    *out = QJsonObject();
+    QFile file(configFilePath());
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+    *out = QJsonDocument::fromJson(file.readAll()).object();
+    return true;
+}
+
+bool SecureStorage::writeConfigObject(const QJsonObject &cfg)
+{
+    QFile file(configFilePath());
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        return false;
+    }
+    file.write(QJsonDocument(cfg).toJson(QJsonDocument::Indented));
+    return true;
 }
 
 bool SecureStorage::saveConfigServer(const QString &host, int port, bool useTls,
@@ -95,6 +129,7 @@ bool SecureStorage::saveConfigServer(const QString &host, int port, bool useTls,
                                      const QString &certPinSha256Backup)
 {
     QJsonObject cfg;
+    readConfigObject(&cfg);
     cfg[QStringLiteral("serverHost")] = host.trimmed();
     cfg[QStringLiteral("serverPort")] = port;
     cfg[QStringLiteral("useTls")] = useTls;
@@ -102,18 +137,26 @@ bool SecureStorage::saveConfigServer(const QString &host, int port, bool useTls,
     const QString pin = certPinSha256.trimmed();
     if (!pin.isEmpty()) {
         cfg[QStringLiteral("certPinSha256")] = pin;
+    } else {
+        cfg.remove(QStringLiteral("certPinSha256"));
     }
     const QString backupPin = certPinSha256Backup.trimmed();
     if (!backupPin.isEmpty()) {
         cfg[QStringLiteral("certPinSha256Backup")] = backupPin;
+    } else {
+        cfg.remove(QStringLiteral("certPinSha256Backup"));
     }
 
-    QFile file(configFilePath());
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
-        return false;
-    }
-    file.write(QJsonDocument(cfg).toJson(QJsonDocument::Indented));
-    return true;
+    return writeConfigObject(cfg);
+}
+
+bool SecureStorage::saveConfigReconnect(int maxRetries, int delayMs)
+{
+    QJsonObject cfg;
+    readConfigObject(&cfg);
+    cfg[QStringLiteral("tcpReconnectMaxRetries")] = maxRetries;
+    cfg[QStringLiteral("tcpReconnectDelayMs")] = delayMs;
+    return writeConfigObject(cfg);
 }
 
 void SecureStorage::saveServer(const QString &host, quint16 port, bool useTls)

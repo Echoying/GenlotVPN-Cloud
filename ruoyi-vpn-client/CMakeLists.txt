@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 project(GenlotVPN VERSION 1.0.0 LANGUAGES CXX)
 
+include(cmake/Version.cmake)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
@@ -50,6 +52,7 @@ set(SOURCES
     src/core/SecureStorage.cpp
     src/windows/DpapiProtector.cpp
     src/core/AppLogger.cpp
+    src/core/AppInfo.cpp
     src/core/VpnFlowController.cpp
     src/platform/SingleInstance.cpp
     src/platform/TrayIcon.cpp
@@ -59,13 +62,26 @@ set(SOURCES
 # WIN32：使用 GUI 子系统，避免运行时弹出黑色 cmd 窗口
 qt_add_executable(GenlotVPN WIN32 ${SOURCES})
 
-if(MSVC)
-    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/images/genlot-app.ico")
+if(WIN32)
+    configure_file(
+        ${CMAKE_SOURCE_DIR}/windows/version.rc.in
+        ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+        @ONLY
+    )
+    target_sources(GenlotVPN PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
+    if(MSVC AND EXISTS "${CMAKE_SOURCE_DIR}/assets/images/genlot-app.ico")
         target_sources(GenlotVPN PRIVATE windows/app_icon.rc)
-    else()
+    elseif(MSVC)
         message(WARNING "未找到 assets/images/genlot-app.ico，跳过嵌入 exe 图标")
     endif()
 endif()
+
+set_target_properties(GenlotVPN PROPERTIES VERSION ${PROJECT_VERSION})
+
+target_compile_definitions(GenlotVPN PRIVATE
+    GENLOT_APP_VERSION="${GENLOT_VERSION_STRING}"
+    GENLOT_APP_BUILD_ID="${GENLOT_BUILD_ID}"
+)
 
 # Theme.qml 含 pragma Singleton，需在 qmldir 中注册为 singleton
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
@@ -85,6 +101,7 @@ qt_add_qml_module(GenlotVPN
         qml/components/BrandHeader.qml
         qml/components/PrimaryButton.qml
         qml/components/GhostButton.qml
+        qml/components/TlsSwitch.qml
         qml/components/Card.qml
         qml/pages/ChooseLinePage.qml
         qml/pages/LoginPage.qml

@@ -10,8 +10,17 @@ Item {
 
     readonly property var sections: [
         { key: "server", title: "服务器" },
-        { key: "security", title: "安全连接" }
+        { key: "security", title: "安全连接" },
+        { key: "about", title: "关于" }
     ]
+
+    readonly property int serverPortFieldWidth: 96
+    readonly property int compactFieldWidth: Math.max(120, (panelColumn.width - 12) / 2)
+
+    function formatDelaySeconds(delayMs) {
+        const delaySec = delayMs / 1000
+        return Number.isInteger(delaySec) ? String(delaySec) : delaySec.toFixed(1)
+    }
 
     function loadFields() {
         serverHostField.text = vpnFlow.serverHost || ""
@@ -19,17 +28,32 @@ Item {
         tlsSwitch.checked = vpnFlow.serverUseTls
         pinField.text = vpnFlow.certPinSha256 || ""
         pinBackupField.text = vpnFlow.certPinSha256Backup || ""
+        reconnectMaxField.text = String(vpnFlow.tcpReconnectMaxRetries)
+        reconnectDelayField.text = formatDelaySeconds(vpnFlow.tcpReconnectDelayMs)
     }
 
     function saveSettings() {
         const port = parseInt(serverPortField.text, 10)
-        vpnFlow.applyServerConfig(
-            serverHostField.text,
-            port,
-            tlsSwitch.checked,
-            pinField.text,
-            pinBackupField.text
-        )
+        if (!vpnFlow.applyServerConfig(
+                serverHostField.text,
+                port,
+                tlsSwitch.checked,
+                pinField.text,
+                pinBackupField.text)) {
+            return
+        }
+
+        const maxRetries = parseInt(reconnectMaxField.text, 10)
+        const delaySec = parseFloat(String(reconnectDelayField.text).replace(",", "."))
+        if (!isNaN(maxRetries) && !isNaN(delaySec)) {
+            vpnFlow.applyTcpReconnectConfig(maxRetries, Math.round(delaySec * 1000))
+        }
+        loadFields()
+    }
+
+    function resetReconnectSettings() {
+        vpnFlow.resetTcpReconnectToDefault()
+        loadFields()
     }
 
     function goBack() {
@@ -166,7 +190,7 @@ Item {
                     Column {
                         id: panelColumn
                         width: parent.width
-                        spacing: 18
+                        spacing: 20
 
                         Text {
                             text: root.sections[root.currentSection].title
@@ -175,65 +199,142 @@ Item {
                             font.bold: true
                         }
 
+                        // —— 服务器 ——
                         Column {
                             width: parent.width
-                            spacing: 14
+                            spacing: 16
                             visible: root.currentSection === 0
 
-                            Column {
+                            Row {
                                 width: parent.width
-                                spacing: 6
+                                spacing: 12
 
-                                Text {
-                                    text: "服务器地址"
-                                    color: Theme.textSecondary
-                                    font.pixelSize: 12
+                                Column {
+                                    width: parent.width - root.serverPortFieldWidth - 12
+                                    spacing: 6
+
+                                    Text {
+                                        text: "服务器地址"
+                                        color: Theme.textSecondary
+                                        font.pixelSize: 12
+                                    }
+
+                                    FlatField {
+                                        id: serverHostField
+                                        width: parent.width
+                                        placeholderText: "请输入服务器地址"
+                                    }
                                 }
 
-                                FlatField {
-                                    id: serverHostField
-                                    width: parent.width
-                                    placeholderText: "请输入服务器地址"
+                                Column {
+                                    width: root.serverPortFieldWidth
+                                    spacing: 6
+
+                                    Text {
+                                        text: "端口"
+                                        color: Theme.textSecondary
+                                        font.pixelSize: 12
+                                    }
+
+                                    FlatField {
+                                        id: serverPortField
+                                        width: parent.width
+                                        placeholderText: "9443"
+                                        digitsOnly: true
+                                        maximumLength: 5
+                                    }
                                 }
                             }
 
-                            Column {
+                            Row {
                                 width: parent.width
-                                spacing: 6
+                                spacing: 12
 
-                                Text {
-                                    text: "端口"
-                                    color: Theme.textSecondary
-                                    font.pixelSize: 12
+                                Column {
+                                    width: root.compactFieldWidth
+                                    spacing: 6
+
+                                    Text {
+                                        text: "重试次数"
+                                        color: Theme.textSecondary
+                                        font.pixelSize: 12
+                                    }
+
+                                    FlatField {
+                                        id: reconnectMaxField
+                                        width: parent.width
+                                        placeholderText: "3"
+                                        digitsOnly: true
+                                        maximumLength: 2
+                                    }
                                 }
 
-                                FlatField {
-                                    id: serverPortField
-                                    width: Math.min(parent.width, 160)
-                                    placeholderText: "9443"
-                                    digitsOnly: true
-                                    maximumLength: 5
+                                Column {
+                                    width: root.compactFieldWidth
+                                    spacing: 6
+
+                                    Text {
+                                        text: "重试间隔（秒）"
+                                        color: Theme.textSecondary
+                                        font.pixelSize: 12
+                                    }
+
+                                    FlatField {
+                                        id: reconnectDelayField
+                                        width: parent.width
+                                        placeholderText: "1.5"
+                                    }
                                 }
+                            }
+
+                            Rectangle {
+                                width: parent.width
+                                height: 1
+                                color: Theme.settingsDivider
                             }
 
                             Text {
                                 width: parent.width
                                 text: "当前模式: " + vpnFlow.connectionModeLabel
-                                color: Theme.textSecondary
+                                color: Theme.textPrimary
                                 font.pixelSize: 12
                             }
 
-                            PrimaryButton {
-                                text: "保存"
-                                width: 88
-                                enabled: !vpnFlow.loading
-                                onClicked: root.saveSettings()
+                            Text {
+                                width: parent.width
+                                text: "云端 TCP 请求失败时自动重连，默认最多 3 次、间隔 1.5 秒。"
+                                color: Theme.textSecondary
+                                font.pixelSize: 11
+                                wrapMode: Text.Wrap
+                            }
+
+                            Item {
+                                width: parent.width
+                                height: 40
+
+                                GhostButton {
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "恢复默认"
+                                    onClicked: root.resetReconnectSettings()
+                                }
+
+                                PrimaryButton {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "保存"
+                                    soft: true
+                                    width: 88
+                                    enabled: !vpnFlow.loading
+                                    onClicked: root.saveSettings()
+                                }
                             }
                         }
 
+                        // —— 安全连接 ——
                         Column {
                             width: parent.width
-                            spacing: 14
+                            spacing: 16
                             visible: root.currentSection === 1
 
                             Row {
@@ -247,7 +348,7 @@ Item {
                                     font.pixelSize: 13
                                 }
 
-                                Switch {
+                                TlsSwitch {
                                     id: tlsSwitch
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
@@ -297,11 +398,54 @@ Item {
                                 wrapMode: Text.Wrap
                             }
 
-                            PrimaryButton {
-                                text: "保存"
-                                width: 88
-                                enabled: !vpnFlow.loading
-                                onClicked: root.saveSettings()
+                            Item {
+                                width: parent.width
+                                height: 40
+
+                                PrimaryButton {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "保存"
+                                    soft: true
+                                    width: 88
+                                    enabled: !vpnFlow.loading
+                                    onClicked: root.saveSettings()
+                                }
+                            }
+                        }
+
+                        // —— 关于 ——
+                        Column {
+                            width: parent.width
+                            spacing: 12
+                            visible: root.currentSection === 2
+
+                            Text {
+                                text: "Genlot VPN"
+                                color: Theme.navy
+                                font.pixelSize: 18
+                                font.bold: true
+                            }
+
+                            Text {
+                                text: "版本 " + vpnApp.versionLabel
+                                color: Theme.textPrimary
+                                font.pixelSize: 13
+                            }
+
+                            Text {
+                                width: parent.width
+                                text: "桌面客户端 · TLS/TCP 云端 + 易安联本地控制器"
+                                color: Theme.textSecondary
+                                font.pixelSize: 12
+                                wrapMode: Text.Wrap
+                            }
+
+                            Text {
+                                width: parent.width
+                                text: "Copyright © Genlot"
+                                color: Theme.textSecondary
+                                font.pixelSize: 11
                             }
                         }
                     }

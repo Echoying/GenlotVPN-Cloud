@@ -17,6 +17,7 @@
 #include "core/SessionManager.h"
 #include "core/SecureStorage.h"
 #include "core/VpnFlowController.h"
+#include "core/AppInfo.h"
 #include "platform/SingleInstance.h"
 #include "platform/TrayIcon.h"
 
@@ -100,12 +101,14 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
     QCoreApplication::setOrganizationName(QStringLiteral("Genlot"));
     QCoreApplication::setApplicationName(QStringLiteral("GenlotVPN"));
+    vpn::AppInfo appInfo;
+    QCoreApplication::setApplicationVersion(appInfo.version());
     // 托盘右键菜单使用 QMenu（QWidget），须 QApplication 而非 QGuiApplication
     QApplication app(argc, argv);
     qInstallMessageHandler(qtMessageHandler);
 
     vpn::AppLogger *appLogger = vpn::AppLogger::instance();
-    appLogger->info(QStringLiteral("Genlot VPN 客户端启动"));
+    appLogger->info(QStringLiteral("Genlot VPN 客户端启动 %1").arg(appInfo.versionLabel()));
 
     vpn::SingleInstance singleInstance(QStringLiteral("GenlotVPN_SingleInstance"));
     if (!singleInstance.tryRun()) {
@@ -132,6 +135,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("vpnFlow"), &flow);
     engine.rootContext()->setContextProperty(QStringLiteral("vpnStorage"), &secureStorage);
     engine.rootContext()->setContextProperty(QStringLiteral("vpnTray"), &trayIcon);
+    engine.rootContext()->setContextProperty(QStringLiteral("vpnApp"), &appInfo);
     engine.load(QUrl(QStringLiteral("qrc:/GenlotVPN/qml/main.qml")));
     if (engine.rootObjects().isEmpty()) {
         const QString err = QStringLiteral("界面加载失败，请确认安装目录下存在 GenlotVPN 文件夹。\n"

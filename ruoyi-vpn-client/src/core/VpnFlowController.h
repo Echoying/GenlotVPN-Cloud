@@ -43,6 +43,8 @@ class VpnFlowController : public QObject {
     Q_PROPERTY(QString certPinSha256 READ certPinSha256 NOTIFY serverConfigChanged)
     Q_PROPERTY(QString certPinSha256Backup READ certPinSha256Backup NOTIFY serverConfigChanged)
     Q_PROPERTY(QString connectionModeLabel READ connectionModeLabel NOTIFY serverConfigChanged)
+    Q_PROPERTY(int tcpReconnectMaxRetries READ tcpReconnectMaxRetries NOTIFY reconnectConfigChanged)
+    Q_PROPERTY(int tcpReconnectDelayMs READ tcpReconnectDelayMs NOTIFY reconnectConfigChanged)
     Q_PROPERTY(bool loggedIn READ loggedIn NOTIFY loggedInChanged)
     Q_PROPERTY(QString loginError READ loginError NOTIFY loginErrorChanged)
     Q_PROPERTY(QString verifyError READ verifyError NOTIFY verifyErrorChanged)
@@ -73,6 +75,8 @@ public:
     QString certPinSha256() const { return m_certPinSha256; }
     QString certPinSha256Backup() const { return m_certPinSha256Backup; }
     QString connectionModeLabel() const;
+    int tcpReconnectMaxRetries() const { return m_tcpReconnectMaxRetries; }
+    int tcpReconnectDelayMs() const { return m_tcpReconnectDelayMs; }
     bool loggedIn() const { return m_loggedIn; }
     QString loginError() const { return m_loginError; }
     QString verifyError() const { return m_verifyError; }
@@ -105,6 +109,8 @@ public:
     Q_INVOKABLE QVariantMap currentServerConfig() const;
     Q_INVOKABLE bool applyServerConfig(const QString &host, int port, bool useTls,
                                        const QString &certPin, const QString &certPinBackup = QString());
+    Q_INVOKABLE bool applyTcpReconnectConfig(int maxRetries, int delayMs);
+    Q_INVOKABLE void resetTcpReconnectToDefault();
     void bootstrapServer();
     void setServerEndpoint(const QString &endpoint);
 
@@ -122,6 +128,7 @@ signals:
     void statusMessageChanged();
     void serverEndpointChanged();
     void serverConfigChanged();
+    void reconnectConfigChanged();
     void loggedInChanged();
     void loginErrorChanged();
     void verifyErrorChanged();
@@ -145,6 +152,7 @@ private:
     void setLoggedIn(bool v);
     void proceedControllerConnect(const QVariantMap &line);
     void reloadServerSettings();
+    void applyReconnectPolicyToCloud();
     void finishLogout(bool clearUsername);
     void handleSessionExpired(const QString &serverMsg);
     bool hasActiveCloudSession() const;
@@ -186,6 +194,8 @@ private:
     bool m_serverUseTls = false;
     QString m_certPinSha256;
     QString m_certPinSha256Backup;
+    int m_tcpReconnectMaxRetries = SecureStorage::kDefaultTcpReconnectMaxRetries;
+    int m_tcpReconnectDelayMs = SecureStorage::kDefaultTcpReconnectDelayMs;
     bool m_loggedIn = false;
     bool m_loginPending = false;
     bool m_lineVerifyPending = false;

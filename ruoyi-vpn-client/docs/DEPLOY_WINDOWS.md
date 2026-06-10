@@ -181,6 +181,7 @@ Test-NetConnection -ComputerName <服务器IP> -Port 9443
 | 无法连接 9443 | 防火墙/网络/服务未启 | `Test-NetConnection`；查 `ruoyi-vpn-auth` 与 9443 映射 |
 | 控制器 30303 失败 | Agent 未启动 | 启动易安联 Agent；检查本机 30303 |
 | 登录已过期 | 会话超时或空闲断开 | 重新登录；见服务端 TCP 空闲断开配置 |
+| 网络闪断 / 连接已断开 | TCP 短暂中断 | 客户端自动重试最多 3 次（间隔 1.5s）；日志见 `[云端] 传输失败…重试` |
 | 网关连接超时 | 隧道未就绪 | 确认 Agent、线路可达；查看网关轮询日志 |
 | 已在运行中 | 单实例锁 | 托盘或任务管理器结束旧进程后再开 |
 
@@ -206,7 +207,12 @@ Test-NetConnection -ComputerName <服务器IP> -Port 9443
 4. 还原/合并 `config.json`
 5. 抽检：启动 → 选线 → 登录 → 应用列表
 
-版本号：当前 exe 属性版本见二期 W-09；运维可在分发说明中注明构建日期与 Git 提交。
+版本号：
+
+- 窗口标题：`Genlot VPN <主版本>`（如 `Genlot VPN 1.0.0`）
+- 设置 → **关于**：完整标签 `1.0.0 (<构建标识>)`，构建标识为 Git 短提交或构建日期
+- exe 属性 → **详细信息**：文件版本 / 产品版本（Windows `VERSIONINFO`）
+- 主版本号在 `CMakeLists.txt` 的 `project(GenlotVPN VERSION x.y.z)` 修改；构建标识在编译时由 Git 自动生成
 
 ---
 

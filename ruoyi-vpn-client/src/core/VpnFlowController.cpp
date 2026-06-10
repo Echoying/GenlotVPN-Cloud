@@ -1060,6 +1060,28 @@ void VpnFlowController::reloadServerSettings()
     if (m_serverPort == 0) {
         m_serverPort = 9443;
     }
+
+    m_tcpReconnectMaxRetries = cfg.value(QStringLiteral("tcpReconnectMaxRetries"),
+                                         SecureStorage::kDefaultTcpReconnectMaxRetries)
+                                   .toInt();
+    m_tcpReconnectDelayMs = cfg.value(QStringLiteral("tcpReconnectDelayMs"),
+                                       SecureStorage::kDefaultTcpReconnectDelayMs)
+                                .toInt();
+    if (m_tcpReconnectMaxRetries < 0) {
+        m_tcpReconnectMaxRetries = 0;
+    } else if (m_tcpReconnectMaxRetries > 10) {
+        m_tcpReconnectMaxRetries = 10;
+    }
+    if (m_tcpReconnectDelayMs < 500) {
+        m_tcpReconnectDelayMs = 500;
+    } else if (m_tcpReconnectDelayMs > 60000) {
+        m_tcpReconnectDelayMs = 60000;
+    }
+}
+
+void VpnFlowController::applyReconnectPolicyToCloud()
+{
+    m_cloud->setReconnectPolicy(m_tcpReconnectMaxRetries, m_tcpReconnectDelayMs);
 }
 
 void VpnFlowController::bootstrapServer()
@@ -1072,12 +1094,18 @@ void VpnFlowController::bootstrapServer()
     TcpClient::logLocalTlsCapabilities();
     m_cloud->configure(m_serverHost, m_serverPort, m_serverUseTls,
                        m_certPinSha256, m_certPinSha256Backup);
+    applyReconnectPolicyToCloud();
     setServerEndpoint(QStringLiteral("%1:%2").arg(m_serverHost).arg(m_serverPort));
     addLog(QStringLiteral("info"),
            QStringLiteral("云端连接模式: %1（config.json useTls=%2）")
                .arg(connectionModeLabel())
                .arg(m_serverUseTls ? QStringLiteral("true") : QStringLiteral("false")));
+    addLog(QStringLiteral("info"),
+           QStringLiteral("TCP 自动重连: 最多 %1 次，间隔 %2ms")
+               .arg(m_tcpReconnectMaxRetries)
+               .arg(m_tcpReconnectDelayMs));
     emit serverConfigChanged();
+    emit reconnectConfigChanged();
 }
 
 QVariantMap VpnFlowController::currentServerConfig() const
@@ -1142,6 +1170,56 @@ bool VpnFlowController::applyServerConfig(const QString &host, int port, bool us
            QStringLiteral("服务器已更新: %1:%2（%3）").arg(m_serverHost).arg(m_serverPort).arg(mode));
     loadPublicLines();
     return true;
+}
+
+bool VpnFlowController::applyTcpReconnectConfig(int maxRetries, int delayMs)
+{
+    if (maxRetries < 0 || maxRetries > 10) {
+        emit toast(QStringLiteral("重试次数须在 0-10 之间"), true);
+        return false;
+    }
+    if (delayMs < 500 || delayMs > 60000) {
+        emit toast(QStringLiteral("重试间隔须在 0.5-60 秒之间"), true);
+        return false;
+    }
+
+    m_tcpReconnectMaxRetries = maxRetries;
+    m_tcpReconnectDelayMs = delayMs;
+
+    if (!m_storage->saveConfigReconnect(m_tcpReconnectMaxRetries, m_tcpReconnectDelayMs)) {
+        AppLogger::instance()->error(QStringLiteral("[设置] 写入重连配置失败: %1").arg(m_storage->configFilePath()));
+        emit toast(QStringLiteral("保存 config.json 失败"), true);
+        return false;
+    }
+
+    applyReconnectPolicyToCloud();
+    emit reconnectConfigChanged();
+    addLog(QStringLiteral("info"),
+           QStringLiteral("TCP 自动重连已更新: 最多 %1 次，间隔 %2ms")
+               .arg(m_tcpReconnectMaxRetries)
+               .arg(m_tcpReconnectDelayMs));
+    emit toast(QStringLiteral("连接设置已保存"), false);
+    return true;
+}
+
+void VpnFlowController::resetTcpReconnectToDefault()
+{
+    m_tcpReconnectMaxRetries = SecureStorage::kDefaultTcpReconnectMaxRetries;
+    m_tcpReconnectDelayMs = SecureStorage::kDefaultTcpReconnectDelayMs;
+
+    if (!m_storage->saveConfigReconnect(m_tcpReconnectMaxRetries, m_tcpReconnectDelayMs)) {
+        AppLogger::instance()->error(QStringLiteral("[设置] 重置重连配置失败: %1").arg(m_storage->configFilePath()));
+        emit toast(QStringLiteral("保存 config.json 失败"), true);
+        return;
+    }
+
+    applyReconnectPolicyToCloud();
+    emit reconnectConfigChanged();
+    addLog(QStringLiteral("info"),
+           QStringLiteral("TCP 自动重连已恢复默认: 最多 %1 次，间隔 %2ms")
+               .arg(m_tcpReconnectMaxRetries)
+               .arg(m_tcpReconnectDelayMs));
+    emit toast(QStringLiteral("已恢复默认重连设置"), false);
 }
 
 void VpnFlowController::setLoggedIn(bool v)

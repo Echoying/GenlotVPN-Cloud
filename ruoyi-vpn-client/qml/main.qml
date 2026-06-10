@@ -9,7 +9,7 @@ ApplicationWindow {
     minimumWidth: Theme.windowMinWidth
     minimumHeight: Theme.windowMinHeight
     visible: true
-    title: "Genlot VPN"
+    title: vpnApp.windowTitle
     color: Theme.windowBg
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowSystemMenuHint
            | Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint

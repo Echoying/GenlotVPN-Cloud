@@ -24,6 +24,7 @@ public:
 
     void configure(const QString &host, quint16 port, bool useTls, const QString &certPinSha256,
                    const QString &certPinSha256Backup = QString());
+    void setReconnectPolicy(int maxRetries, int delayMs);
 
     Q_INVOKABLE void fetchPublicLines();
     Q_INVOKABLE void fetchCaptcha();
@@ -57,6 +58,7 @@ private:
     using RpcCallback = std::function<void(const RpcResult &)>;
 
     void sendRpc(int messageType, const QByteArray &payload, RpcCallback callback);
+    void sendRpcWithRetry(int messageType, const QByteArray &payload, RpcCallback callback, int retryCount);
     QByteArray buildEnvelope(int messageType, const QByteArray &payload);
     RpcResult parseEnvelopeResponse(const QByteArray &envelopeBytes);
 
@@ -66,6 +68,8 @@ private:
     QString m_host;
     quint16 m_port = 9443;
     bool m_useTls = false;
+    int m_reconnectMaxRetries = 3;
+    int m_reconnectDelayMs = 1500;
 };
 
 } // namespace vpn
