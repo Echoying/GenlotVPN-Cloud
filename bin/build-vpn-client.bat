@@ -66,6 +66,7 @@ echo 下一步打包依赖 ^(windeployqt^):
 echo   bin\package-vpn-client.bat
 echo 或一步构建并打包:
 echo   bin\build-vpn-client.bat --package
+echo 打包输出: dist\GenlotVPN-win64-{version}\GenlotVPN-{version}.exe
 echo.
 endlocal
 exit /b 0

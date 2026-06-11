@@ -29,6 +29,28 @@ with zipfile.ZipFile(path) as z:
 PY
 }
 
+# 复制前端 dist：删除旧 dist.tar → 同步 dist 目录 → 打包为 dist.tar
+copy_html_dist() {
+	src_dir="$1"
+	html_dir="$2"
+	dist_dir="$html_dir/dist"
+	tar_path="$html_dir/dist.tar"
+
+	if [ ! -d "$src_dir" ]; then
+		echo "错误: 源目录不存在: $src_dir"
+		exit 1
+	fi
+	if [ -f "$tar_path" ]; then
+		echo "remove old $tar_path"
+		rm -f "$tar_path"
+	fi
+	rm -rf "$dist_dir"
+	mkdir -p "$dist_dir"
+	cp -r "$src_dir"/. "$dist_dir"/
+	echo "pack $tar_path"
+	tar -cf "$tar_path" -C "$html_dir" dist
+}
+
 # copy sql -> node-91
 echo "begin copy sql "
 cp ../sql/ry-cloud.sql ./node-91/mysql/db
@@ -37,8 +59,9 @@ cp ../sql/quartz.sql ./node-91/mysql/db
 
 # copy html
 echo "begin copy html "
-cp -r ../ruoyi-ui/dist/** ./node-92/nginx/html/dist
-cp -r ../ruoyi-vpn-ui/dist/** ./node-93/ruoyi/vpn/nginx/html/dist
+copy_html_dist "../ruoyi-ui/dist" "./node-92/nginx/html"
+echo "begin copy vpn html "
+copy_html_dist "../ruoyi-vpn-ui/dist" "./node-93/ruoyi/vpn/nginx/html"
 
 # copy jar -> node-92（管理端）
 echo "begin copy ruoyi-gateway "

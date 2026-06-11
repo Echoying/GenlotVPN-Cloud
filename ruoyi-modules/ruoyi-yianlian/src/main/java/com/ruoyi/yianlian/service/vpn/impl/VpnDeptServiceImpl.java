@@ -193,13 +193,25 @@ public class VpnDeptServiceImpl implements IVpnDeptService
     @Override
     public int insertDept(VpnDept dept)
     {
-        VpnDept info = deptMapper.selectDeptById(dept.getParentId());
-        // 如果父节点不为正常状态,则不允许新增子节点
-        if (!UserConstants.DEPT_NORMAL.equals(info.getStatus()))
+        if (dept.getParentId() == null || dept.getParentId() == 0L)
         {
-            throw new ServiceException("部门停用，不允许新增");
+            dept.setParentId(0L);
+            dept.setAncestors("0");
         }
-        dept.setAncestors(info.getAncestors() + "," + dept.getParentId());
+        else
+        {
+            VpnDept info = deptMapper.selectDeptById(dept.getParentId());
+            if (info == null)
+            {
+                throw new ServiceException("上级部门不存在");
+            }
+            // 如果父节点不为正常状态,则不允许新增子节点
+            if (!UserConstants.DEPT_NORMAL.equals(info.getStatus()))
+            {
+                throw new ServiceException("部门停用，不允许新增");
+            }
+            dept.setAncestors(info.getAncestors() + "," + dept.getParentId());
+        }
         return deptMapper.insertDept(dept);
     }
 

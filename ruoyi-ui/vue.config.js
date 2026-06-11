@@ -52,6 +52,9 @@ module.exports = {
   },
   configureWebpack: {
     name: name,
+    performance: {
+      hints: false // 关闭 entrypoint size limit 提示（Element UI 首包偏大属正常）
+    },
     resolve: {
       alias: {
         '@': resolve('src')

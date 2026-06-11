@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul 2>&1
 setlocal EnableDelayedExpansion
-rem W-02: windeployqt + Qt/Protobuf -> dist\GenlotVPN-win64
+rem W-02: windeployqt + Qt/Protobuf -> dist\GenlotVPN-win64-{version}\GenlotVPN-{version}.exe
 cd /d %~dp0..\ruoyi-vpn-client
 
 if "%CMAKE_PREFIX_PATH%"=="" (
@@ -57,11 +57,20 @@ if not errorlevel 1 (
 
 echo [OK] Release exe: %EXE_PATH%
 
-set "DIST=dist\GenlotVPN-win64"
+set "GENLOT_VER="
+for /f "tokens=4 delims= " %%V in ('findstr /C:"project(GenlotVPN VERSION" CMakeLists.txt') do set "GENLOT_VER=%%V"
+if not defined GENLOT_VER (
+  echo [X] Cannot read VERSION from CMakeLists.txt ^(project(GenlotVPN VERSION x.y.z)^)
+  exit /b 1
+)
+set "PKG_EXE=GenlotVPN-%GENLOT_VER%.exe"
+set "DIST=dist\GenlotVPN-win64-%GENLOT_VER%"
+echo [OK] Package version: %GENLOT_VER% ^(%PKG_EXE%^)
+
 if exist "%DIST%" rmdir /s /q "%DIST%"
 mkdir "%DIST%" 2>nul
 
-copy /y "%EXE_PATH%" "%DIST%\GenlotVPN.exe" >nul
+copy /y "%EXE_PATH%" "%DIST%\%PKG_EXE%" >nul
 if errorlevel 1 (
   echo [X] Failed to copy exe
   exit /b 1
@@ -96,7 +105,7 @@ echo [OK] GenlotVPN QML module
 set "QMLDIR=%CD%\qml"
 echo [..] Running windeployqt ...
 pushd "%DIST%"
-"%WINDEPLOYQT%" --release --compiler-runtime --qmldir "%QMLDIR%" GenlotVPN.exe
+"%WINDEPLOYQT%" --release --compiler-runtime --qmldir "%QMLDIR%" "%PKG_EXE%"
 set "WDQ_ERR=!errorlevel!"
 popd
 if !WDQ_ERR! neq 0 (
@@ -161,6 +170,6 @@ if not exist "%DIST%\libprotobuf.dll" (
 if not exist "%DIST%\zlib.dll" (
   echo [!] Missing zlib.dll - copy from Protobuf_ROOT\bin if runtime fails
 )
-dir /b "%DIST%\GenlotVPN.exe" "%DIST%\Qt6Core.dll" "%DIST%\libprotobuf.dll" "%DIST%\zlib.dll" 2>nul
+dir /b "%DIST%\%PKG_EXE%" "%DIST%\Qt6Core.dll" "%DIST%\libprotobuf.dll" "%DIST%\zlib.dll" 2>nul
 endlocal
 exit /b 0

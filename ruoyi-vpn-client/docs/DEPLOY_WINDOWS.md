@@ -9,7 +9,7 @@
 
 ```
 用户 PC
-  GenlotVPN.exe
+  GenlotVPN-{version}.exe
     ├─ 云端 TCP/TLS + Protobuf ──► ruoyi-vpn-auth :9443
     └─ 本地 HTTP ────────────────► 易安联 Agent :30303 (127.0.0.1)
 ```
@@ -31,14 +31,14 @@
 当前为**绿色压缩目录**（尚未提供 NSIS 安装向导，见二期 W-03）：
 
 1. 在构建机执行 `bin\package-vpn-client.bat`（需先 Release 构建）
-2. 产物目录：`ruoyi-vpn-client\dist\GenlotVPN-win64\`
-3. 将整个 `GenlotVPN-win64` 文件夹拷贝到目标机器（U 盘、共享盘、内网分发均可）
+2. 产物目录：`ruoyi-vpn-client\dist\GenlotVPN-win64-{version}\`（示例 `GenlotVPN-win64-1.0.0\`）
+3. 将整个 `GenlotVPN-win64-{version}` 文件夹拷贝到目标机器（U 盘、共享盘、内网分发均可）
 
 ### 2.2 目录结构（分发包）
 
 ```
-GenlotVPN-win64/
-  GenlotVPN.exe          # 主程序
+GenlotVPN-win64-1.0.0/          # 版本号与 CMakeLists.txt 中 project(VERSION) 一致
+  GenlotVPN-1.0.0.exe           # 主程序（带版本号）
   config.default.json    # 首次运行模板（勿删）
   config.json            # 首次启动后自动生成，可手工编辑
   GenlotVPN/             # QML 模块（qmldir + 页面，勿删）
@@ -48,7 +48,7 @@ GenlotVPN-win64/
   logs/                  # 运行后自动创建
 ```
 
-> **注意**：必须保持 `GenlotVPN.exe` 与 `GenlotVPN\` 文件夹、`Qt6*.dll`、`libprotobuf.dll` 在同一目录，否则启动会失败或提示「界面加载失败」。
+> **注意**：必须保持 `GenlotVPN-{version}.exe` 与 `GenlotVPN\` 文件夹、`Qt6*.dll`、`libprotobuf.dll` 在同一目录，否则启动会失败或提示「界面加载失败」。
 
 ---
 
@@ -59,7 +59,7 @@ GenlotVPN-win64/
 | 操作系统 | Windows 10 / 11 64 位 |
 | 易安联 Agent | 已安装并运行，本机 `127.0.0.1:30303` 可访问 |
 | 网络 | 能访问 VPN 云端服务器 **9443**（TLS） |
-| 防火墙 | 允许 `GenlotVPN.exe` **出站** 连服务器 9443；本机 30303 一般无需入站规则 |
+| 防火墙 | 允许 `GenlotVPN-{version}.exe` **出站** 连服务器 9443；本机 30303 一般无需入站规则 |
 | 云端服务 | `ruoyi-vpn-auth` 已启用 TCP 9443；生产环境已配置 TLS |
 | 账号 | 已在平台开通 VPN 用户与线路权限 |
 
@@ -68,7 +68,7 @@ GenlotVPN-win64/
 **出站规则（推荐）**
 
 1. `wf.msc` → 出站规则 → 新建规则
-2. 程序 → 浏览选择 `GenlotVPN.exe`
+2. 程序 → 浏览选择 `GenlotVPN-{version}.exe`（如 `GenlotVPN-1.0.0.exe`）
 3. 允许连接 → 域/专用/公用按需勾选
 4. 名称示例：`Genlot VPN 云端 9443`
 
@@ -76,7 +76,7 @@ GenlotVPN-win64/
 
 ```powershell
 New-NetFirewallRule -DisplayName "Genlot VPN Outbound" `
-  -Direction Outbound -Program "D:\Apps\GenlotVPN\GenlotVPN.exe" `
+  -Direction Outbound -Program "D:\Apps\GenlotVPN\GenlotVPN-1.0.0.exe" `
   -Action Allow -Profile Domain,Private
 ```
 
@@ -104,7 +104,7 @@ Test-NetConnection -ComputerName <服务器IP> -Port 9443
 
 ## 4. 配置 config.json
 
-配置文件与 `GenlotVPN.exe` **同目录**。首次启动时，若不存在或无效，会从 `config.default.json` 自动生成。
+配置文件与主程序 exe **同目录**。首次启动时，若不存在或无效，会从 `config.default.json` 自动生成。
 
 ### 4.1 生产环境（推荐）
 
@@ -149,7 +149,7 @@ Test-NetConnection -ComputerName <服务器IP> -Port 9443
 
 ## 5. 使用流程
 
-1. 双击 `GenlotVPN.exe`（仅允许**一个实例**；重复打开会提示并置前已有窗口）
+1. 双击 `GenlotVPN-{version}.exe`（仅允许**一个实例**；重复打开会提示并置前已有窗口）
 2. **选择线路** → **登录**（图形验证码 + 账号密码）
 3. **钉钉验证码**（6 位数字，发至 VPN 群）
 4. 自动连接易安联控制器 → **应用列表 / 网关**
@@ -174,7 +174,7 @@ Test-NetConnection -ComputerName <服务器IP> -Port 9443
 
 | 现象 | 可能原因 | 处理 |
 |------|----------|------|
-| 双击闪退 / 界面加载失败 | 缺少 `GenlotVPN\` 或 Qt DLL | 重新完整拷贝 `GenlotVPN-win64` 目录 |
+| 双击闪退 / 界面加载失败 | 缺少 `GenlotVPN\` 或 Qt DLL | 重新完整拷贝 `GenlotVPN-win64-{version}` 目录 |
 | 提示 QML debugging / 0xC0000005 | 使用了 Debug 构建包 | 换 **Release** 打包目录 |
 | 证书 Pinning 校验失败 | 指纹与服务器证书不一致 | 核对 `certPinSha256` 或重新导出 Pin |
 | TLS 握手失败 | 服务端未开 TLS 或仅 TLS1.3 | 确认 Nacos `vpn.tcp.tls`；客户端需 TLS 1.2+ |
@@ -203,7 +203,7 @@ Test-NetConnection -ComputerName <服务器IP> -Port 9443
 
 1. 通知用户退出托盘「退出」或结束进程
 2. 备份旧目录中的 `config.json`（及用户自定义配置）
-3. 用新包覆盖 `GenlotVPN-win64`（或仅替换 `GenlotVPN.exe`、DLL、`GenlotVPN\`）
+3. 用新包覆盖 `GenlotVPN-win64-{version}`（或仅替换 `GenlotVPN-{version}.exe`、DLL、`GenlotVPN\`）
 4. 还原/合并 `config.json`
 5. 抽检：启动 → 选线 → 登录 → 应用列表
 
@@ -247,4 +247,4 @@ Test-NetConnection -ComputerName <服务器IP> -Port 9443
 | 线路/VPN 设备 | 易安联线路、Agent 版本 | （填写） |
 | 账号权限 | VPN 用户、线路授权 | （填写） |
 
-*文档版本：与二期 W-10 同步，适用于 `GenlotVPN-win64` 绿色包部署。*
+*文档版本：与二期 W-10 同步，适用于 `GenlotVPN-win64-{version}` 绿色包部署。*

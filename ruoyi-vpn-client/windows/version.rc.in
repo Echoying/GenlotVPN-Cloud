@@ -18,7 +18,7 @@ BEGIN
             VALUE "FileVersion", "@GENLOT_VERSION_STRING@"
             VALUE "InternalName", "GenlotVPN"
             VALUE "LegalCopyright", "Copyright (C) Genlot"
-            VALUE "OriginalFilename", "GenlotVPN.exe"
+            VALUE "OriginalFilename", "GenlotVPN-@GENLOT_VERSION_STRING@.exe"
             VALUE "ProductName", "Genlot VPN"
             VALUE "ProductVersion", "@GENLOT_VERSION_STRING@ (@GENLOT_BUILD_ID@)"
         END

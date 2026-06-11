@@ -131,7 +131,7 @@
     <el-dialog :title="title" :visible.sync="open" width="600px" append-to-body>
       <el-form ref="form" :model="form" :rules="rules" label-width="80px">
         <el-row>
-          <el-col :span="24" v-if="form.parentId !== 0">
+          <el-col :span="24" v-if="form.deptId != undefined ? form.parentId !== 0 : true">
             <el-form-item label="上级部门" prop="parentId">
               <treeselect v-model="form.parentId" :options="deptOptions" :normalizer="normalizer" placeholder="选择上级部门" />
             </el-form-item>
@@ -402,6 +402,15 @@ export default {
       })
     },
 
+    /** 构建上级部门下拉选项（无部门时提供根部门 parentId=0） */
+    buildParentDeptOptions(data) {
+      const tree = this.handleTree(data, "deptId")
+      if (tree.length === 0) {
+        return [{ deptId: 0, deptName: "根部门", children: [] }]
+      }
+      return tree
+    },
+
     /** 转换部门树数据结构（treeselect用） */
     normalizer(node) {
       if (node.children && !node.children.length) {
@@ -484,7 +493,10 @@ export default {
       this.open = true
       this.title = "添加VPN部门"
       listDept({ appId: this.currentAppId }).then(response => {
-        this.deptOptions = this.handleTree(response.data, "deptId")
+        this.deptOptions = this.buildParentDeptOptions(response.data)
+        if (row == undefined && this.deptOptions.length === 1 && this.deptOptions[0].deptId === 0) {
+          this.form.parentId = 0
+        }
       })
     },
 

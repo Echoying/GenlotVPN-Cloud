@@ -50,9 +50,9 @@ bin\package-vpn-client.bat
 bin\build-vpn-client.bat --package
 ```
 
-可分发目录：`ruoyi-vpn-client\dist\GenlotVPN-win64\`（含 Qt DLL、`config.json`，可在无开发环境的 Windows 机器运行）
+可分发目录：`ruoyi-vpn-client\dist\GenlotVPN-win64-{version}\`（示例 `GenlotVPN-win64-1.0.0\`，内含 `GenlotVPN-{version}.exe`、Qt DLL、`config.json`，可在无开发环境的 Windows 机器运行）
 
-版本号：修改 `CMakeLists.txt` 中 `project(GenlotVPN VERSION x.y.z)`；构建时自动附加 Git 短提交。界面见窗口标题与 **设置 → 关于**，exe 属性见「详细信息」。
+版本号：修改 `CMakeLists.txt` 中 `project(GenlotVPN VERSION x.y.z)` 后重新打包，目录与 exe 名称自动带上该版本；构建时自动附加 Git 短提交。界面见窗口标题与 **设置 → 关于**，exe 属性见「详细信息」。
 
 **手动 CMake（与脚本等价）**
 
@@ -100,7 +100,7 @@ cmake --build build-msvc2022 --config Release
 
 1. 启动 Nacos、Redis、`ruoyi-vpn-auth`（含 TCP 9443）
 2. 本机安装并启动易安联 Agent（30303）
-3. 运行 GenlotVPN.exe
+3. 运行 `GenlotVPN-{version}.exe`（如 `GenlotVPN-1.0.0.exe`）
 4. 选线 → 登录 → 钉钉验证码 → 自动连接控制器 → 应用列表
 
 ## 安全说明

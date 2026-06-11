@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
+"""构建产物分发到 docker/node-9x。注意：本文件不可命名为 copy.py 运行时遮蔽标准库 copy 模块。"""
+import sys
 from pathlib import Path
+
+# 避免 docker/copy.py 被当作标准库 copy 模块导入（tarfile 等依赖会触发）
+_script_dir = str(Path(__file__).resolve().parent)
+if sys.path and Path(sys.path[0]).resolve() == Path(_script_dir).resolve():
+    sys.path.pop(0)
+
 import shutil
 import struct
-import sys
+import tarfile
 import zipfile
 
 JAVA8_CLASS_MAJOR = 52
@@ -47,6 +55,23 @@ def copy_tree_contents(src_dir: Path, dst_dir: Path) -> None:
             shutil.copy2(item, target)
 
 
+def copy_html_dist(src_dir: Path, html_dir: Path) -> None:
+    """复制前端 dist，并打包为 html_dir/dist.tar。"""
+    dist_dir = html_dir / "dist"
+    tar_path = html_dir / "dist.tar"
+    if not src_dir.exists():
+        raise FileNotFoundError(f"源目录不存在: {src_dir}")
+    if tar_path.exists():
+        print(f"remove old {tar_path}")
+        tar_path.unlink()
+    if dist_dir.exists():
+        shutil.rmtree(dist_dir)
+    copy_tree_contents(src_dir, dist_dir)
+    print(f"pack {tar_path}")
+    with tarfile.open(tar_path, "w") as tar:
+        tar.add(dist_dir, arcname="dist")
+
+
 def main() -> int:
     base = Path(__file__).resolve().parent
 
@@ -60,10 +85,10 @@ def main() -> int:
     copy_file(base.parent / "sql" / "quartz.sql", node91 / "mysql" / "db")
 
     print("begin copy html")
-    copy_tree_contents(base.parent / "ruoyi-ui" / "dist", node92 / "nginx" / "html" / "dist")
+    copy_html_dist(base.parent / "ruoyi-ui" / "dist", node92 / "nginx" / "html")
 
     print("begin copy vpn html")
-    copy_tree_contents(base.parent / "ruoyi-vpn-ui" / "dist", node93 / "ruoyi" / "vpn" / "nginx" / "html" / "dist")
+    copy_html_dist(base.parent / "ruoyi-vpn-ui" / "dist", node93 / "ruoyi" / "vpn" / "nginx" / "html")
 
     print("begin copy ruoyi-gateway")
     copy_file(base.parent / "ruoyi-gateway" / "target" / "ruoyi-gateway.jar", node92 / "ruoyi" / "gateway" / "jar")

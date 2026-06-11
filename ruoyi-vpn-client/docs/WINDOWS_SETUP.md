@@ -174,9 +174,9 @@ bin\package-vpn-client.bat
 
 若干净机器启动闪退并出现 `QML debugging is enabled`，说明误打包了 Debug 版 exe。
 
-输出：`ruoyi-vpn-client\dist\GenlotVPN-win64\`（含 `GenlotVPN.exe`、Qt 运行时 DLL、`libprotobuf.dll`、`config.json`）
+输出：`ruoyi-vpn-client\dist\GenlotVPN-win64-{version}\`（示例 `GenlotVPN-win64-1.0.0\`，含 `GenlotVPN-{version}.exe`、Qt 运行时 DLL、`libprotobuf.dll`、`config.json`）
 
-将整个 `GenlotVPN-win64` 文件夹拷贝到未安装 Qt 的 Windows 电脑即可试运行。
+将整个 `GenlotVPN-win64-{version}` 文件夹拷贝到未安装 Qt 的 Windows 电脑即可试运行。版本号来自 `CMakeLists.txt` 中 `project(GenlotVPN VERSION x.y.z)`。
 
 ---
 
@@ -185,7 +185,7 @@ bin\package-vpn-client.bat
 | 方案 | 说明 |
 |------|------|
 | **只测后端** | 用 Maven 启动 `ruoyi-vpn-auth`，TCP 9443；Web 端 `ruoyi-vpn-ui` 仍走 HTTP |
-| **找一台已装 Qt 的机器** | 拷贝整个仓库，按上文构建后把 `GenlotVPN.exe` 和 Qt DLL 打包分发 |
+| **找一台已装 Qt 的机器** | 拷贝整个仓库，按上文构建后把 `GenlotVPN-{version}.exe` 和 Qt DLL 打包分发 |
 | **CI 自动构建** | 在 GitHub Actions / 公司 Jenkins 上装 Qt+Protobuf 后编译（可向团队申请） |
 | **Qt 在线安装器 + 离线包** | 内网可下载 Qt 离线安装包，避免外网限制 |
 
@@ -210,7 +210,7 @@ bin\package-vpn-client.bat
 
 脚本会自动执行 `windeployqt --release --compiler-runtime`，并复制 `libprotobuf.dll` 及其依赖（如 Anaconda 的 `zlib.dll`）。
 
-若仍提示缺某个 DLL，从 `Protobuf_ROOT\bin`（或 exe 同目录）手动补拷到 `dist\GenlotVPN-win64\`。
+若仍提示缺某个 DLL，从 `Protobuf_ROOT\bin`（或 exe 同目录）手动补拷到 `dist\GenlotVPN-win64-{version}\`。
 
 **Q: 磁盘空间**
 
