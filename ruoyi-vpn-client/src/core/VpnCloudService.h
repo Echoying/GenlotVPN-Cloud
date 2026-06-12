@@ -29,8 +29,8 @@ public:
     Q_INVOKABLE void fetchPublicLines();
     Q_INVOKABLE void fetchCaptcha();
     Q_INVOKABLE void login(const QString &username, const QString &password,
-                           const QString &appId, const QString &code, const QString &uuid,
-                           const QString &loginPurpose);
+                           const QString &appId, const QString &appName, const QString &code,
+                           const QString &uuid, const QString &loginPurpose);
     Q_INVOKABLE void fetchAuthorizedLines();
     Q_INVOKABLE void sendLineVerify(const QString &appId, const QString &lineName);
     Q_INVOKABLE void confirmLineVerify(const QString &appId, const QString &code);

@@ -263,14 +263,15 @@ void VpnCloudService::fetchCaptcha()
 }
 
 void VpnCloudService::login(const QString &username, const QString &password,
-                            const QString &appId, const QString &code, const QString &uuid,
-                            const QString &loginPurpose)
+                            const QString &appId, const QString &appName, const QString &code,
+                            const QString &uuid, const QString &loginPurpose)
 {
 #ifdef VPN_HAS_PROTO
     vpn::LoginRequest req;
     req.set_username(username.toStdString());
     req.set_password(password.toStdString());
     req.set_app_id(appId.toStdString());
+    req.set_app_name(appName.toStdString());
     req.set_code(code.toStdString());
     req.set_uuid(uuid.toStdString());
     req.set_login_purpose(loginPurpose.toStdString());
@@ -373,7 +374,7 @@ void VpnCloudService::reportClientLogin(const QString &appId, const QString &lin
     }
     vpn::ReportClientLoginRequest req;
     req.set_app_id(appId.toStdString());
-    req.set_line_name(lineName.toStdString());
+    req.set_app_name(lineName.toStdString());
     req.set_client_type("desktop");
     req.set_success(success);
     req.set_msg(msg.toStdString());

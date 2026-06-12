@@ -25,6 +25,10 @@ public class VpnLogininfor implements Serializable
 
     private String loginPurpose;
 
+    private String appId;
+
+    private String appName;
+
     public String getUserName()
     {
         return userName;
@@ -93,5 +97,25 @@ public class VpnLogininfor implements Serializable
     public void setLoginPurpose(String loginPurpose)
     {
         this.loginPurpose = loginPurpose;
+    }
+
+    public String getAppId()
+    {
+        return appId;
+    }
+
+    public void setAppId(String appId)
+    {
+        this.appId = appId;
+    }
+
+    public String getAppName()
+    {
+        return appName;
+    }
+
+    public void setAppName(String appName)
+    {
+        this.appName = appName;
     }
 }

@@ -57,11 +57,13 @@ Item {
     }
 
     function goBack() {
-        if (appWindow) {
-            appWindow.width = Theme.chooseLineWindowWidth
-            appWindow.height = Theme.chooseLineWindowHeight
+        if (appWindow && typeof appWindow.applyPageWindow === "function") {
+            appWindow.applyPageWindow("choose")
+        } else if (appWindow) {
             appWindow.minimumWidth = Theme.chooseLineWindowMinWidth
             appWindow.minimumHeight = Theme.chooseLineWindowMinHeight
+            appWindow.width = Theme.chooseLineWindowWidth
+            appWindow.height = Theme.chooseLineWindowHeight
         }
         if (StackView.view)
             StackView.view.pop()

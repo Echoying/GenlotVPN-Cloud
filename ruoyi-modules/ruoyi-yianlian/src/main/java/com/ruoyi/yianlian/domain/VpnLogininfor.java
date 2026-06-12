@@ -47,6 +47,17 @@ public class VpnLogininfor extends BaseEntity
     @Excel(name = "登录用途")
     private String loginPurpose;
 
+    /** 线路ID */
+    @Excel(name = "线路ID")
+    private String appId;
+
+    /** 线路名称 */
+    @Excel(name = "线路名称")
+    private String appName;
+
+    /** 线路多选查询（逗号分隔 app_id，不入库） */
+    private String appIds;
+
     /** 访问时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Excel(name = "访问时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
@@ -130,6 +141,36 @@ public class VpnLogininfor extends BaseEntity
     public void setLoginPurpose(String loginPurpose)
     {
         this.loginPurpose = loginPurpose;
+    }
+
+    public String getAppId()
+    {
+        return appId;
+    }
+
+    public void setAppId(String appId)
+    {
+        this.appId = appId;
+    }
+
+    public String getAppName()
+    {
+        return appName;
+    }
+
+    public void setAppName(String appName)
+    {
+        this.appName = appName;
+    }
+
+    public String getAppIds()
+    {
+        return appIds;
+    }
+
+    public void setAppIds(String appIds)
+    {
+        this.appIds = appIds;
     }
 
     public Date getAccessTime()

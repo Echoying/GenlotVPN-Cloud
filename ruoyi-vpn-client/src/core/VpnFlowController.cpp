@@ -469,6 +469,7 @@ void VpnFlowController::doLogin(const QString &username, const QString &password
                                  bool rememberMe, const QString &loginPurpose)
 {
     const QString appId = m_pendingLine.value(QStringLiteral("appId")).toString();
+    const QString appName = m_pendingLine.value(QStringLiteral("appName")).toString();
     if (appId.isEmpty()) {
         emit toast(QStringLiteral("请先选择线路"), true);
         return;
@@ -495,7 +496,7 @@ void VpnFlowController::doLogin(const QString &username, const QString &password
     m_loginPending = true;
     m_autoConnectPending = true;
     m_autoConnectStarted = false;
-    m_cloud->login(username, password, appId, code, m_captchaUuid, purpose);
+    m_cloud->login(username, password, appId, appName, code, m_captchaUuid, purpose);
 }
 
 void VpnFlowController::clearLoginError()

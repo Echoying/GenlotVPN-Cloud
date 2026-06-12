@@ -40,6 +40,12 @@ QtObject {
     readonly property int windowMinWidth: 600
     readonly property int windowMinHeight: 400
 
+    // 登录页含用途输入框，窗口略高以避免滚动
+    readonly property int loginWindowWidth: 720
+    readonly property int loginWindowHeight: 600
+    readonly property int loginWindowMinWidth: 600
+    readonly property int loginWindowMinHeight: 560
+
     // 选线页内容较少，窗口略紧凑
     readonly property int chooseLineWindowWidth: 640
     readonly property int chooseLineWindowHeight: 380

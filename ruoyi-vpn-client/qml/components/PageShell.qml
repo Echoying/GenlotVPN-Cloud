@@ -13,6 +13,7 @@ Item {
     property real progress: 0.35
     property bool compact: false
     property bool spacious: false
+    property bool scrollable: true
     property int bodySpacing: 14
 
     anchors.fill: parent
@@ -24,9 +25,13 @@ Item {
         anchors.fill: parent
         anchors.bottomMargin: 8
         contentWidth: width
-        contentHeight: Math.max(mainColumn.y + mainColumn.height + 16, height)
+        contentHeight: root.scrollable
+                         ? Math.max(mainColumn.y + mainColumn.height + 16, height)
+                         : height
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+        interactive: root.scrollable && contentHeight > height + 1
+        flickableDirection: root.scrollable ? Flickable.VerticalFlick : Flickable.AutoFlickDirection
 
         readonly property real pageTopMargin: compact ? 28 : (spacious ? 36 : (vpnFlow.loggedIn ? 20 : Theme.pageTopMargin))
         readonly property real shellWidth: Math.min(

@@ -6,6 +6,7 @@ import java.util.Map;
 
 import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.common.redis.service.RedisService;
+import com.ruoyi.vpn.auth.context.ClientAuditContext;
 import com.ruoyi.vpn.auth.form.VpnLoginBody;
 import com.ruoyi.vpn.auth.form.VpnChangePasswordBody;
 import com.ruoyi.vpn.auth.form.VpnUnLockBody;
@@ -59,10 +60,18 @@ public class TokenController
     @PostMapping("login")
     public R<?> login(@RequestBody VpnLoginBody form)
     {
-        // 用户登录
-        VpnLoginUser userInfo = vpnLoginService.login(form.getUsername(), form.getPassword(), form.getAppId(), "");
-        // 获取登录token
-        return R.ok(tokenService.createToken(userInfo));
+        ClientAuditContext.bindApp(form.getAppId(), form.getAppName());
+        try
+        {
+            // 用户登录
+            VpnLoginUser userInfo = vpnLoginService.login(form.getUsername(), form.getPassword(), form.getAppId(), "");
+            // 获取登录token
+            return R.ok(tokenService.createToken(userInfo));
+        }
+        finally
+        {
+            ClientAuditContext.clear();
+        }
     }
 
     @DeleteMapping("logout")

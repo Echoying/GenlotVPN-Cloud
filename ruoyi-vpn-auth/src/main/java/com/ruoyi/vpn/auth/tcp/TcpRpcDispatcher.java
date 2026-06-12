@@ -187,6 +187,7 @@ public class TcpRpcDispatcher
     {
         LoginRequest req = LoginRequest.parseFrom(envelope.getPayload());
         applySessionClientDevice(session, req.getClientIp(), req.getClientOs(), req.getClientMac());
+        applySessionApp(session, req.getAppId(), req.getAppName());
         bindClientAuditContext(session);
         try
         {
@@ -242,6 +243,9 @@ public class TcpRpcDispatcher
         requireAuth(session, envelope);
         ReportClientLoginRequest req = ReportClientLoginRequest.parseFrom(envelope.getPayload());
         applySessionClientDevice(session, req.getClientIp(), req.getClientOs(), req.getClientMac());
+        String appId = StringUtils.isNotEmpty(req.getAppId()) ? req.getAppId() : session.getAppId();
+        String appName = StringUtils.isNotEmpty(req.getAppName()) ? req.getAppName() : session.getAppName();
+        applySessionApp(session, appId, appName);
         bindClientAuditContext(session);
         try
         {
@@ -310,10 +314,23 @@ public class TcpRpcDispatcher
         }
     }
 
+    private void applySessionApp(TcpSessionContext session, String appId, String appName)
+    {
+        if (StringUtils.isNotEmpty(appId))
+        {
+            session.setAppId(StringUtils.trim(appId));
+        }
+        if (StringUtils.isNotEmpty(appName))
+        {
+            session.setAppName(StringUtils.trim(appName));
+        }
+    }
+
     private void bindClientAuditContext(TcpSessionContext session)
     {
         ClientAuditContext.bind(session.getClientReportedIp(), session.getClientIp(),
                 session.getClientOs(), session.getClientMac());
+        ClientAuditContext.bindApp(session.getAppId(), session.getAppName());
     }
 
     private void clearClientAuditContext()

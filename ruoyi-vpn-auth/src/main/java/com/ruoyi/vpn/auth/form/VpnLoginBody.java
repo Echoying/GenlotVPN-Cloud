@@ -22,6 +22,11 @@ public class VpnLoginBody
      */
     private String appId;
 
+    /**
+     * 线路名称（line_app.app_name）
+     */
+    private String appName;
+
     public String getUsername()
     {
         return username;
@@ -50,5 +55,15 @@ public class VpnLoginBody
     public void setAppId(String appId)
     {
         this.appId = appId;
+    }
+
+    public String getAppName()
+    {
+        return appName;
+    }
+
+    public void setAppName(String appName)
+    {
+        this.appName = appName;
     }
 }

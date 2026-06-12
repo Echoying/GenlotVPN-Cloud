@@ -28,12 +28,36 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
-        window.width = Theme.chooseLineWindowWidth
-        window.height = Theme.chooseLineWindowHeight
-        window.minimumWidth = Theme.chooseLineWindowMinWidth
-        window.minimumHeight = Theme.chooseLineWindowMinHeight
+        applyPageWindow("choose")
         if (stackView.depth === 0)
             stackView.replace(choosePageComponent)
+    }
+
+    // 先降低 minimum 再设宽高，否则从大窗口切回小窗口时无法缩小
+    function applyWindowSize(w, h, minW, minH) {
+        window.minimumWidth = minW
+        window.minimumHeight = minH
+        window.width = w
+        window.height = h
+    }
+
+    function applyPageWindow(page) {
+        if (page === "settings") {
+            applyWindowSize(Theme.settingsWindowWidth, Theme.settingsWindowHeight,
+                            Theme.settingsWindowMinWidth, Theme.settingsWindowMinHeight)
+        } else if (page === "applist") {
+            applyWindowSize(Theme.appListWindowWidth, Theme.appListWindowHeight,
+                            Theme.appListWindowMinWidth, Theme.appListWindowMinHeight)
+        } else if (page === "choose") {
+            applyWindowSize(Theme.chooseLineWindowWidth, Theme.chooseLineWindowHeight,
+                            Theme.chooseLineWindowMinWidth, Theme.chooseLineWindowMinHeight)
+        } else if (page === "login") {
+            applyWindowSize(Theme.loginWindowWidth, Theme.loginWindowHeight,
+                            Theme.loginWindowMinWidth, Theme.loginWindowMinHeight)
+        } else {
+            applyWindowSize(Theme.windowWidth, Theme.windowHeight,
+                            Theme.windowMinWidth, Theme.windowMinHeight)
+        }
     }
 
     function showToast(msg, isError) {
@@ -48,35 +72,19 @@ ApplicationWindow {
     Connections {
         target: vpnFlow
         function onNavigateTo(page) {
+            applyPageWindow(page)
             if (page === "settings") {
-                window.width = Theme.settingsWindowWidth
-                window.height = Theme.settingsWindowHeight
-                window.minimumWidth = Theme.settingsWindowMinWidth
-                window.minimumHeight = Theme.settingsWindowMinHeight
                 stackView.push(settingsPageComponent)
                 return
             }
             if (page === "applist") {
-                window.width = Theme.appListWindowWidth
-                window.height = Theme.appListWindowHeight
-                window.minimumWidth = Theme.appListWindowMinWidth
-                window.minimumHeight = Theme.appListWindowMinHeight
                 stackView.replace(appListPageComponent)
-            } else {
-                if (page === "choose") {
-                    window.width = Theme.chooseLineWindowWidth
-                    window.height = Theme.chooseLineWindowHeight
-                    window.minimumWidth = Theme.chooseLineWindowMinWidth
-                    window.minimumHeight = Theme.chooseLineWindowMinHeight
-                } else {
-                    window.width = Theme.windowWidth
-                    window.height = Theme.windowHeight
-                    window.minimumWidth = Theme.windowMinWidth
-                    window.minimumHeight = Theme.windowMinHeight
-                }
-                if (page === "choose") stackView.replace(choosePageComponent)
-                else if (page === "login") stackView.replace(loginPageComponent)
-                else if (page === "connect") stackView.replace(connectPageComponent)
+            } else if (page === "choose") {
+                stackView.replace(choosePageComponent)
+            } else if (page === "login") {
+                stackView.replace(loginPageComponent)
+            } else if (page === "connect") {
+                stackView.replace(connectPageComponent)
             }
         }
         function onToast(message, isError) { window.showToast(message, isError) }

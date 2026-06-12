@@ -22,11 +22,18 @@ public class VpnRecordLogService
 
     private static final int CLIENT_MAC_MAX_LEN = 32;
 
+    private static final int APP_ID_MAX_LEN = 64;
+
+    private static final int APP_NAME_MAX_LEN = 64;
+
     /** 登录用途数据库列长 */
     public static final int LOGIN_PURPOSE_DB_MAX_LEN = 100;
 
     @Autowired
     private RemoteVpnLogininforService remoteVpnLogininforService;
+
+    @Autowired
+    private VpnLineAppNameResolver lineAppNameResolver;
 
     /**
      * 记录登录信息
@@ -46,6 +53,10 @@ public class VpnRecordLogService
         logininfor.setClientMac(truncateClientMac(ClientAuditContext.getClientMac()));
         logininfor.setMsg(truncateMsg(message));
         logininfor.setLoginPurpose(truncateLoginPurpose(loginPurpose));
+        String appId = ClientAuditContext.getAppId();
+        logininfor.setAppId(truncateAppId(appId));
+        logininfor.setAppName(truncateAppName(
+                lineAppNameResolver.resolve(appId, ClientAuditContext.getAppName())));
         if (StringUtils.equalsAny(status, Constants.LOGIN_SUCCESS, Constants.LOGOUT, Constants.REGISTER))
         {
             logininfor.setStatus(Constants.LOGIN_SUCCESS_STATUS);
@@ -106,5 +117,23 @@ public class VpnRecordLogService
             return "";
         }
         return clientMac.length() <= CLIENT_MAC_MAX_LEN ? clientMac : clientMac.substring(0, CLIENT_MAC_MAX_LEN);
+    }
+
+    private String truncateAppId(String appId)
+    {
+        if (appId == null)
+        {
+            return "";
+        }
+        return appId.length() <= APP_ID_MAX_LEN ? appId : appId.substring(0, APP_ID_MAX_LEN);
+    }
+
+    private String truncateAppName(String appName)
+    {
+        if (appName == null)
+        {
+            return "";
+        }
+        return appName.length() <= APP_NAME_MAX_LEN ? appName : appName.substring(0, APP_NAME_MAX_LEN);
     }
 }

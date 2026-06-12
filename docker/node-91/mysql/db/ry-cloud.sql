@@ -390,7 +390,11 @@ INSERT INTO `sys_menu` (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`
 (1064, '角色管理', 1061, 5, 'vpn/role', 'vpn/role/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:role:list', 'peoples', 'admin', '2026-05-08 19:52:58', 'admin', '2026-05-13 18:14:15', ''),
 (1065, '用户管理', 1061, 6, 'vpn/user', 'vpn/user/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:user:list', 'user', 'admin', '2026-05-08 20:21:52', 'admin', '2026-05-13 18:14:19', ''),
 (1066, '应用组管理', 1061, 2, 'serviceGroup', 'vpn/serviceGroup/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:serviceGroup:list', 'component', 'admin', '2026-05-11 17:56:53', 'admin', '2026-05-13 18:14:11', ''),
-(1067, '应用管理', 1061, 3, 'service', 'vpn/service/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:service:list', 'nested', 'admin', '2026-05-11 19:51:11', 'admin', '2026-05-13 18:14:24', '');
+(1067, '应用管理', 1061, 3, 'service', 'vpn/service/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:service:list', 'nested', 'admin', '2026-05-11 19:51:11', 'admin', '2026-05-13 18:14:24', ''),
+(1068, '登录日志', 1061, 7, 'logininfor', 'vpn/logininfor/index', NULL, '', 1, 0, 'C', '0', '0', 'vpn:logininfor:list', 'logininfor', 'admin', '2026-06-12 12:00:00', '', NULL, 'VPN用户登录审计'),
+(1069, '登录查询', 1068, 1, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:logininfor:query', '#', 'admin', '2026-06-12 12:00:00', '', NULL, ''),
+(1070, '登录删除', 1068, 2, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:logininfor:remove', '#', 'admin', '2026-06-12 12:00:00', '', NULL, ''),
+(1071, '日志导出', 1068, 3, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:logininfor:export', '#', 'admin', '2026-06-12 12:00:00', '', NULL, '');
 
 -- ---------------------------- 表结构: sys_notice ----------------------------
 DROP TABLE IF EXISTS `sys_notice`;
@@ -534,7 +538,7 @@ CREATE TABLE `sys_user` (
 
 -- 数据: sys_user (1 行)
 INSERT INTO `sys_user` (`user_id`, `dept_id`, `user_name`, `nick_name`, `user_type`, `email`, `phonenumber`, `sex`, `avatar`, `password`, `status`, `del_flag`, `login_ip`, `login_date`, `pwd_update_date`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`) VALUES
-(1, 100, 'admin', '若依', '00', 'ry@163.com', '15888888888', '1', '', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '172.31.252.123', '2026-06-09 16:35:23', '2026-04-23 07:51:21', 'admin', '2026-04-23 07:51:21', '', NULL, '管理员');
+(1, 100, 'admin', '系统管理员', '00', 'ry@163.com', '15888888888', '1', '', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '172.31.252.123', '2026-06-09 16:35:23', '2026-04-23 07:51:21', 'admin', '2026-04-23 07:51:21', '', NULL, '管理员');
 
 -- ---------------------------- 表结构: sys_user_post ----------------------------
 DROP TABLE IF EXISTS `sys_user_post`;
@@ -597,6 +601,8 @@ CREATE TABLE `vpn_logininfor` (
   `info_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '访问ID',
   `user_name` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '用户账号',
   `login_purpose` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '登录用途',
+  `app_id` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '线路ID',
+  `app_name` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '线路名称',
   `ipaddr` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '登录IP地址',
   `client_os` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '客户端操作系统',
   `client_mac` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '客户端MAC地址',

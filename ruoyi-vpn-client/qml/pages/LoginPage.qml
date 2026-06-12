@@ -52,6 +52,7 @@ Item {
     PageShell {
         anchors.fill: parent
         compact: true
+        scrollable: false
         bodySpacing: 10
         headerSubtitle: vpnFlow.pendingLine.appName || "未选择"
         headerSubtitleBold: true

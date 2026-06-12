@@ -3,6 +3,8 @@ package com.ruoyi.yianlian.service.impl;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.ruoyi.common.core.text.Convert;
+import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.yianlian.domain.VpnLogininfor;
 import com.ruoyi.yianlian.mapper.VpnLogininforMapper;
 import com.ruoyi.yianlian.service.IVpnLogininforService;
@@ -39,6 +41,10 @@ public class VpnLogininforServiceImpl implements IVpnLogininforService
     @Override
     public List<VpnLogininfor> selectLogininforList(VpnLogininfor logininfor)
     {
+        if (StringUtils.isNotEmpty(logininfor.getAppIds()))
+        {
+            logininfor.getParams().put("appIdList", Convert.toStrArray(logininfor.getAppIds()));
+        }
         return logininforMapper.selectLogininforList(logininfor);
     }
 

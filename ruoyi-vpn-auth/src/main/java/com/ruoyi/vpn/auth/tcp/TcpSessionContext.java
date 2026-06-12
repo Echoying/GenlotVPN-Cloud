@@ -17,6 +17,10 @@ public class TcpSessionContext
 
     private String loginPurpose;
 
+    private String appId;
+
+    private String appName;
+
     private boolean authenticated;
 
     private String clientIp;
@@ -77,6 +81,26 @@ public class TcpSessionContext
     public void setLoginPurpose(String loginPurpose)
     {
         this.loginPurpose = loginPurpose;
+    }
+
+    public String getAppId()
+    {
+        return appId;
+    }
+
+    public void setAppId(String appId)
+    {
+        this.appId = appId;
+    }
+
+    public String getAppName()
+    {
+        return appName;
+    }
+
+    public void setAppName(String appName)
+    {
+        this.appName = appName;
     }
 
     public boolean isAuthenticated()
