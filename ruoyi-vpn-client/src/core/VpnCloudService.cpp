@@ -1,5 +1,7 @@
 #include "VpnCloudService.h"
 #include "AppLogger.h"
+#include "ClientDeviceInfo.h"
+#include "PacketLogUtil.h"
 #include "TcpHmacUtils.h"
 #include <QDateTime>
 #include <QTimer>
@@ -60,6 +62,14 @@ QByteArray serializeProto(const google::protobuf::Message &message)
 {
     const std::string bytes = message.SerializeAsString();
     return QByteArray(bytes.data(), static_cast<int>(bytes.size()));
+}
+
+template <typename RequestT>
+void fillClientDevice(RequestT &req)
+{
+    req.set_client_ip(ClientDeviceInfo::localIpv4().toStdString());
+    req.set_client_os(ClientDeviceInfo::osDescription().toStdString());
+    req.set_client_mac(ClientDeviceInfo::macAddress().toStdString());
 }
 
 QString extractRpcErrorMessage(const vpn::RpcResponse &rpc)
@@ -181,6 +191,7 @@ void VpnCloudService::sendRpcWithRetry(int messageType, const QByteArray &payloa
     return;
 #else
     const QByteArray envelope = buildEnvelope(messageType, payload);
+    PacketLogUtil::logCloudSend(messageType, payload);
     m_tcp.sendEnvelope(envelope, [this, messageType, payload, callback = std::move(callback), retryCount](
                                    bool ok, const QByteArray &body, const QString &err) mutable {
         if (!ok) {
@@ -208,6 +219,7 @@ void VpnCloudService::sendRpcWithRetry(int messageType, const QByteArray &payloa
                 QStringLiteral("[云端] 重连成功（经 %1 次重试后恢复）").arg(retryCount));
         }
         const RpcResult result = parseEnvelopeResponse(body);
+        PacketLogUtil::logCloudReceive(messageType, body, result);
         if (!result.ok) {
             const QString msg = result.msg.isEmpty() ? QStringLiteral("请求失败") : result.msg.trimmed();
             emitCloudError(msg);
@@ -251,7 +263,8 @@ void VpnCloudService::fetchCaptcha()
 }
 
 void VpnCloudService::login(const QString &username, const QString &password,
-                            const QString &appId, const QString &code, const QString &uuid)
+                            const QString &appId, const QString &code, const QString &uuid,
+                            const QString &loginPurpose)
 {
 #ifdef VPN_HAS_PROTO
     vpn::LoginRequest req;
@@ -260,6 +273,8 @@ void VpnCloudService::login(const QString &username, const QString &password,
     req.set_app_id(appId.toStdString());
     req.set_code(code.toStdString());
     req.set_uuid(uuid.toStdString());
+    req.set_login_purpose(loginPurpose.toStdString());
+    fillClientDevice(req);
     sendRpc(static_cast<int>(vpn::MessageType::LOGIN), serializeProto(req),
             [this](const RpcResult &r) {
         if (!r.ok) return;
@@ -346,6 +361,32 @@ void VpnCloudService::changePassword(const QString &username, const QString &old
         if (!r.ok) return;
         emit changePasswordSucceeded();
     });
+#endif
+}
+
+void VpnCloudService::reportClientLogin(const QString &appId, const QString &lineName, bool success,
+                                        const QString &stage, const QString &msg)
+{
+#ifdef VPN_HAS_PROTO
+    if (!hasSession()) {
+        return;
+    }
+    vpn::ReportClientLoginRequest req;
+    req.set_app_id(appId.toStdString());
+    req.set_line_name(lineName.toStdString());
+    req.set_client_type("desktop");
+    req.set_success(success);
+    req.set_msg(msg.toStdString());
+    req.set_stage(stage.toStdString());
+    fillClientDevice(req);
+    sendRpc(static_cast<int>(vpn::MessageType::REPORT_CLIENT_LOGIN), serializeProto(req),
+            [](const RpcResult &) {});
+#else
+    Q_UNUSED(appId);
+    Q_UNUSED(lineName);
+    Q_UNUSED(success);
+    Q_UNUSED(stage);
+    Q_UNUSED(msg);
 #endif
 }
 

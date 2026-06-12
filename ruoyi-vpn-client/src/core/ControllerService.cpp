@@ -1,5 +1,6 @@
 #include "ControllerService.h"
 #include "AppLogger.h"
+#include "PacketLogUtil.h"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -48,18 +49,22 @@ QVariantMap ControllerService::serverToJson(const QVariantMap &server)
 void ControllerService::postJson(const QString &path, const QJsonDocument &doc,
                                  std::function<void(const QJsonObject &)> onSuccess)
 {
+    const QByteArray requestBody = doc.toJson(QJsonDocument::Compact);
+    PacketLogUtil::logControllerSend(QStringLiteral("POST"), path, requestBody);
     QNetworkRequest req(QUrl(m_baseUrl + path));
     req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
-    auto *reply = m_nam.post(req, doc.toJson());
+    auto *reply = m_nam.post(req, requestBody);
     connect(reply, &QNetworkReply::finished, this, [this, reply, path, onSuccess = std::move(onSuccess)]() {
         reply->deleteLater();
+        const QByteArray responseBody = reply->readAll();
+        PacketLogUtil::logControllerReceive(QStringLiteral("POST"), path, responseBody);
         if (reply->error() != QNetworkReply::NoError) {
             const QString err = reply->errorString();
             AppLogger::instance()->error(QStringLiteral("[控制器] POST %1 失败: %2").arg(path, err));
             emit operationFailed(err);
             return;
         }
-        const QJsonObject obj = QJsonDocument::fromJson(reply->readAll()).object();
+        const QJsonObject obj = QJsonDocument::fromJson(responseBody).object();
         if (obj.value(QStringLiteral("code")).toString() != QStringLiteral("200")) {
             const QString err = extractControllerError(obj, QStringLiteral("控制器请求失败"));
             AppLogger::instance()->error(QStringLiteral("[控制器] POST %1 失败: %2").arg(path, err));
@@ -72,17 +77,20 @@ void ControllerService::postJson(const QString &path, const QJsonDocument &doc,
 
 void ControllerService::getJson(const QString &path, std::function<void(const QJsonObject &)> onSuccess)
 {
+    PacketLogUtil::logControllerSend(QStringLiteral("GET"), path, QByteArray());
     QNetworkRequest req(QUrl(m_baseUrl + path));
     auto *reply = m_nam.get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply, path, onSuccess = std::move(onSuccess)]() {
         reply->deleteLater();
+        const QByteArray responseBody = reply->readAll();
+        PacketLogUtil::logControllerReceive(QStringLiteral("GET"), path, responseBody);
         if (reply->error() != QNetworkReply::NoError) {
             const QString err = QStringLiteral("无法连接本地控制器(127.0.0.1:30303)，请确保易安联 Agent 已启动");
             AppLogger::instance()->error(QStringLiteral("[控制器] GET %1 失败: %2").arg(path, reply->errorString()));
             emit operationFailed(err);
             return;
         }
-        const QJsonObject obj = QJsonDocument::fromJson(reply->readAll()).object();
+        const QJsonObject obj = QJsonDocument::fromJson(responseBody).object();
         if (obj.value(QStringLiteral("code")).toString() != QStringLiteral("200")) {
             const QString err = extractControllerError(obj, QStringLiteral("控制器请求失败"));
             AppLogger::instance()->error(QStringLiteral("[控制器] GET %1 失败: %2").arg(path, err));

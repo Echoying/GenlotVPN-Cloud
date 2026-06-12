@@ -21,6 +21,10 @@ message LoginRequest {
   string app_id = 3;
   string code = 4;
   string uuid = 5;
+  string login_purpose = 6;
+  string client_ip = 7;
+  string client_os = 8;
+  string client_mac = 9;
 }
 
 message LoginResponse {
@@ -45,3 +49,18 @@ message LogoutResponse {}
 
 message RefreshTokenRequest {}
 message RefreshTokenResponse {}
+
+// --- 客户端登录审计 ---
+message ReportClientLoginRequest {
+  string app_id = 1;
+  string line_name = 2;
+  string client_type = 3;
+  bool success = 4;
+  string msg = 5;
+  string stage = 6;
+  string client_ip = 7;
+  string client_os = 8;
+  string client_mac = 9;
+}
+
+message ReportClientLoginResponse {}

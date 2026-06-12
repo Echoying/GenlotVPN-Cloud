@@ -1,0 +1,3 @@
+-- Nacos ruoyi-yianlian-dev.yml：收窄 MyBatis 别名扫描包，避免 api.domain 与 domain 同名类冲突
+-- 在 Nacos 控制台将 mybatis.typeAliasesPackage 从 com.ruoyi.yianlian 改为 com.ruoyi.yianlian.domain
+-- 修改后重启 ruoyi-modules-yianlian 或刷新配置

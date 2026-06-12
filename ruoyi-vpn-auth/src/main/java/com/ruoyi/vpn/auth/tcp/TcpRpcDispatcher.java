@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.ruoyi.common.core.constant.Constants;
 import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.common.core.domain.R;
 import com.ruoyi.common.core.exception.CaptchaException;
@@ -19,9 +20,11 @@ import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.common.security.auth.AuthUtil;
 import com.ruoyi.common.security.service.TokenService;
+import com.ruoyi.vpn.auth.context.ClientAuditContext;
 import com.ruoyi.vpn.auth.service.VpnCaptchaService;
 import com.ruoyi.vpn.auth.service.VpnLineVerifyService;
 import com.ruoyi.vpn.auth.service.VpnLoginService;
+import com.ruoyi.vpn.auth.service.VpnRecordLogService;
 import com.ruoyi.vpn.auth.utils.AesUtils;
 import com.ruoyi.vpn.protocol.ChangePasswordRequest;
 import com.ruoyi.vpn.protocol.ChangePasswordResponse;
@@ -43,6 +46,8 @@ import com.ruoyi.vpn.protocol.LogoutResponse;
 import com.ruoyi.vpn.protocol.MessageType;
 import com.ruoyi.vpn.protocol.RefreshTokenRequest;
 import com.ruoyi.vpn.protocol.RefreshTokenResponse;
+import com.ruoyi.vpn.protocol.ReportClientLoginRequest;
+import com.ruoyi.vpn.protocol.ReportClientLoginResponse;
 import com.ruoyi.vpn.protocol.RpcResponse;
 import com.ruoyi.vpn.protocol.SendLineVerifyRequest;
 import com.ruoyi.vpn.protocol.SendLineVerifyResponse;
@@ -58,6 +63,10 @@ public class TcpRpcDispatcher
     private static final Logger log = LoggerFactory.getLogger(TcpRpcDispatcher.class);
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    private static final int LOGIN_PURPOSE_MIN_LEN = 5;
+
+    private static final int LOGIN_PURPOSE_MAX_LEN = 50;
 
     @Autowired
     private VpnLoginService vpnLoginService;
@@ -82,6 +91,9 @@ public class TcpRpcDispatcher
 
     @Autowired
     private VpnTcpRateLimitService vpnTcpRateLimitService;
+
+    @Autowired
+    private VpnRecordLogService vpnRecordLogService;
 
     public RpcResult dispatch(Envelope envelope, TcpSessionContext session)
     {
@@ -114,6 +126,8 @@ public class TcpRpcDispatcher
                     return handleConfirmLineVerify(envelope, session);
                 case GET_USER_CREDENTIALS:
                     return handleGetUserCredentials(envelope, session);
+                case REPORT_CLIENT_LOGIN:
+                    return handleReportClientLogin(envelope, session);
                 default:
                     return RpcResult.fail("不支持的消息类型");
             }
@@ -171,30 +185,149 @@ public class TcpRpcDispatcher
 
     private RpcResult handleLogin(Envelope envelope, TcpSessionContext session) throws InvalidProtocolBufferException
     {
-        if (!vpnTcpRateLimitService.tryAcquireLogin(session.getClientIp()))
-        {
-            return RpcResult.fail("登录过于频繁，请稍后再试");
-        }
         LoginRequest req = LoginRequest.parseFrom(envelope.getPayload());
-        vpnCaptchaService.checkCaptcha(req.getCode(), req.getUuid());
-        VpnLoginUser userInfo = vpnLoginService.login(req.getUsername(), req.getPassword(), req.getAppId());
-        Map<String, Object> tokenMap = tokenService.createToken(userInfo);
+        applySessionClientDevice(session, req.getClientIp(), req.getClientOs(), req.getClientMac());
+        bindClientAuditContext(session);
+        try
+        {
+            String loginPurpose = StringUtils.trim(req.getLoginPurpose());
+            RpcResult purposeError = validateLoginPurpose(req.getUsername(), loginPurpose);
+            if (purposeError != null)
+            {
+                return purposeError;
+            }
+            if (!vpnTcpRateLimitService.tryAcquireLogin(session.getClientIp()))
+            {
+                recordLoginFail(req.getUsername(), "登录过于频繁，请稍后再试", loginPurpose);
+                return RpcResult.fail("登录过于频繁，请稍后再试");
+            }
+            try
+            {
+                vpnCaptchaService.checkCaptcha(req.getCode(), req.getUuid());
+            }
+            catch (CaptchaException e)
+            {
+                recordLoginFail(req.getUsername(), e.getMessage(), loginPurpose);
+                throw e;
+            }
+            VpnLoginUser userInfo = vpnLoginService.login(req.getUsername(), req.getPassword(), req.getAppId(), loginPurpose);
+            Map<String, Object> tokenMap = tokenService.createToken(userInfo);
 
-        byte[] sessionKey = new byte[32];
-        SECURE_RANDOM.nextBytes(sessionKey);
+            byte[] sessionKey = new byte[32];
+            SECURE_RANDOM.nextBytes(sessionKey);
 
-        session.setSessionKey(sessionKey);
-        session.setAccessToken(String.valueOf(tokenMap.get("access_token")));
-        session.setUserId(userInfo.getVpnUser().getUserId());
-        session.setUsername(userInfo.getVpnUser().getUserName());
-        session.setAuthenticated(true);
+            session.setSessionKey(sessionKey);
+            session.setAccessToken(String.valueOf(tokenMap.get("access_token")));
+            session.setUserId(userInfo.getVpnUser().getUserId());
+            session.setUsername(userInfo.getVpnUser().getUserName());
+            session.setLoginPurpose(loginPurpose);
+            session.setAuthenticated(true);
 
-        LoginResponse response = LoginResponse.newBuilder()
-                .setAccessToken(session.getAccessToken())
-                .setExpiresIn(((Number) tokenMap.get("expires_in")).longValue())
-                .setSessionKey(ByteString.copyFrom(sessionKey))
-                .build();
-        return RpcResult.ok(response);
+            LoginResponse response = LoginResponse.newBuilder()
+                    .setAccessToken(session.getAccessToken())
+                    .setExpiresIn(((Number) tokenMap.get("expires_in")).longValue())
+                    .setSessionKey(ByteString.copyFrom(sessionKey))
+                    .build();
+            return RpcResult.ok(response);
+        }
+        finally
+        {
+            clearClientAuditContext();
+        }
+    }
+
+    private RpcResult handleReportClientLogin(Envelope envelope, TcpSessionContext session)
+            throws InvalidProtocolBufferException
+    {
+        requireAuth(session, envelope);
+        ReportClientLoginRequest req = ReportClientLoginRequest.parseFrom(envelope.getPayload());
+        applySessionClientDevice(session, req.getClientIp(), req.getClientOs(), req.getClientMac());
+        bindClientAuditContext(session);
+        try
+        {
+            String msg = StringUtils.trim(req.getMsg());
+            if (StringUtils.isEmpty(msg))
+            {
+                return RpcResult.fail("日志说明不能为空");
+            }
+            String username = resolveUsername(envelope, session);
+            String fullMsg = formatClientLoginMsg(req.getStage(), msg);
+            String loginPurpose = session.getLoginPurpose();
+            if (req.getSuccess())
+            {
+                vpnRecordLogService.recordLogininfor(username, Constants.LOGIN_SUCCESS, fullMsg, loginPurpose);
+            }
+            else
+            {
+                vpnRecordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, fullMsg, loginPurpose);
+            }
+            return RpcResult.ok(ReportClientLoginResponse.newBuilder().build());
+        }
+        finally
+        {
+            clearClientAuditContext();
+        }
+    }
+
+    private RpcResult validateLoginPurpose(String username, String loginPurpose)
+    {
+        if (StringUtils.isEmpty(loginPurpose))
+        {
+            recordLoginFail(username, "请填写登录用途", loginPurpose);
+            return RpcResult.fail("请填写登录用途");
+        }
+        if (loginPurpose.length() < LOGIN_PURPOSE_MIN_LEN)
+        {
+            recordLoginFail(username, "登录用途至少填写5个字", loginPurpose);
+            return RpcResult.fail("登录用途至少填写5个字");
+        }
+        if (loginPurpose.length() > LOGIN_PURPOSE_MAX_LEN)
+        {
+            recordLoginFail(username, "登录用途不能超过50个字", loginPurpose);
+            return RpcResult.fail("登录用途不能超过50个字");
+        }
+        return null;
+    }
+
+    private void recordLoginFail(String username, String message, String loginPurpose)
+    {
+        vpnRecordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, message, loginPurpose);
+    }
+
+    private void applySessionClientDevice(TcpSessionContext session, String reportedIp, String clientOs, String clientMac)
+    {
+        if (StringUtils.isNotEmpty(reportedIp))
+        {
+            session.setClientReportedIp(StringUtils.trim(reportedIp));
+        }
+        if (StringUtils.isNotEmpty(clientOs))
+        {
+            session.setClientOs(StringUtils.trim(clientOs));
+        }
+        if (StringUtils.isNotEmpty(clientMac))
+        {
+            session.setClientMac(StringUtils.trim(clientMac));
+        }
+    }
+
+    private void bindClientAuditContext(TcpSessionContext session)
+    {
+        ClientAuditContext.bind(session.getClientReportedIp(), session.getClientIp(),
+                session.getClientOs(), session.getClientMac());
+    }
+
+    private void clearClientAuditContext()
+    {
+        ClientAuditContext.clear();
+    }
+
+    private String formatClientLoginMsg(String stage, String msg)
+    {
+        if (StringUtils.isNotEmpty(stage))
+        {
+            return "[" + stage + "] " + msg;
+        }
+        return msg;
     }
 
     private RpcResult handleChangePassword(Envelope envelope) throws InvalidProtocolBufferException
@@ -208,25 +341,33 @@ public class TcpRpcDispatcher
     {
         requireAuth(session, envelope);
         LogoutRequest.parseFrom(envelope.getPayload());
-        Long userId = session.getUserId();
-        String token = resolveToken(envelope, session);
-        if (StringUtils.isNotEmpty(token))
+        bindClientAuditContext(session);
+        try
         {
-            if (userId == null)
+            Long userId = session.getUserId();
+            String token = resolveToken(envelope, session);
+            if (StringUtils.isNotEmpty(token))
             {
-                userId = Long.parseLong(JwtUtils.getUserId(token));
+                if (userId == null)
+                {
+                    userId = Long.parseLong(JwtUtils.getUserId(token));
+                }
+                String username = JwtUtils.getUserName(token);
+                AuthUtil.logoutByToken(token);
+                vpnLoginService.logout(username);
             }
-            String username = JwtUtils.getUserName(token);
-            AuthUtil.logoutByToken(token);
-            vpnLoginService.logout(username);
+            if (userId != null)
+            {
+                vpnLineVerifyService.clearSendCooldown(userId);
+            }
+            session.clearSecrets();
+            session.setAuthenticated(false);
+            return RpcResult.ok(LogoutResponse.newBuilder().build());
         }
-        if (userId != null)
+        finally
         {
-            vpnLineVerifyService.clearSendCooldown(userId);
+            clearClientAuditContext();
         }
-        session.clearSecrets();
-        session.setAuthenticated(false);
-        return RpcResult.ok(LogoutResponse.newBuilder().build());
     }
 
     private RpcResult handleRefreshToken(Envelope envelope, TcpSessionContext session) throws InvalidProtocolBufferException

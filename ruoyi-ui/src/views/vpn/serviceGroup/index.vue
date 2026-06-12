@@ -2,12 +2,12 @@
   <div class="app-container">
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch">
       <el-form-item label="线路" prop="appId">
-        <el-select v-model="queryParams.appId" placeholder="请选择线路" clearable style="width: 200px">
+        <el-select v-model="queryParams.appId" placeholder="请选择线路" style="width: 200px" @change="handleLineChange">
           <el-option
             v-for="item in lineAppList"
             :key="item.appId"
             :label="item.appName"
-        :value="item.appId"
+            :value="item.appId"
           />
         </el-select>
       </el-form-item>
@@ -67,16 +67,14 @@
         <el-row>
           <el-col :span="24">
             <el-form-item label="上级应用组" prop="parentId">
-              <treeselect v-model="form.parentId" :options="groupOptions" :normalizer="normalizer" placeholder="根应用组" @input="handleParentChange" />
+              <treeselect v-model="form.parentId" :options="groupOptions" :normalizer="normalizer" :placeholder="parentPlaceholder" @input="handleParentChange" />
             </el-form-item>
           </el-col>
       </el-row>
         <el-row>
           <el-col :span="12">
             <el-form-item label="线路" prop="appId">
-              <el-select v-model="form.appId" placeholder="请选择线路" :disabled="form.parentId != null && form.parentId != 0">
-          <el-option v-for="item in lineAppList" :key="item.appId" :label="item.appName" :value="item.appId" />
-          </el-select>
+              <el-input :value="currentLineName" disabled />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -124,6 +122,8 @@ export default {
       serviceGroupList: [],
       serviceGroupAllList: [],
       lineAppList: [],
+      currentLineName: "",
+      parentPlaceholder: "根应用组",
       groupOptions: [],
       title: "",
       open: false,
@@ -135,28 +135,63 @@ export default {
       },
       form: {},
       rules: {
-        appId: [{ required: true, message: "请选择线路", trigger: "change" }],
+        parentId: [{ required: true, message: "上级应用组不能为空", trigger: "change" }],
         groupName: [{ required: true, message: "应用组名称不能为空", trigger: "blur" }]
       }
     }
   },
   created() {
-    this.getList()
-    this.getLineAppList()
+    this.loadLineAppList()
   },
   methods: {
+    /** 加载线路列表，默认选中第一条 */
+    loadLineAppList() {
+      listLineApp({ pageSize: 1000, pageNum: 1 }).then(response => {
+        this.lineAppList = response.rows || []
+        if (this.lineAppList.length > 0) {
+          this.queryParams.appId = this.lineAppList[0].appId
+          this.currentLineName = this.lineAppList[0].appName
+          this.getList()
+        } else {
+          this.serviceGroupList = []
+          this.loading = false
+        }
+      })
+    },
+    handleLineChange() {
+      const line = this.lineAppList.find(item => item.appId === this.queryParams.appId)
+      this.currentLineName = line ? line.appName : ""
+      this.getList()
+    },
     getList() {
+      if (!this.queryParams.appId) {
+        this.serviceGroupList = []
+        this.loading = false
+        return
+      }
       this.loading = true
       listServiceGroup(this.queryParams).then(response => {
         this.serviceGroupAllList = response.data
         this.serviceGroupList = this.handleTree(response.data, "id")
-    this.loading = false
+        this.loading = false
       })
     },
-    getLineAppList() {
-      listLineApp({}).then(response => {
-        this.lineAppList = response.rows
-      })
+    /** 判断同线路下是否已存在根应用组 */
+    hasRootGroup(data, excludeId) {
+      return (data || []).some(item =>
+        (item.parentId == null || item.parentId === 0) && item.id !== excludeId
+      )
+    },
+    /** 构建上级应用组下拉选项（无根组时包含虚拟根节点） */
+    buildParentGroupOptions(data, excludeId) {
+      const tree = this.handleTree(data, "id")
+      if (this.hasRootGroup(data, excludeId)) {
+        return tree
+      }
+      return [{ id: 0, groupName: "根应用组", children: tree }]
+    },
+    updateParentPlaceholder(data, excludeId) {
+      this.parentPlaceholder = this.hasRootGroup(data, excludeId) ? "请选择上级应用组" : "根应用组"
     },
     normalizer(node) {
       if (node.children && !node.children.length) {
@@ -164,14 +199,9 @@ export default {
       }
       return { id: node.id, label: node.groupName, children: node.children }
     },
-    /** 选择上级应用组时自动带出线路且不可改 */
-    handleParentChange(value) {
-      if (value && value != 0) {
-        const parent = this.serviceGroupAllList.find(item => item.id === value)
-        if (parent) {
-        this.form.appId = parent.appId
-        }
-      }
+    /** 选择上级应用组时同步线路（与列表当前线路一致） */
+    handleParentChange() {
+      this.form.appId = this.queryParams.appId
     },
     cancel() {
       this.open = false
@@ -182,20 +212,37 @@ export default {
       this.resetForm("form")
     },
     handleQuery() { this.getList() },
-    resetQuery() { this.resetForm("queryForm"); this.handleQuery() },
+    resetQuery() {
+      const appId = this.queryParams.appId
+      this.resetForm("queryForm")
+      this.queryParams.appId = appId
+      this.handleQuery()
+    },
     handleAdd(row) {
+      if (!this.queryParams.appId) {
+        this.$modal.msgWarning("请先选择线路")
+        return
+      }
       this.reset()
+      this.form.appId = this.queryParams.appId
       if (row != undefined && row.id) {
-     this.form.parentId = row.id
-        this.form.appId = row.appId
+        this.form.parentId = row.id
       }
       this.open = true
       this.title = "新增应用组"
-      listServiceGroup({}).then(response => {
+      listServiceGroup({ appId: this.queryParams.appId }).then(response => {
         this.serviceGroupAllList = response.data
-        this.groupOptions = this.handleTree(response.data, "id")
+        this.groupOptions = this.buildParentGroupOptions(response.data)
+        this.updateParentPlaceholder(response.data)
+        if (!(row != undefined && row.id)) {
+          if (this.hasRootGroup(response.data)) {
+            this.form.parentId = undefined
+          } else {
+            this.form.parentId = 0
+          }
+        }
       })
-  },
+    },
     toggleExpandAll() {
       this.refreshTable = false
       this.isExpandAll = !this.isExpandAll
@@ -205,24 +252,28 @@ export default {
       this.reset()
       getServiceGroup(row.id).then(response => {
         this.form = response.data
+        if (this.form.parentId == null) {
+          this.form.parentId = 0
+        }
         this.open = true
         this.title = "修改应用组"
-        listServiceGroup({}).then(resp => {
+        const appId = this.form.appId || this.queryParams.appId
+        listServiceGroup({ appId }).then(resp => {
+          const filteredData = resp.data.filter(d => d.id !== row.id)
           this.serviceGroupAllList = resp.data
-          this.groupOptions = this.handleTree(resp.data.filter(d => d.id !== row.id), "id")
-          if (this.groupOptions.length == 0) {
-            this.groupOptions.push({ id: this.form.parentId, groupName: this.form.parentName || "根应用组", children: [] })
-       }
+          this.groupOptions = this.buildParentGroupOptions(filteredData, row.id)
+          this.updateParentPlaceholder(filteredData, row.id)
         })
       })
     },
     submitForm() {
       this.$refs["form"].validate(valid => {
         if (valid) {
-        if (this.form.id != undefined) {
+          this.form.appId = this.queryParams.appId
+          if (this.form.id != undefined) {
             updateServiceGroup(this.form).then(() => { this.$modal.msgSuccess("修改成功"); this.open = false; this.getList() })
           } else {
-         addServiceGroup(this.form).then(() => { this.$modal.msgSuccess("新增成功"); this.open = false; this.getList() })
+            addServiceGroup(this.form).then(() => { this.$modal.msgSuccess("新增成功"); this.open = false; this.getList() })
           }
         }
       })

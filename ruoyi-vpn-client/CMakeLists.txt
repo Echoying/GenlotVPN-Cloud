@@ -52,6 +52,8 @@ set(SOURCES
     src/core/SecureStorage.cpp
     src/windows/DpapiProtector.cpp
     src/core/AppLogger.cpp
+    src/core/ClientDeviceInfo.cpp
+    src/core/PacketLogUtil.cpp
     src/core/AppInfo.cpp
     src/core/VpnFlowController.cpp
     src/platform/SingleInstance.cpp
@@ -96,6 +98,7 @@ qt_add_qml_module(GenlotVPN
         qml/components/PageShell.qml
         qml/components/ActionRow.qml
         qml/components/FlatField.qml
+        qml/components/FlatTextArea.qml
         qml/components/FlatCombo.qml
         qml/components/LineCombo.qml
         qml/components/BrandHeader.qml

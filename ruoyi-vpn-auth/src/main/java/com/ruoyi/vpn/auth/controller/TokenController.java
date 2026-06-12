@@ -60,7 +60,7 @@ public class TokenController
     public R<?> login(@RequestBody VpnLoginBody form)
     {
         // 用户登录
-        VpnLoginUser userInfo = vpnLoginService.login(form.getUsername(), form.getPassword(), form.getAppId());
+        VpnLoginUser userInfo = vpnLoginService.login(form.getUsername(), form.getPassword(), form.getAppId(), "");
         // 获取登录token
         return R.ok(tokenService.createToken(userInfo));
     }

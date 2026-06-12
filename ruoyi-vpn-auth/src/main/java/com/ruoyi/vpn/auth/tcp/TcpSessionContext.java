@@ -15,9 +15,17 @@ public class TcpSessionContext
 
     private String username;
 
+    private String loginPurpose;
+
     private boolean authenticated;
 
     private String clientIp;
+
+    private String clientReportedIp;
+
+    private String clientOs;
+
+    private String clientMac;
 
     private long lastActivityMs;
 
@@ -61,6 +69,16 @@ public class TcpSessionContext
         this.username = username;
     }
 
+    public String getLoginPurpose()
+    {
+        return loginPurpose;
+    }
+
+    public void setLoginPurpose(String loginPurpose)
+    {
+        this.loginPurpose = loginPurpose;
+    }
+
     public boolean isAuthenticated()
     {
         return authenticated;
@@ -79,6 +97,36 @@ public class TcpSessionContext
     public void setClientIp(String clientIp)
     {
         this.clientIp = clientIp;
+    }
+
+    public String getClientReportedIp()
+    {
+        return clientReportedIp;
+    }
+
+    public void setClientReportedIp(String clientReportedIp)
+    {
+        this.clientReportedIp = clientReportedIp;
+    }
+
+    public String getClientOs()
+    {
+        return clientOs;
+    }
+
+    public void setClientOs(String clientOs)
+    {
+        this.clientOs = clientOs;
+    }
+
+    public String getClientMac()
+    {
+        return clientMac;
+    }
+
+    public void setClientMac(String clientMac)
+    {
+        this.clientMac = clientMac;
     }
 
     public long getLastActivityMs()

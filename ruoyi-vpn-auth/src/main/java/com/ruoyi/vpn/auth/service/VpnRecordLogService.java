@@ -6,35 +6,46 @@ import com.ruoyi.common.core.constant.Constants;
 import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.common.core.utils.ip.IpUtils;
-import com.ruoyi.system.api.RemoteLogService;
-import com.ruoyi.system.api.domain.SysLogininfor;
+import com.ruoyi.vpn.auth.context.ClientAuditContext;
+import com.ruoyi.yianlian.api.RemoteVpnLogininforService;
+import com.ruoyi.yianlian.api.domain.VpnLogininfor;
 
 /**
- * 记录日志方法
- * 
- * @author ruoyi
+ * 记录 VPN 登录日志
  */
 @Component
 public class VpnRecordLogService
 {
+    private static final int MSG_MAX_LEN = 255;
+
+    private static final int CLIENT_OS_MAX_LEN = 128;
+
+    private static final int CLIENT_MAC_MAX_LEN = 32;
+
+    /** 登录用途数据库列长 */
+    public static final int LOGIN_PURPOSE_DB_MAX_LEN = 100;
+
     @Autowired
-    private RemoteLogService remoteLogService;
+    private RemoteVpnLogininforService remoteVpnLogininforService;
 
     /**
      * 记录登录信息
-     * 
+     *
      * @param username 用户名
      * @param status 状态
      * @param message 消息内容
-     * @return
+     * @param loginPurpose 登录用途
      */
-    public void recordLogininfor(String username, String status, String message)
+    public void recordLogininfor(String username, String status, String message, String loginPurpose)
     {
-        SysLogininfor logininfor = new SysLogininfor();
-        logininfor.setUserName(username);
-        logininfor.setIpaddr(IpUtils.getIpAddr());
-        logininfor.setMsg(message);
-        // 日志状态
+        VpnLogininfor logininfor = new VpnLogininfor();
+        logininfor.setUserName(StringUtils.isNotEmpty(username) ? username : "unknown");
+        String auditIp = ClientAuditContext.resolveIpaddr();
+        logininfor.setIpaddr(StringUtils.isNotEmpty(auditIp) ? truncateIpaddr(auditIp) : IpUtils.getIpAddr());
+        logininfor.setClientOs(truncateClientOs(ClientAuditContext.getClientOs()));
+        logininfor.setClientMac(truncateClientMac(ClientAuditContext.getClientMac()));
+        logininfor.setMsg(truncateMsg(message));
+        logininfor.setLoginPurpose(truncateLoginPurpose(loginPurpose));
         if (StringUtils.equalsAny(status, Constants.LOGIN_SUCCESS, Constants.LOGOUT, Constants.REGISTER))
         {
             logininfor.setStatus(Constants.LOGIN_SUCCESS_STATUS);
@@ -43,6 +54,57 @@ public class VpnRecordLogService
         {
             logininfor.setStatus(Constants.LOGIN_FAIL_STATUS);
         }
-        remoteLogService.saveLogininfor(logininfor, SecurityConstants.INNER);
+        else
+        {
+            logininfor.setStatus(Constants.LOGIN_FAIL_STATUS);
+        }
+        remoteVpnLogininforService.saveLogininfor(logininfor, SecurityConstants.INNER);
+    }
+
+    private String truncateMsg(String message)
+    {
+        if (message == null)
+        {
+            return "";
+        }
+        return message.length() <= MSG_MAX_LEN ? message : message.substring(0, MSG_MAX_LEN);
+    }
+
+    private String truncateLoginPurpose(String loginPurpose)
+    {
+        if (loginPurpose == null)
+        {
+            return "";
+        }
+        return loginPurpose.length() <= LOGIN_PURPOSE_DB_MAX_LEN
+                ? loginPurpose
+                : loginPurpose.substring(0, LOGIN_PURPOSE_DB_MAX_LEN);
+    }
+
+    private String truncateIpaddr(String ipaddr)
+    {
+        if (ipaddr == null)
+        {
+            return "";
+        }
+        return ipaddr.length() <= 128 ? ipaddr : ipaddr.substring(0, 128);
+    }
+
+    private String truncateClientOs(String clientOs)
+    {
+        if (clientOs == null)
+        {
+            return "";
+        }
+        return clientOs.length() <= CLIENT_OS_MAX_LEN ? clientOs : clientOs.substring(0, CLIENT_OS_MAX_LEN);
+    }
+
+    private String truncateClientMac(String clientMac)
+    {
+        if (clientMac == null)
+        {
+            return "";
+        }
+        return clientMac.length() <= CLIENT_MAC_MAX_LEN ? clientMac : clientMac.substring(0, CLIENT_MAC_MAX_LEN);
     }
 }

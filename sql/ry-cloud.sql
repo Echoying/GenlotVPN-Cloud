@@ -596,7 +596,10 @@ DROP TABLE IF EXISTS `vpn_logininfor`;
 CREATE TABLE `vpn_logininfor` (
   `info_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '访问ID',
   `user_name` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '用户账号',
+  `login_purpose` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '登录用途',
   `ipaddr` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '登录IP地址',
+  `client_os` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '客户端操作系统',
+  `client_mac` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '客户端MAC地址',
   `status` char(1) COLLATE utf8mb4_unicode_ci DEFAULT '0' COMMENT '登录状态（0成功 1失败）',
   `msg` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '提示信息',
   `access_time` datetime DEFAULT NULL COMMENT '访问时间',

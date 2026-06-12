@@ -29,7 +29,8 @@ public:
     Q_INVOKABLE void fetchPublicLines();
     Q_INVOKABLE void fetchCaptcha();
     Q_INVOKABLE void login(const QString &username, const QString &password,
-                           const QString &appId, const QString &code, const QString &uuid);
+                           const QString &appId, const QString &code, const QString &uuid,
+                           const QString &loginPurpose);
     Q_INVOKABLE void fetchAuthorizedLines();
     Q_INVOKABLE void sendLineVerify(const QString &appId, const QString &lineName);
     Q_INVOKABLE void confirmLineVerify(const QString &appId, const QString &code);
@@ -37,6 +38,8 @@ public:
     Q_INVOKABLE void changePassword(const QString &username, const QString &oldPassword,
                                     const QString &newPassword, const QString &appId);
     Q_INVOKABLE void logout();
+    void reportClientLogin(const QString &appId, const QString &lineName, bool success,
+                           const QString &stage, const QString &msg);
     void clearSession();
 
     QString accessToken() const { return m_accessToken; }

@@ -31,9 +31,21 @@ public class VpnLogininfor extends BaseEntity
     @Excel(name = "地址")
     private String ipaddr;
 
+    /** 客户端操作系统 */
+    @Excel(name = "操作系统")
+    private String clientOs;
+
+    /** 客户端MAC地址 */
+    @Excel(name = "MAC地址")
+    private String clientMac;
+
     /** 描述 */
     @Excel(name = "描述")
     private String msg;
+
+    /** 登录用途 */
+    @Excel(name = "登录用途")
+    private String loginPurpose;
 
     /** 访问时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -80,6 +92,26 @@ public class VpnLogininfor extends BaseEntity
         this.ipaddr = ipaddr;
     }
 
+    public String getClientOs()
+    {
+        return clientOs;
+    }
+
+    public void setClientOs(String clientOs)
+    {
+        this.clientOs = clientOs;
+    }
+
+    public String getClientMac()
+    {
+        return clientMac;
+    }
+
+    public void setClientMac(String clientMac)
+    {
+        this.clientMac = clientMac;
+    }
+
     public String getMsg()
     {
         return msg;
@@ -88,6 +120,16 @@ public class VpnLogininfor extends BaseEntity
     public void setMsg(String msg)
     {
         this.msg = msg;
+    }
+
+    public String getLoginPurpose()
+    {
+        return loginPurpose;
+    }
+
+    public void setLoginPurpose(String loginPurpose)
+    {
+        this.loginPurpose = loginPurpose;
     }
 
     public Date getAccessTime()

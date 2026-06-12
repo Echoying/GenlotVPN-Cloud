@@ -99,7 +99,7 @@ public class VpnUserController extends BaseController {
         }
 
         if (vpnUser.getRoles() != null) {
-            for (com.ruoyi.yianlian.domain.VpnRole role : vpnUser.getRoles()) {
+            for (VpnRole role : vpnUser.getRoles()) {
                 List<YalRoleAuth> roleAuths = yalRoleAuthMapper.selectYalRoleAuthByRoleId(role.getRoleId());
                 for (YalRoleAuth auth : roleAuths) {
                     if (auth.getLineId() != null && matchUserLine(userAppId, auth.getLineId())) {

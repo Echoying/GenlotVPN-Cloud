@@ -166,6 +166,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         m_loginPending = false;
         setLoginError(QString());
         setLoggedIn(true);
+        m_connectChainActive = true;
         addLog(QStringLiteral("info"), QStringLiteral("云端登录成功"));
         emit navigateTo(QStringLiteral("connect"));
         if (m_autoConnectPending) {
@@ -187,6 +188,9 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         }
         setLoading(false);
         addLog(QStringLiteral("error"), QStringLiteral("您无权访问所选线路"));
+        if (shouldReportConnectFailure()) {
+            reportClientLoginAudit(false, QStringLiteral("line_verify"), QStringLiteral("您无权访问所选线路"));
+        }
         emit toast(QStringLiteral("您无权访问所选线路"), true);
     });
     connect(m_cloud, &VpnCloudService::lineVerifySent, this, [this](const QString &expireAt) {
@@ -246,6 +250,9 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
                                            ? QStringLiteral("发送验证码失败，请重试")
                                            : msg.trimmed();
             setVerifyError(displayMsg);
+            if (shouldReportConnectFailure()) {
+                reportClientLoginAudit(false, QStringLiteral("line_verify"), displayMsg);
+            }
             const int cooldown = parseSendCooldownSeconds(displayMsg);
             if (cooldown > 0) {
                 startCountdown(cooldown);
@@ -258,6 +265,9 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
                                            ? QStringLiteral("验证码校验失败，请重试")
                                            : msg.trimmed();
             setVerifyError(displayMsg);
+            if (shouldReportConnectFailure()) {
+                reportClientLoginAudit(false, QStringLiteral("line_verify"), displayMsg);
+            }
             return;
         }
         if (m_verifyDialogVisible) {
@@ -265,6 +275,9 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
                                            ? QStringLiteral("验证失败，请重试")
                                            : msg.trimmed();
             setVerifyError(displayMsg);
+            if (shouldReportConnectFailure()) {
+                reportClientLoginAudit(false, QStringLiteral("line_verify"), displayMsg);
+            }
             return;
         }
         if (!m_loggedIn) {
@@ -286,6 +299,9 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         } else {
             setLoading(false);
             addLog(QStringLiteral("error"), QStringLiteral("服务器不可用"));
+            if (shouldReportConnectFailure()) {
+                reportClientLoginAudit(false, QStringLiteral("controller"), QStringLiteral("服务器不可用"));
+            }
         }
     });
     connect(m_controller, &ControllerService::selectSucceeded, this, [this](const QVariantMap &data) {
@@ -301,7 +317,12 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     });
     connect(m_controller, &ControllerService::loginControllerSucceeded, this, [this]() {
         addLog(QStringLiteral("info"), QStringLiteral("控制器登录成功"));
-        m_selectedLine = m_verifyLine.isEmpty() ? m_pendingLine : m_verifyLine;
+        const QVariantMap line = m_verifyLine.isEmpty() ? m_pendingLine : m_verifyLine;
+        reportClientLoginAudit(true, QStringLiteral("connect"),
+                               QStringLiteral("客户端登录成功，线路：%1")
+                                   .arg(line.value(QStringLiteral("appName")).toString()));
+        m_connectChainActive = false;
+        m_selectedLine = line;
         m_session->setSelectedLine(m_selectedLine);
         m_pendingLine.clear();
         m_verifyLine.clear();
@@ -393,6 +414,10 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         }
         const QString errorMsg = msg.trimmed().isEmpty() ? QStringLiteral("控制器请求失败") : msg.trimmed();
         addLog(QStringLiteral("error"), errorMsg);
+        if (shouldReportConnectFailure() && !m_gatewayPolling && m_switchingGatewayId.isEmpty()) {
+            reportClientLoginAudit(false, QStringLiteral("controller"), errorMsg);
+            m_connectChainActive = false;
+        }
         emit toast(errorMsg, true);
     });
 }
@@ -440,11 +465,25 @@ void VpnFlowController::prepareLogin()
     }
 }
 
-void VpnFlowController::doLogin(const QString &username, const QString &password, const QString &code, bool rememberMe)
+void VpnFlowController::doLogin(const QString &username, const QString &password, const QString &code,
+                                 bool rememberMe, const QString &loginPurpose)
 {
     const QString appId = m_pendingLine.value(QStringLiteral("appId")).toString();
     if (appId.isEmpty()) {
         emit toast(QStringLiteral("请先选择线路"), true);
+        return;
+    }
+    const QString purpose = loginPurpose.trimmed();
+    if (purpose.isEmpty()) {
+        setLoginError(QStringLiteral("请填写登录用途"));
+        return;
+    }
+    if (purpose.length() < 5) {
+        setLoginError(QStringLiteral("登录用途至少填写5个字"));
+        return;
+    }
+    if (purpose.length() > 50) {
+        setLoginError(QStringLiteral("登录用途不能超过50个字"));
         return;
     }
     setLoginError(QString());
@@ -456,7 +495,7 @@ void VpnFlowController::doLogin(const QString &username, const QString &password
     m_loginPending = true;
     m_autoConnectPending = true;
     m_autoConnectStarted = false;
-    m_cloud->login(username, password, appId, code, m_captchaUuid);
+    m_cloud->login(username, password, appId, code, m_captchaUuid, purpose);
 }
 
 void VpnFlowController::clearLoginError()
@@ -811,6 +850,7 @@ void VpnFlowController::handleSessionExpired(const QString &serverMsg)
     m_sendLineVerifyPending = false;
     m_autoConnectPending = false;
     m_autoConnectStarted = false;
+    m_connectChainActive = false;
     setLoading(false);
 
     m_controller->controllerLogout();
@@ -835,6 +875,7 @@ void VpnFlowController::finishLogout(bool clearUsername)
     m_lineVerifyPending = false;
     m_sendLineVerifyPending = false;
     m_changePasswordPending = false;
+    m_connectChainActive = false;
     setLoginError(QString());
     setVerifyError(QString());
     m_cloud->clearSession();
@@ -1228,6 +1269,24 @@ void VpnFlowController::setLoggedIn(bool v)
         m_loggedIn = v;
         emit loggedInChanged();
     }
+}
+
+bool VpnFlowController::shouldReportConnectFailure() const
+{
+    return m_loggedIn && m_connectChainActive;
+}
+
+void VpnFlowController::reportClientLoginAudit(bool success, const QString &stage, const QString &msg)
+{
+    if (!m_loggedIn) {
+        return;
+    }
+    const QVariantMap line = !m_verifyLine.isEmpty() ? m_verifyLine : m_pendingLine;
+    m_cloud->reportClientLogin(line.value(QStringLiteral("appId")).toString(),
+                               line.value(QStringLiteral("appName")).toString(),
+                               success,
+                               stage,
+                               msg);
 }
 
 } // namespace vpn

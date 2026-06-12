@@ -40,7 +40,7 @@ public class VpnPasswordService
         return CacheConstants.PWD_ERR_CNT_KEY + username;
     }
 
-    public void validate(VpnUserInfo user, String password)
+    public void validate(VpnUserInfo user, String password, String loginPurpose)
     {
         String username = user.getUserName();
 
@@ -54,14 +54,15 @@ public class VpnPasswordService
         if (retryCount >= Integer.valueOf(maxRetryCount).intValue())
         {
             String errMsg = String.format("密码输入错误%s次，帐户锁定%s分钟", maxRetryCount, lockTime);
-            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL,errMsg);
+            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, errMsg, loginPurpose);
             throw new ServiceException(errMsg);
         }
 
         if (!matches(user, password))
         {
             retryCount = retryCount + 1;
-            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, String.format("密码输入错误%s次", retryCount));
+            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL,
+                    String.format("密码输入错误%s次", retryCount), loginPurpose);
             redisService.setCacheObject(getCacheKey(username), retryCount, lockTime, TimeUnit.MINUTES);
             throw new ServiceException("用户不存在/密码错误");
         }

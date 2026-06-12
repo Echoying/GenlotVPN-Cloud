@@ -47,38 +47,38 @@ public class VpnLoginService
     /**
      * 登录
      */
-    public VpnLoginUser login(String username, String password, String appId)
+    public VpnLoginUser login(String username, String password, String appId, String loginPurpose)
     {
         if (StringUtils.isEmpty(appId))
         {
-            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "未选择线路");
+            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "未选择线路", loginPurpose);
             throw new ServiceException("请先选择线路");
         }
         // 用户名或密码为空 错误
         if (StringUtils.isAnyBlank(username, password))
         {
-            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "用户/密码必须填写");
+            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "用户/密码必须填写", loginPurpose);
             throw new ServiceException("用户/密码必须填写");
         }
         // 密码如果不在指定范围内 错误
         if (password.length() < UserConstants.PASSWORD_MIN_LENGTH
                 || password.length() > UserConstants.PASSWORD_MAX_LENGTH)
         {
-            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "用户密码不在指定范围");
+            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "用户密码不在指定范围", loginPurpose);
             throw new ServiceException("用户密码不在指定范围");
         }
         // 用户名不在指定范围内 错误
         if (username.length() < UserConstants.USERNAME_MIN_LENGTH
                 || username.length() > UserConstants.USERNAME_MAX_LENGTH)
         {
-            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "用户名不在指定范围");
+            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "用户名不在指定范围", loginPurpose);
             throw new ServiceException("用户名不在指定范围");
         }
         // IP黑名单校验
         String blackStr = Convert.toStr(redisService.getCacheObject(CacheConstants.SYS_LOGIN_BLACKIPLIST));
         if (IpUtils.isMatchedIp(blackStr, IpUtils.getIpAddr()))
         {
-            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "很遗憾，访问IP已被列入系统黑名单");
+            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "很遗憾，访问IP已被列入系统黑名单", loginPurpose);
             throw new ServiceException("很遗憾，访问IP已被列入系统黑名单");
         }
         // 查询用户信息（按所选线路）
@@ -93,17 +93,16 @@ public class VpnLoginService
         VpnUserInfo user = userResult.getData().getVpnUser();
         if (UserStatus.DELETED.getCode().equals(user.getDelFlag()))
         {
-            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "对不起，您的账号已被删除");
+            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "对不起，您的账号已被删除", loginPurpose);
             throw new ServiceException("对不起，您的账号：" + username + " 已被删除");
         }
         if (UserStatus.DISABLE.getCode().equals(user.getStatus()))
         {
-            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "用户已停用，请联系管理员");
+            recordLogService.recordLogininfor(username, Constants.LOGIN_FAIL, "用户已停用，请联系管理员", loginPurpose);
             throw new ServiceException("对不起，您的账号：" + username + " 已停用");
         }
-        passwordService.validate(user, password);
+        passwordService.validate(user, password, loginPurpose);
         assertUserAuthorizedForLine(user.getUserId(), appId);
-        recordLogService.recordLogininfor(username, Constants.LOGIN_SUCCESS, "登录成功");
         recordLoginInfo(user.getUserId());
         // 缓存明文密码，用于后续控制器登录（有效期与token一致，30分钟）
         redisService.setCacheObject("vpn_plain_pwd:" + user.getUserId(), password, 30L, java.util.concurrent.TimeUnit.MINUTES);
@@ -131,7 +130,7 @@ public class VpnLoginService
      */
     public void logout(String loginName)
     {
-        recordLogService.recordLogininfor(loginName, Constants.LOGOUT, "退出成功");
+        recordLogService.recordLogininfor(loginName, Constants.LOGOUT, "退出成功", "");
     }
 
     /**

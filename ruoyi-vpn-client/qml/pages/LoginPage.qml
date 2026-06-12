@@ -5,6 +5,35 @@ import GenlotVPN 1.0
 Item {
     id: root
 
+    property bool purposeAttempted: false
+
+    readonly property int purposeLen: loginPurposeField.text.trim().length
+    readonly property int purposeRawLen: loginPurposeField.text.length
+
+    readonly property string purposeHint: {
+        if (vpnFlow.loginError.indexOf("登录用途") >= 0)
+            return vpnFlow.loginError
+        if (purposeAttempted && purposeLen === 0)
+            return "请填写登录用途"
+        if (purposeLen > 0 && purposeLen < 5)
+            return "登录用途至少填写5个字（还需 " + (5 - purposeLen) + " 字）"
+        if (purposeRawLen >= 50)
+            return "已达 50 字上限"
+        if (purposeLen >= 5)
+            return "已输入 " + purposeLen + "/50 字"
+        return "必填，5～50 字"
+    }
+
+    readonly property bool purposeIsError: {
+        if (vpnFlow.loginError.indexOf("登录用途") >= 0)
+            return true
+        if (purposeAttempted && purposeLen === 0)
+            return true
+        if (purposeLen > 0 && purposeLen < 5)
+            return true
+        return false
+    }
+
     function openChangePwdDialog() {
         changePwdUsernameField.text = usernameField.text
         changePwdOldField.text = ""
@@ -46,6 +75,32 @@ Item {
             echoMode: TextInput.Password
             hasError: vpnFlow.loginError.length > 0
                       && vpnFlow.loginError.indexOf("验证码") < 0
+                      && vpnFlow.loginError.indexOf("登录用途") < 0
+        }
+
+        Column {
+            width: parent.width
+            spacing: 4
+
+            FlatTextArea {
+                id: loginPurposeField
+                width: parent.width
+                placeholderText: "登录用途（必填，5～50字）"
+                maximumLength: 50
+                hasError: root.purposeIsError
+                onTextChanged: {
+                    if (vpnFlow.loginError.indexOf("登录用途") >= 0)
+                        vpnFlow.clearLoginError()
+                }
+            }
+
+            Text {
+                width: parent.width
+                text: root.purposeHint
+                color: root.purposeIsError ? Theme.danger : Theme.textSecondary
+                font.pixelSize: 12
+                wrapMode: Text.Wrap
+            }
         }
 
         Row {
@@ -123,7 +178,11 @@ Item {
             text: "登 录"
             width: parent.width
             enabled: !vpnFlow.loading
-            onClicked: vpnFlow.doLogin(usernameField.text, passwordField.text, codeField.text, rememberBox.checked)
+            onClicked: {
+                root.purposeAttempted = true
+                vpnFlow.doLogin(usernameField.text, passwordField.text, codeField.text,
+                                rememberBox.checked, loginPurposeField.text)
+            }
         }
 
         Rectangle {

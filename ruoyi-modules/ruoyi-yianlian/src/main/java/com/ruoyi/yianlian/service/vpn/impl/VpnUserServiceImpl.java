@@ -110,12 +110,12 @@ public class VpnUserServiceImpl implements IVpnUserService
     @Override
     public String selectUserRoleGroup(String userName)
     {
-        List<com.ruoyi.yianlian.domain.VpnRole> list = selectUserById(selectUserByUserName(userName).getUserId()).getRoles();
+        List<VpnRole> list = selectUserById(selectUserByUserName(userName).getUserId()).getRoles();
         if (CollectionUtils.isEmpty(list))
         {
             return StringUtils.EMPTY;
         }
-        return list.stream().map(com.ruoyi.yianlian.domain.VpnRole::getRoleName).collect(Collectors.joining(","));
+        return list.stream().map(VpnRole::getRoleName).collect(Collectors.joining(","));
     }
 
     /**

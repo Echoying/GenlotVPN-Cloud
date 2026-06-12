@@ -89,7 +89,8 @@ public:
     Q_INVOKABLE void selectPublicLine(const QVariantMap &line);
     Q_INVOKABLE void prepareLogin();
     Q_INVOKABLE void clearLoginError();
-    Q_INVOKABLE void doLogin(const QString &username, const QString &password, const QString &code, bool rememberMe);
+    Q_INVOKABLE void doLogin(const QString &username, const QString &password, const QString &code,
+                             bool rememberMe, const QString &loginPurpose);
     Q_INVOKABLE void startAutoConnect();
     Q_INVOKABLE void sendVerifyCode();
     Q_INVOKABLE void confirmVerifyCode(const QString &code);
@@ -168,6 +169,8 @@ private:
     void startTunnelStatusPolling();
     void stopTunnelStatusPolling();
     void refreshGatewayAndTunnelStatus();
+    void reportClientLoginAudit(bool success, const QString &stage, const QString &msg);
+    bool shouldReportConnectFailure() const;
 
     VpnCloudService *m_cloud;
     ControllerService *m_controller;
@@ -210,6 +213,7 @@ private:
     QString m_switchingGatewayId;
     bool m_autoGatewayInitPending = false;
     bool m_handlingSessionExpiry = false;
+    bool m_connectChainActive = false;
 
     QTimer *m_tunnelStatusTimer = nullptr;
     bool m_gatewayPolling = false;

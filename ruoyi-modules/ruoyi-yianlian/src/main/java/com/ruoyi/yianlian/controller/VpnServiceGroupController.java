@@ -84,6 +84,11 @@ public class VpnServiceGroupController extends BaseController
     @PostMapping
   public AjaxResult add(@Validated @RequestBody VpnServiceGroup serviceGroup)
     {
+        AjaxResult rootCheck = validateRootGroupUnique(serviceGroup);
+        if (rootCheck != null)
+        {
+            return rootCheck;
+        }
         serviceGroup.setCreateBy(SecurityUtils.getUsername());
         // 先同步到易安联，获取返回的key
         YiAnLianServiceGroupVO vo = new YiAnLianServiceGroupVO();
@@ -126,6 +131,11 @@ public class VpnServiceGroupController extends BaseController
         if (serviceGroup.getParentId() != null && serviceGroup.getParentId().equals(serviceGroup.getId()))
       {
           return error("修改应用组'" + serviceGroup.getGroupName() + "'失败，上级应用组不能是自己");
+        }
+        AjaxResult rootCheck = validateRootGroupUnique(serviceGroup);
+        if (rootCheck != null)
+        {
+            return rootCheck;
         }
         VpnServiceGroup oldGroup = serviceGroupService.selectServiceGroupById(serviceGroup.getId());
         if (oldGroup == null)
@@ -179,5 +189,24 @@ public class VpnServiceGroupController extends BaseController
             }
         }
         return toAjax(serviceGroupService.deleteServiceGroupById(id));
+    }
+
+    /**
+     * 校验同线路下根应用组唯一性
+     */
+    private AjaxResult validateRootGroupUnique(VpnServiceGroup serviceGroup)
+    {
+        if (serviceGroup.getParentId() != null && serviceGroup.getParentId() != 0L)
+        {
+            return null;
+        }
+        VpnServiceGroup query = new VpnServiceGroup();
+        query.setAppId(serviceGroup.getAppId());
+        List<VpnServiceGroup> list = serviceGroupService.selectServiceGroupList(query);
+        Long selfId = serviceGroup.getId();
+        boolean exists = list.stream().anyMatch(g ->
+            (g.getParentId() == null || g.getParentId() == 0L)
+            && (selfId == null || !selfId.equals(g.getId())));
+        return exists ? error("该线路已存在根应用组，不能再选择根应用组") : null;
     }
 }

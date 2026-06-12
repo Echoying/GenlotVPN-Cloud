@@ -2,6 +2,8 @@ package com.ruoyi.vpn.auth.tcp;
 
 import java.util.List;
 import java.util.Map;
+import com.ruoyi.vpn.protocol.GetAuthorizedLinesResponse;
+import com.ruoyi.vpn.protocol.ListPublicLinesResponse;
 import com.ruoyi.vpn.protocol.VpnLine;
 
 /**
@@ -43,7 +45,7 @@ public final class TcpLineMapper
         return builder.build();
     }
 
-    public static void addAllLines(com.ruoyi.vpn.protocol.ListPublicLinesResponse.Builder target,
+    public static void addAllLines(ListPublicLinesResponse.Builder target,
             List<Map<String, Object>> lines)
     {
         for (Map<String, Object> line : lines)
@@ -52,7 +54,7 @@ public final class TcpLineMapper
         }
     }
 
-    public static void addAllLines(com.ruoyi.vpn.protocol.GetAuthorizedLinesResponse.Builder target,
+    public static void addAllLines(GetAuthorizedLinesResponse.Builder target,
             List<Map<String, Object>> lines)
     {
         for (Map<String, Object> line : lines)
