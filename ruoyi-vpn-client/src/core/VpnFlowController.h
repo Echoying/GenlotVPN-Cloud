@@ -155,6 +155,7 @@ private:
     void reloadServerSettings();
     void applyReconnectPolicyToCloud();
     void finishLogout(bool clearUsername);
+    bool maybeHandleSessionExpired(const QString &msg);
     void handleSessionExpired(const QString &serverMsg);
     bool hasActiveCloudSession() const;
     void applyGatewayListUpdate(const QVariantList &gws, bool turnOn, int tunCode);

@@ -15,14 +15,18 @@ import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.common.core.domain.R;
 import com.ruoyi.common.core.exception.CaptchaException;
 import com.ruoyi.common.core.exception.ServiceException;
+import com.ruoyi.common.core.utils.DateUtils;
 import com.ruoyi.common.core.utils.JwtUtils;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.common.security.auth.AuthUtil;
 import com.ruoyi.common.security.service.TokenService;
 import com.ruoyi.vpn.auth.context.ClientAuditContext;
+import com.ruoyi.vpn.auth.service.LoginNotifyContext;
 import com.ruoyi.vpn.auth.service.VpnCaptchaService;
+import com.ruoyi.vpn.auth.service.VpnLineAppNameResolver;
 import com.ruoyi.vpn.auth.service.VpnLineVerifyService;
+import com.ruoyi.vpn.auth.service.VpnLoginNotifyService;
 import com.ruoyi.vpn.auth.service.VpnLoginService;
 import com.ruoyi.vpn.auth.service.VpnRecordLogService;
 import com.ruoyi.vpn.auth.utils.AesUtils;
@@ -94,6 +98,12 @@ public class TcpRpcDispatcher
 
     @Autowired
     private VpnRecordLogService vpnRecordLogService;
+
+    @Autowired
+    private VpnLoginNotifyService vpnLoginNotifyService;
+
+    @Autowired
+    private VpnLineAppNameResolver lineAppNameResolver;
 
     public RpcResult dispatch(Envelope envelope, TcpSessionContext session)
     {
@@ -260,6 +270,11 @@ public class TcpRpcDispatcher
             if (req.getSuccess())
             {
                 vpnRecordLogService.recordLogininfor(username, Constants.LOGIN_SUCCESS, fullMsg, loginPurpose);
+                if ("connect".equalsIgnoreCase(StringUtils.trim(req.getStage())))
+                {
+                    vpnLoginNotifyService.notifyConnectSuccess(
+                            buildLoginNotifyContext(username, session, appId, appName, loginPurpose));
+                }
             }
             else
             {
@@ -331,6 +346,19 @@ public class TcpRpcDispatcher
         ClientAuditContext.bind(session.getClientReportedIp(), session.getClientIp(),
                 session.getClientOs(), session.getClientMac());
         ClientAuditContext.bindApp(session.getAppId(), session.getAppName());
+    }
+
+    private LoginNotifyContext buildLoginNotifyContext(String username, TcpSessionContext session,
+            String appId, String appName, String loginPurpose)
+    {
+        LoginNotifyContext ctx = new LoginNotifyContext();
+        ctx.setUsername(username);
+        ctx.setAppName(lineAppNameResolver.resolve(appId, appName));
+        ctx.setLoginPurpose(loginPurpose);
+        String auditIp = ClientAuditContext.resolveIpaddr();
+        ctx.setIpaddr(StringUtils.isNotEmpty(auditIp) ? auditIp : session.getClientIp());
+        ctx.setAccessTime(DateUtils.getTime());
+        return ctx;
     }
 
     private void clearClientAuditContext()

@@ -40,6 +40,7 @@ bool isSessionExpiredMessage(const QString &msg)
            || text.contains(QStringLiteral("未登录或会话已失效"))
            || text.contains(QStringLiteral("会话已失效"))
            || text.contains(QStringLiteral("会话已过期"))
+           || text.contains(QStringLiteral("请先登录"))
            || text.contains(QStringLiteral("消息完整性校验失败"));
 }
 
@@ -234,8 +235,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
             return;
         }
 
-        if (isSessionExpiredMessage(msg) && hasActiveCloudSession()) {
-            handleSessionExpired(msg);
+        if (maybeHandleSessionExpired(msg)) {
             return;
         }
 
@@ -396,6 +396,9 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     });
     connect(m_controller, &ControllerService::operationFailed, this, [this](const QString &msg) {
         setLoading(false);
+        if (maybeHandleSessionExpired(msg)) {
+            return;
+        }
         if (m_gatewayPolling) {
             if (m_gatewayPollAttempts >= GatewayPollMaxAttempts) {
                 finishGatewayPolling(false);
@@ -833,15 +836,24 @@ bool VpnFlowController::hasActiveCloudSession() const
     return m_loggedIn || m_cloud->hasSession();
 }
 
+bool VpnFlowController::maybeHandleSessionExpired(const QString &msg)
+{
+    if (!isSessionExpiredMessage(msg) || !hasActiveCloudSession()) {
+        return false;
+    }
+    handleSessionExpired(msg);
+    return true;
+}
+
 void VpnFlowController::handleSessionExpired(const QString &serverMsg)
 {
-    if (m_handlingSessionExpiry || !hasActiveCloudSession()) {
+    if (m_handlingSessionExpiry) {
         return;
     }
     m_handlingSessionExpiry = true;
 
     const QString reason = serverMsg.trimmed().isEmpty()
-                               ? QStringLiteral("登录已过期")
+                               ? QStringLiteral("登录已过期，请重新登录")
                                : serverMsg.trimmed();
     addLog(QStringLiteral("error"), QStringLiteral("会话已失效: %1").arg(reason));
 
@@ -854,13 +866,16 @@ void VpnFlowController::handleSessionExpired(const QString &serverMsg)
     m_connectChainActive = false;
     setLoading(false);
 
+    if (m_gatewayPolling) {
+        finishGatewayPolling(false);
+    }
+    clearGatewaySwitchingState();
+    stopGatewayPolling();
+    stopTunnelStatusPolling();
     m_controller->controllerLogout();
     finishLogout(false);
 
-    const QString toastMsg = reason.contains(QStringLiteral("请重新登录"))
-                                 ? reason
-                                 : QStringLiteral("登录已过期，请重新登录");
-    emit toast(toastMsg, true);
+    emit toast(reason, true);
 
     m_handlingSessionExpiry = false;
 }

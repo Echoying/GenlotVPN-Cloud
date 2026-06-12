@@ -1,0 +1,12 @@
+# Nacos 配置片段：合并到 ruoyi-vpn-auth-dev.yml
+# 登录成功通知：enabled=true 时仅发 login-notify 群，绝不回退验证码群
+# fallback-robot 仅在 enabled=false 时生效（开发兜底）
+dingtalk:
+  login-notify:
+    enabled: false
+    fallback-robot: false
+    webhook-url: https://oapi.dingtalk.com/robot/send
+    # access-token = Webhook 地址中 access_token= 后面的值（一般不以 SEC 开头）
+    # secret = 安全设置「加签」里的密钥（一般以 SEC 开头），勿与 access-token 填反
+    access-token: <登录通知群 Webhook 的 access_token>
+    secret: <加签 SEC 密钥，未开启加签可省略>

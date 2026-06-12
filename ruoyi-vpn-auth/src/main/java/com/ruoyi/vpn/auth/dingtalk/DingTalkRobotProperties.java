@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @ConfigurationProperties(prefix = "dingtalk.robot")
-public class DingTalkRobotProperties
+public class DingTalkRobotProperties implements DingTalkWebhookConfig
 {
     /** 是否启用 */
     private boolean enabled = false;
@@ -22,6 +22,7 @@ public class DingTalkRobotProperties
     /** 加签密钥（安全设置选择加签时必填） */
     private String secret;
 
+    @Override
     public boolean isEnabled()
     {
         return enabled;
@@ -32,6 +33,7 @@ public class DingTalkRobotProperties
         this.enabled = enabled;
     }
 
+    @Override
     public String getWebhookUrl()
     {
         return webhookUrl;
@@ -42,6 +44,7 @@ public class DingTalkRobotProperties
         this.webhookUrl = webhookUrl;
     }
 
+    @Override
     public String getAccessToken()
     {
         return accessToken;
@@ -52,6 +55,7 @@ public class DingTalkRobotProperties
         this.accessToken = accessToken;
     }
 
+    @Override
     public String getSecret()
     {
         return secret;
