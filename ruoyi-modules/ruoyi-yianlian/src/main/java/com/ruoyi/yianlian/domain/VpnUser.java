@@ -41,6 +41,9 @@ public class VpnUser extends BaseEntity
     /** 线路ID（line_app.app_id） */
     private String appId;
 
+    /** 来源本地用户ID */
+    private Long localUserId;
+
     /** 部门ID */
     @Excel(name = "部门编号", type = Type.IMPORT)
     private Long deptId;

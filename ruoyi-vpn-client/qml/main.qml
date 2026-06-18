@@ -28,9 +28,9 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
-        applyPageWindow("choose")
+        applyPageWindow("login")
         if (stackView.depth === 0)
-            stackView.replace(choosePageComponent)
+            stackView.replace(loginPageComponent)
     }
 
     // 先降低 minimum 再设宽高，否则从大窗口切回小窗口时无法缩小

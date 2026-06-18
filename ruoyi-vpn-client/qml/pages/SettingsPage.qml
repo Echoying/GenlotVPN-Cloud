@@ -57,13 +57,21 @@ Item {
     }
 
     function goBack() {
+        const backPage = vpnFlow.loggedIn ? "choose" : "login"
         if (appWindow && typeof appWindow.applyPageWindow === "function") {
-            appWindow.applyPageWindow("choose")
+            appWindow.applyPageWindow(backPage)
         } else if (appWindow) {
-            appWindow.minimumWidth = Theme.chooseLineWindowMinWidth
-            appWindow.minimumHeight = Theme.chooseLineWindowMinHeight
-            appWindow.width = Theme.chooseLineWindowWidth
-            appWindow.height = Theme.chooseLineWindowHeight
+            if (backPage === "login") {
+                appWindow.minimumWidth = Theme.loginWindowMinWidth
+                appWindow.minimumHeight = Theme.loginWindowMinHeight
+                appWindow.width = Theme.loginWindowWidth
+                appWindow.height = Theme.loginWindowHeight
+            } else {
+                appWindow.minimumWidth = Theme.chooseLineWindowMinWidth
+                appWindow.minimumHeight = Theme.chooseLineWindowMinHeight
+                appWindow.width = Theme.chooseLineWindowWidth
+                appWindow.height = Theme.chooseLineWindowHeight
+            }
         }
         if (StackView.view)
             StackView.view.pop()

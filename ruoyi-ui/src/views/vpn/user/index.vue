@@ -36,16 +36,10 @@
 
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
-            <el-button type="primary" plain icon="el-icon-plus" size="mini" @click="handleAdd" v-hasPermi="['yianlian:user:add']">新增</el-button>
-          </el-col>
-          <el-col :span="1.5">
             <el-button type="success" plain icon="el-icon-edit" size="mini" :disabled="single" @click="handleUpdate" v-hasPermi="['yianlian:user:edit']">修改</el-button>
           </el-col>
           <el-col :span="1.5">
             <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple" @click="handleDelete" v-hasPermi="['yianlian:user:remove']">删除</el-button>
-          </el-col>
-          <el-col :span="1.5">
-            <el-button type="info" plain icon="el-icon-upload2" size="mini" @click="handleImport" v-hasPermi="['yianlian:user:import']">导入</el-button>
           </el-col>
           <el-col :span="1.5">
             <el-button type="warning" plain icon="el-icon-download" size="mini" @click="handleExport" v-hasPermi="['yianlian:user:export']">导出</el-button>

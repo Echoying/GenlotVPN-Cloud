@@ -42,6 +42,21 @@ public interface VpnUserMapper
     public VpnUser selectUserById(Long userId);
 
     /**
+     * 通过本地用户ID和线路查询用户
+     */
+    public VpnUser selectUserByLocalUserIdAndAppId(@Param("localUserId") Long localUserId, @Param("appId") String appId);
+
+    /**
+     * 查询本地用户已同步的线路用户列表
+     */
+    public List<VpnUser> selectUsersByLocalUserId(Long localUserId);
+
+    /**
+     * 查询本地用户已授权线路 appId 列表
+     */
+    public List<String> selectDistinctAppIdsByLocalUserId(Long localUserId);
+
+    /**
      * 新增用户信息
      *
      * @param user 用户信息

@@ -58,7 +58,7 @@ import com.ruoyi.vpn.protocol.RpcResponse;
 import com.ruoyi.vpn.protocol.SendLineVerifyRequest;
 import com.ruoyi.vpn.protocol.SendLineVerifyResponse;
 import com.ruoyi.yianlian.api.RemoteSyncProxyService;
-import com.ruoyi.yianlian.api.RemoteVpnUserService;
+import com.ruoyi.yianlian.api.RemoteVpnLocalUserService;
 import com.ruoyi.yianlian.api.domain.SyncProxyConfigDTO;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 
@@ -89,7 +89,7 @@ public class TcpRpcDispatcher
     private TokenService tokenService;
 
     @Autowired
-    private RemoteVpnUserService remoteVpnUserService;
+    private RemoteVpnLocalUserService remoteVpnLocalUserService;
 
     @Autowired
     private RedisService redisService;
@@ -487,7 +487,7 @@ public class TcpRpcDispatcher
         requireAuth(session, envelope);
         GetAuthorizedLinesRequest.parseFrom(envelope.getPayload());
         Long userId = resolveUserId(envelope, session);
-        R<List<Map<String, Object>>> result = remoteVpnUserService.getAuthorizedLines(userId, SecurityConstants.INNER);
+        R<List<Map<String, Object>>> result = remoteVpnLocalUserService.getAuthorizedLines(userId, SecurityConstants.INNER);
         if (R.FAIL == result.getCode() || result.getData() == null)
         {
             return RpcResult.fail(StringUtils.isNotEmpty(result.getMsg()) ? result.getMsg() : "获取授权线路失败");
@@ -503,6 +503,7 @@ public class TcpRpcDispatcher
         requireAuth(session, envelope);
         SendLineVerifyRequest req = SendLineVerifyRequest.parseFrom(envelope.getPayload());
         Long userId = resolveUserId(envelope, session);
+        vpnLoginService.assertLocalUserAuthorizedForLine(userId, req.getAppId());
         String username = resolveUsername(envelope, session);
         Map<String, String> result = vpnLineVerifyService.sendCode(userId, username, req.getAppId(), req.getLineName());
         SendLineVerifyResponse.Builder builder = SendLineVerifyResponse.newBuilder();
@@ -519,6 +520,7 @@ public class TcpRpcDispatcher
         requireAuth(session, envelope);
         ConfirmLineVerifyRequest req = ConfirmLineVerifyRequest.parseFrom(envelope.getPayload());
         Long userId = resolveUserId(envelope, session);
+        vpnLoginService.assertLocalUserAuthorizedForLine(userId, req.getAppId());
         vpnLineVerifyService.confirmCode(userId, req.getAppId(), req.getCode());
         return RpcResult.ok(ConfirmLineVerifyResponse.newBuilder().build());
     }
@@ -529,18 +531,18 @@ public class TcpRpcDispatcher
         requireAuth(session, envelope);
         GetUserCredentialsRequest req = GetUserCredentialsRequest.parseFrom(envelope.getPayload());
         Long userId = resolveUserId(envelope, session);
-        String username = resolveUsername(envelope, session);
 
         vpnLineVerifyService.consumePassed(userId, req.getAppId());
 
-        String plainPassword = redisService.getCacheObject("vpn_plain_pwd:" + userId);
+        Map<String, String> credentials = vpnLoginService.getLineUserCredentials(userId, req.getAppId());
+        String plainPassword = credentials.get("plainPassword");
         if (StringUtils.isEmpty(plainPassword))
         {
-            return RpcResult.fail("凭证已过期，请重新登录");
+            return RpcResult.fail("无法获取线路用户密码，请在线路用户管理中重置密码");
         }
         String encryptedPassword = aesUtils.encrypt(plainPassword);
         GetUserCredentialsResponse response = GetUserCredentialsResponse.newBuilder()
-                .setUsername(username)
+                .setUsername(credentials.get("username"))
                 .setPassword(encryptedPassword)
                 .build();
         return RpcResult.ok(response);

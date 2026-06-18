@@ -391,7 +391,14 @@ INSERT INTO `sys_menu` (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`
 (1062, '部门管理', 1061, 4, 'test', 'vpn/dept/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:dept:list', 'tree', 'admin', '2026-04-30 10:46:02', 'admin', '2026-05-13 18:14:06', ''),
 (1063, '线路管理', 1061, 1, 'line', 'vpn/line/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:line:list', 'client', 'admin', '2026-05-07 16:50:10', 'admin', '2026-05-13 18:14:01', ''),
 (1064, '角色管理', 1061, 5, 'vpn/role', 'vpn/role/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:role:list', 'peoples', 'admin', '2026-05-08 19:52:58', 'admin', '2026-05-13 18:14:15', ''),
-(1065, '用户管理', 1061, 6, 'vpn/user', 'vpn/user/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:user:list', 'user', 'admin', '2026-05-08 20:21:52', 'admin', '2026-05-13 18:14:19', ''),
+(1065, '线路用户管理', 1061, 6, 'vpn/user', 'vpn/user/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:user:list', 'user', 'admin', '2026-05-08 20:21:52', 'admin', '2026-05-13 18:14:19', ''),
+(1072, '本地用户管理', 1061, 5, 'local/user', 'vpn/local/user/index', NULL, '', 1, 0, 'C', '0', '0', 'vpn:localUser:list', 'user', 'admin', '2026-06-18 12:00:00', '', NULL, 'VPN本地用户管理'),
+(1073, '本地用户查询', 1072, 1, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:localUser:query', '#', 'admin', '2026-06-18 12:00:00', '', NULL, ''),
+(1074, '本地用户新增', 1072, 2, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:localUser:add', '#', 'admin', '2026-06-18 12:00:00', '', NULL, ''),
+(1075, '本地用户修改', 1072, 3, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:localUser:edit', '#', 'admin', '2026-06-18 12:00:00', '', NULL, ''),
+(1076, '本地用户删除', 1072, 4, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:localUser:remove', '#', 'admin', '2026-06-18 12:00:00', '', NULL, ''),
+(1077, '本地用户重置密码', 1072, 5, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:localUser:resetPwd', '#', 'admin', '2026-06-18 12:00:00', '', NULL, ''),
+(1078, '同步到线路', 1072, 6, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:localUser:sync', '#', 'admin', '2026-06-18 12:00:00', '', NULL, ''),
 (1066, '应用组管理', 1061, 2, 'serviceGroup', 'vpn/serviceGroup/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:serviceGroup:list', 'component', 'admin', '2026-05-11 17:56:53', 'admin', '2026-05-13 18:14:11', ''),
 (1067, '应用管理', 1061, 3, 'service', 'vpn/service/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:service:list', 'nested', 'admin', '2026-05-11 19:51:11', 'admin', '2026-05-13 18:14:24', ''),
 (1068, '登录日志', 1061, 7, 'logininfor', 'vpn/logininfor/index', NULL, '', 1, 0, 'C', '0', '0', 'vpn:logininfor:list', 'logininfor', 'admin', '2026-06-12 12:00:00', '', NULL, 'VPN用户登录审计'),
@@ -704,11 +711,38 @@ CREATE TABLE `vpn_service_group` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='VPN应用组表';
 
+-- ---------------------------- 表结构: vpn_local_user ----------------------------
+DROP TABLE IF EXISTS `vpn_local_user`;
+CREATE TABLE `vpn_local_user` (
+  `local_user_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '本地用户ID',
+  `user_name` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '登录账号',
+  `nick_name` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '用户昵称',
+  `email` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '用户邮箱',
+  `phonenumber` varchar(11) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '手机号码',
+  `sex` char(1) COLLATE utf8mb4_unicode_ci DEFAULT '0' COMMENT '用户性别（0男 1女 2未知）',
+  `avatar` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '头像地址',
+  `password` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '密码',
+  `encrypted_pwd` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'AES加密密码',
+  `status` char(1) COLLATE utf8mb4_unicode_ci DEFAULT '0' COMMENT '帐号状态（0正常 1停用）',
+  `del_flag` char(1) COLLATE utf8mb4_unicode_ci DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
+  `login_ip` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '最后登录IP',
+  `login_date` datetime DEFAULT NULL COMMENT '最后登录时间',
+  `pwd_update_date` datetime DEFAULT NULL COMMENT '密码最后更新时间',
+  `create_by` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '创建者',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_by` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  `remark` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`local_user_id`),
+  UNIQUE KEY `uk_vpn_local_user_name` (`user_name`,`del_flag`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='VPN本地用户表';
+
 -- ---------------------------- 表结构: vpn_user ----------------------------
 DROP TABLE IF EXISTS `vpn_user`;
 CREATE TABLE `vpn_user` (
   `user_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '用户ID',
   `app_id` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '线路ID(line_app.app_id)',
+  `local_user_id` bigint(20) DEFAULT NULL COMMENT '来源本地用户ID',
   `dept_id` bigint(20) DEFAULT NULL COMMENT '部门ID',
   `user_name` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '用户账号',
   `nick_name` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '用户昵称',
@@ -730,7 +764,9 @@ CREATE TABLE `vpn_user` (
   `remark` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '备注',
   `yianlian_id` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '易安联用户ID',
   PRIMARY KEY (`user_id`),
-  KEY `idx_vpn_user_app_id` (`app_id`)
+  KEY `idx_vpn_user_app_id` (`app_id`),
+  KEY `idx_vpn_user_local_user_id` (`local_user_id`),
+  UNIQUE KEY `uk_vpn_user_local_app` (`local_user_id`,`app_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='VPN用户信息表';
 
 -- ---------------------------- 表结构: vpn_user_role ----------------------------

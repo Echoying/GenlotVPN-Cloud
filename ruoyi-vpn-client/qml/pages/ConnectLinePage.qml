@@ -161,7 +161,10 @@ Item {
                     GhostButton {
                         text: "取消"
                         implicitWidth: 64
-                        onClicked: vpnFlow.verifyDialogVisible = false
+                        onClicked: {
+                            vpnFlow.verifyDialogVisible = false
+                            vpnFlow.goChooseLine()
+                        }
                     }
                 }
             }

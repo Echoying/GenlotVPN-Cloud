@@ -41,6 +41,11 @@ public interface IVpnUserService
     public VpnUser selectUserById(Long userId);
 
     /**
+     * 查询本地用户已同步的线路用户
+     */
+    public List<VpnUser> selectUsersByLocalUserId(Long localUserId);
+
+    /**
      * 根据用户ID查询用户所属角色组
      *
      * @param userName 用户名

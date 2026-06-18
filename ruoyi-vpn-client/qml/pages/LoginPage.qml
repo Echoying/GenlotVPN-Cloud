@@ -49,14 +49,15 @@ Item {
         changePwdConfirmField.text = ""
     }
 
+    function openSettings() {
+        vpnFlow.goToSettings()
+    }
+
     PageShell {
         anchors.fill: parent
         compact: true
         scrollable: false
         bodySpacing: 10
-        headerSubtitle: vpnFlow.pendingLine.appName || "未选择"
-        headerSubtitleBold: true
-        headerSubtitleFontSize: 14
         showProgress: vpnFlow.loading
         progress: vpnFlow.loading ? 0.5 : 0
 
@@ -229,28 +230,25 @@ Item {
             }
         }
 
-        Item {
-            width: parent.width
-            height: Math.max(changeLineBtn.implicitHeight, changePwdBtn.implicitHeight)
-
-            GhostButton {
-                id: changeLineBtn
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                text: "更换线路"
-                emphasized: true
-                onClicked: vpnFlow.goChooseLine()
-            }
-
-            GhostButton {
-                id: changePwdBtn
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                text: "修改密码"
-                emphasized: true
-                onClicked: root.openChangePwdDialog()
-            }
+        GhostButton {
+            id: changePwdBtn
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: "修改密码"
+            emphasized: true
+            onClicked: root.openChangePwdDialog()
         }
+    }
+
+    GhostButton {
+        id: settingsBtn
+        z: 20
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: 10
+        anchors.rightMargin: 12
+        text: "设置"
+        emphasized: true
+        onClicked: root.openSettings()
     }
 
     Rectangle {

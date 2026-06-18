@@ -5,6 +5,9 @@ import GenlotVPN 1.0
 Item {
     id: root
 
+    readonly property bool useAuthorized: vpnFlow.loggedIn
+    readonly property var lineList: useAuthorized ? vpnFlow.authorizedLines : vpnFlow.publicLines
+
     function openSettings() {
         vpnFlow.goToSettings()
     }
@@ -19,7 +22,7 @@ Item {
         showProgress: vpnFlow.loading
         progress: vpnFlow.loading ? 0.35 : 0
         statusText: vpnFlow.loading
-                    ? "正在加载线路..."
+                    ? (useAuthorized ? "正在加载授权线路..." : "正在加载线路...")
                     : vpnFlow.statusMessage
 
         ActionRow {
@@ -29,10 +32,15 @@ Item {
             actionFontSize: 24
             primaryButton: true
             buttonText: "›"
-            buttonEnabled: !vpnFlow.loading && lineCombo.currentIndex >= 0 && vpnFlow.publicLines.length > 0
+            buttonEnabled: !vpnFlow.loading && lineCombo.currentIndex >= 0 && lineList.length > 0
             onActionClicked: {
-                if (lineCombo.currentIndex >= 0 && lineCombo.currentIndex < vpnFlow.publicLines.length)
-                    vpnFlow.selectPublicLine(vpnFlow.publicLines[lineCombo.currentIndex])
+                if (lineCombo.currentIndex >= 0 && lineCombo.currentIndex < lineList.length) {
+                    const line = lineList[lineCombo.currentIndex]
+                    if (useAuthorized)
+                        vpnFlow.selectAuthorizedLine(line)
+                    else
+                        vpnFlow.selectPublicLine(line)
+                }
             }
 
             LineCombo {
@@ -42,8 +50,8 @@ Item {
                 fontSize: 15
                 refreshOnOpen: true
                 loading: vpnFlow.loading
-                lines: vpnFlow.publicLines
-                onRefreshRequested: vpnFlow.loadPublicLines()
+                lines: lineList
+                onRefreshRequested: useAuthorized ? vpnFlow.loadAuthorizedLines() : vpnFlow.loadPublicLines()
             }
         }
     }
@@ -60,5 +68,10 @@ Item {
         onClicked: root.openSettings()
     }
 
-    Component.onCompleted: vpnFlow.loadPublicLines()
+    Component.onCompleted: {
+        if (useAuthorized)
+            vpnFlow.loadAuthorizedLines()
+        else
+            vpnFlow.loadPublicLines()
+    }
 }

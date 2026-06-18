@@ -179,13 +179,24 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         emit hasSyncProxyRoleChanged();
         m_connectChainActive = true;
         addLog(QStringLiteral("info"), QStringLiteral("云端登录成功"));
-        emit navigateTo(QStringLiteral("connect"));
-        if (m_autoConnectPending) {
-            m_autoConnectPending = false;
-            startAutoConnect();
-        }
+        emit navigateTo(QStringLiteral("choose"));
+        loadAuthorizedLines();
     });
     connect(m_cloud, &VpnCloudService::authorizedLinesReady, this, [this](const QVariantList &lines) {
+        if (m_chooseLineLoading) {
+            m_chooseLineLoading = false;
+            m_authorizedLines = lines;
+            emit authorizedLinesChanged();
+            setLoading(false);
+            if (lines.isEmpty()) {
+                setStatusMessage(QStringLiteral("暂无授权线路，请联系管理员同步"));
+                addLog(QStringLiteral("warn"), QStringLiteral("未获取到授权线路"));
+            } else {
+                setStatusMessage(QStringLiteral("共 %1 条授权线路").arg(lines.size()));
+                addLog(QStringLiteral("info"), QStringLiteral("加载授权线路成功，共 %1 条").arg(lines.size()));
+            }
+            return;
+        }
         const QString pendingId = m_pendingLine.value(QStringLiteral("appId")).toString();
         for (const QVariant &v : lines) {
             const QVariantMap line = v.toMap();
@@ -494,6 +505,37 @@ void VpnFlowController::loadPublicLines()
     m_cloud->fetchPublicLines();
 }
 
+void VpnFlowController::loadAuthorizedLines()
+{
+    if (!m_loggedIn || m_loading) {
+        return;
+    }
+    addLog(QStringLiteral("info"), QStringLiteral("正在加载授权线路..."));
+    setLoading(true);
+    m_chooseLineLoading = true;
+    setStatusMessage(QStringLiteral("正在加载授权线路..."));
+    m_cloud->fetchAuthorizedLines();
+}
+
+void VpnFlowController::selectAuthorizedLine(const QVariantMap &line)
+{
+    const QString appId = line.value(QStringLiteral("appId")).toString();
+    if (appId.isEmpty()) {
+        emit toast(QStringLiteral("请选择有效线路"), true);
+        return;
+    }
+    setLoginError(QString());
+    m_pendingLine = line;
+    m_verifyLine = line;
+    m_session->setPendingLine(line);
+    emit pendingLineChanged();
+    addLog(QStringLiteral("info"), QStringLiteral("已选择线路: %1").arg(line.value(QStringLiteral("appName")).toString()));
+    m_connectChainActive = true;
+    setLoading(false);
+    emit navigateTo(QStringLiteral("connect"));
+    setVerifyDialogVisible(true);
+}
+
 void VpnFlowController::selectPublicLine(const QVariantMap &line)
 {
     setLoginError(QString());
@@ -516,12 +558,6 @@ void VpnFlowController::prepareLogin()
 void VpnFlowController::doLogin(const QString &username, const QString &password, const QString &code,
                                  bool rememberMe, const QString &loginPurpose)
 {
-    const QString appId = m_pendingLine.value(QStringLiteral("appId")).toString();
-    const QString appName = m_pendingLine.value(QStringLiteral("appName")).toString();
-    if (appId.isEmpty()) {
-        emit toast(QStringLiteral("请先选择线路"), true);
-        return;
-    }
     const QString purpose = loginPurpose.trimmed();
     if (purpose.isEmpty()) {
         setLoginError(QStringLiteral("请填写登录用途"));
@@ -542,9 +578,7 @@ void VpnFlowController::doLogin(const QString &username, const QString &password
     addLog(QStringLiteral("info"), QStringLiteral("正在登录云端，用户: %1").arg(username));
     setLoading(true);
     m_loginPending = true;
-    m_autoConnectPending = true;
-    m_autoConnectStarted = false;
-    m_cloud->login(username, password, appId, appName, code, m_captchaUuid, purpose);
+    m_cloud->login(username, password, QString(), QString(), code, m_captchaUuid, purpose);
 }
 
 void VpnFlowController::clearLoginError()
@@ -982,12 +1016,12 @@ void VpnFlowController::finishLogout(bool clearUsername)
     emit switchingGatewayIdChanged();
 
     const bool hasLine = !m_pendingLine.value(QStringLiteral("appId")).toString().isEmpty();
-    if (hasLine) {
-        emit navigateTo(QStringLiteral("login"));
-        m_cloud->fetchCaptcha();
-    } else {
-        emit navigateTo(QStringLiteral("choose"));
+    if (m_loggedIn) {
+        m_authorizedLines.clear();
+        emit authorizedLinesChanged();
     }
+    emit navigateTo(QStringLiteral("login"));
+    m_cloud->fetchCaptcha();
 }
 
 void VpnFlowController::changePassword(const QString &username, const QString &oldPwd,
@@ -1010,14 +1044,9 @@ void VpnFlowController::changePassword(const QString &username, const QString &o
         emit toast(QStringLiteral("密码长度在 5 到 20 个字符"), true);
         return;
     }
-    const QString appId = m_pendingLine.value(QStringLiteral("appId")).toString();
-    if (appId.isEmpty()) {
-        emit toast(QStringLiteral("请先选择线路"), true);
-        return;
-    }
     m_changePasswordPending = true;
     setLoading(true);
-    m_cloud->changePassword(user, oldPwd, newPwd, appId);
+    m_cloud->changePassword(user, oldPwd, newPwd, QString());
 }
 
 void VpnFlowController::goChooseLine()
@@ -1028,6 +1057,11 @@ void VpnFlowController::goChooseLine()
     m_sendLineVerifyPending = false;
     setVerifyError(QString());
     emit navigateTo(QStringLiteral("choose"));
+    if (m_loggedIn) {
+        loadAuthorizedLines();
+    } else {
+        loadPublicLines();
+    }
 }
 
 void VpnFlowController::goToSettings()

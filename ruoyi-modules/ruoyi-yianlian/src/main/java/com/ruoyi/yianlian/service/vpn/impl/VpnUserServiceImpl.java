@@ -101,6 +101,12 @@ public class VpnUserServiceImpl implements IVpnUserService
         return userMapper.selectUserById(userId);
     }
 
+    @Override
+    public List<VpnUser> selectUsersByLocalUserId(Long localUserId)
+    {
+        return userMapper.selectUsersByLocalUserId(localUserId);
+    }
+
     /**
      * 查询用户所属角色组
      *

@@ -195,18 +195,7 @@ public class VpnUserController extends BaseController {
     @Log(title = "用户管理", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@Validated @RequestBody VpnUser user) {
-        AjaxResult validate = validateAppId(user.getAppId());
-        if (validate != null) {
-            return validate;
-        }
-        if (!userService.checkUserNameUnique(user)) {
-            return error("新增用户'" + user.getUserName() + "'失败，登录账号已存在");
-        }
-        String plainPassword = user.getPassword();
-        user.setCreateBy(SecurityUtils.getUsername());
-        user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
-        user.setEncryptedPwd(aesUtils.encrypt(plainPassword));
-        return toAjax(userService.insertUserWithSync(user, plainPassword));
+        return error("请先在本地用户管理中创建用户并同步到线路");
     }
 
     /**

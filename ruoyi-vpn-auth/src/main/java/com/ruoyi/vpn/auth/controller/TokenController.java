@@ -12,7 +12,7 @@ import com.ruoyi.vpn.auth.form.VpnChangePasswordBody;
 import com.ruoyi.vpn.auth.form.VpnUnLockBody;
 import com.ruoyi.vpn.auth.service.VpnLoginService;
 import com.ruoyi.vpn.auth.utils.AesUtils;
-import com.ruoyi.yianlian.api.RemoteVpnUserService;
+import com.ruoyi.yianlian.api.RemoteVpnLocalUserService;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -46,7 +46,7 @@ public class TokenController
     private VpnLoginService vpnLoginService;
 
     @Autowired
-    private RemoteVpnUserService remoteVpnUserService;
+    private RemoteVpnLocalUserService remoteVpnLocalUserService;
 
     @Autowired
     private RedisService redisService;
@@ -131,7 +131,7 @@ public class TokenController
     {
         String token = SecurityUtils.getToken(request);
         Long userId = Long.parseLong(JwtUtils.getUserId(token));
-        return remoteVpnUserService.getAuthorizedLines(userId, SecurityConstants.INNER);
+        return remoteVpnLocalUserService.getAuthorizedLines(userId, SecurityConstants.INNER);
     }
 
     /**
@@ -141,25 +141,23 @@ public class TokenController
     public R<?> getUserCredentials(HttpServletRequest request, @RequestParam String appId)
     {
         String token = SecurityUtils.getToken(request);
-        String username = JwtUtils.getUserName(token);
         Long userId = Long.parseLong(JwtUtils.getUserId(token));
 
         vpnLineVerifyService.consumePassed(userId, appId);
 
-        // 从Redis获取缓存的明文密码
-        String plainPassword = redisService.getCacheObject("vpn_plain_pwd:" + userId);
+        Map<String, String> credentials = vpnLoginService.getLineUserCredentials(userId, appId);
+        String plainPassword = credentials.get("plainPassword");
         if (StringUtils.isEmpty(plainPassword))
         {
-            return R.fail("凭证已过期，请重新登录");
+            return R.fail("无法获取线路用户密码，请在线路用户管理中重置密码");
         }
 
-        // AES加密密码
         String encryptedPassword = aesUtils.encrypt(plainPassword);
 
-        Map<String, String> credentials = new HashMap<>();
-        credentials.put("username", username);
-        credentials.put("password", encryptedPassword);
-        return R.ok(credentials);
+        Map<String, String> result = new HashMap<>();
+        result.put("username", credentials.get("username"));
+        result.put("password", encryptedPassword);
+        return R.ok(result);
     }
 
     /**

@@ -26,6 +26,7 @@ enum class GatewayPollTrigger {
 class VpnFlowController : public QObject {
     Q_OBJECT
     Q_PROPERTY(QVariantList publicLines READ publicLines NOTIFY publicLinesChanged)
+    Q_PROPERTY(QVariantList authorizedLines READ authorizedLines NOTIFY authorizedLinesChanged)
     Q_PROPERTY(QVariantList gateways READ gateways NOTIFY gatewaysChanged)
     Q_PROPERTY(QVariantList apps READ apps NOTIFY appsChanged)
     Q_PROPERTY(QVariantMap pendingLine READ pendingLine NOTIFY pendingLineChanged)
@@ -63,6 +64,7 @@ public:
                                SessionManager *session, SecureStorage *storage, QObject *parent = nullptr);
 
     QVariantList publicLines() const { return m_publicLines; }
+    QVariantList authorizedLines() const { return m_authorizedLines; }
     QVariantList gateways() const { return m_gateways; }
     QVariantList apps() const { return m_apps; }
     QVariantMap pendingLine() const { return m_pendingLine; }
@@ -98,7 +100,9 @@ public:
     void setVerifyDialogVisible(bool visible);
 
     Q_INVOKABLE void loadPublicLines();
+    Q_INVOKABLE void loadAuthorizedLines();
     Q_INVOKABLE void selectPublicLine(const QVariantMap &line);
+    Q_INVOKABLE void selectAuthorizedLine(const QVariantMap &line);
     Q_INVOKABLE void prepareLogin();
     Q_INVOKABLE void clearLoginError();
     Q_INVOKABLE void doLogin(const QString &username, const QString &password, const QString &code,
@@ -132,6 +136,7 @@ public:
 
 signals:
     void publicLinesChanged();
+    void authorizedLinesChanged();
     void gatewaysChanged();
     void appsChanged();
     void pendingLineChanged();
@@ -198,6 +203,7 @@ private:
     OpenApiProxyService *m_syncProxy = nullptr;
 
     QVariantList m_publicLines;
+    QVariantList m_authorizedLines;
     QVariantList m_gateways;
     QVariantList m_apps;
     QVariantMap m_pendingLine;
@@ -227,6 +233,7 @@ private:
     QString m_verifyError;
     QTimer *m_countdownTimer = nullptr;
     bool m_autoConnectPending = false;
+    bool m_chooseLineLoading = false;
     bool m_autoConnectStarted = false;
     bool m_changePasswordPending = false;
     QString m_selectedGatewayId;
