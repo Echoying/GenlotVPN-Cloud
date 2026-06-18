@@ -64,8 +64,12 @@ public class VpnRoleController extends BaseController {
         if (!roleService.checkRoleNameUnique(role)) {
             return error("新增角色'" + role.getRoleName() + "'失败，角色名称已存在");
         }
+        if (!roleService.checkRoleKeyUnique(role)) {
+            return error("新增角色'" + role.getRoleName() + "'失败，角色权限字符已存在");
+        }
         role.setCreateBy(SecurityUtils.getUsername());
-        return toAjax(roleService.insertRoleWithSync(role));
+        int rows = roleService.insertRoleWithSync(role);
+        return rows > 0 ? success(role.getRoleId()) : error("新增角色失败");
     }
 
     @RequiresPermissions("yianlian:role:edit")
@@ -78,6 +82,9 @@ public class VpnRoleController extends BaseController {
         }
         if (!roleService.checkRoleNameUnique(role)) {
             return error("修改角色'" + role.getRoleName() + "'失败，角色名称已存在");
+        }
+        if (!roleService.checkRoleKeyUnique(role)) {
+            return error("修改角色'" + role.getRoleName() + "'失败，角色权限字符已存在");
         }
         role.setUpdateBy(SecurityUtils.getUsername());
         return toAjax(roleService.updateRoleWithSync(role));

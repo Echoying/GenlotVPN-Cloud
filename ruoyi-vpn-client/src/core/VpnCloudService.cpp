@@ -14,6 +14,7 @@
 #include "vpn/line.pb.h"
 #include "vpn/line_verify.pb.h"
 #include "vpn/common.pb.h"
+#include "vpn/sync_proxy.pb.h"
 #endif
 
 namespace vpn {
@@ -191,7 +192,6 @@ void VpnCloudService::sendRpcWithRetry(int messageType, const QByteArray &payloa
     return;
 #else
     const QByteArray envelope = buildEnvelope(messageType, payload);
-    PacketLogUtil::logCloudSend(messageType, payload);
     m_tcp.sendEnvelope(envelope, [this, messageType, payload, callback = std::move(callback), retryCount](
                                    bool ok, const QByteArray &body, const QString &err) mutable {
         if (!ok) {
@@ -210,6 +210,11 @@ void VpnCloudService::sendRpcWithRetry(int messageType, const QByteArray &payloa
                                    });
                 return;
             }
+            RpcResult transportFail;
+            transportFail.ok = false;
+            transportFail.code = 0;
+            transportFail.msg = msg;
+            PacketLogUtil::logCloudRpcComplete(messageType, payload, QByteArray(), transportFail);
             emitCloudError(msg);
             emit requestFailed(msg);
             return;
@@ -219,7 +224,7 @@ void VpnCloudService::sendRpcWithRetry(int messageType, const QByteArray &payloa
                 QStringLiteral("[云端] 重连成功（经 %1 次重试后恢复）").arg(retryCount));
         }
         const RpcResult result = parseEnvelopeResponse(body);
-        PacketLogUtil::logCloudReceive(messageType, body, result);
+        PacketLogUtil::logCloudRpcComplete(messageType, payload, body, result);
         if (!result.ok) {
             const QString msg = result.msg.isEmpty() ? QStringLiteral("请求失败") : result.msg.trimmed();
             emitCloudError(msg);
@@ -283,6 +288,10 @@ void VpnCloudService::login(const QString &username, const QString &password,
         data.ParseFromArray(r.data.constData(), r.data.size());
         m_accessToken = QString::fromStdString(data.access_token());
         m_sessionKey = QByteArray(data.session_key().data(), static_cast<int>(data.session_key().size()));
+        m_roleKeys.clear();
+        for (int i = 0; i < data.role_keys_size(); ++i) {
+            m_roleKeys.append(QString::fromStdString(data.role_keys(i)));
+        }
         emit loginSucceeded(m_accessToken);
     });
 #endif
@@ -395,6 +404,7 @@ void VpnCloudService::clearSession()
 {
     m_accessToken.clear();
     m_sessionKey.clear();
+    m_roleKeys.clear();
     m_tcp.resetConnection();
 }
 
@@ -419,6 +429,44 @@ void VpnCloudService::logout()
 #else
     clearSession();
     emit logoutSucceeded();
+#endif
+}
+
+bool VpnCloudService::hasSyncProxyRole() const
+{
+    return m_roleKeys.contains(QStringLiteral("sync_proxy"));
+}
+
+void VpnCloudService::fetchSyncProxyConfig(const QString &appId)
+{
+#ifdef VPN_HAS_PROTO
+    if (appId.isEmpty()) {
+        return;
+    }
+    vpn::GetSyncProxyConfigRequest req;
+    req.set_app_id(appId.toStdString());
+    sendRpc(static_cast<int>(vpn::MessageType::GET_SYNC_PROXY_CONFIG), serializeProto(req),
+            [this](const RpcResult &r) {
+        if (!r.ok) {
+            return;
+        }
+        vpn::GetSyncProxyConfigResponse data;
+        data.ParseFromArray(r.data.constData(), r.data.size());
+        if (!data.enabled()) {
+            emit lineSyncProxyDisabled();
+            return;
+        }
+        QStringList allowed;
+        for (int i = 0; i < data.allowed_source_ips_size(); ++i) {
+            allowed.append(QString::fromStdString(data.allowed_source_ips(i)));
+        }
+        emit syncProxyConfigReady(QString::fromStdString(data.upstream_url()),
+                                  QString::fromStdString(data.listen_host()),
+                                  data.listen_port(),
+                                  allowed);
+    });
+#else
+    Q_UNUSED(appId);
 #endif
 }
 

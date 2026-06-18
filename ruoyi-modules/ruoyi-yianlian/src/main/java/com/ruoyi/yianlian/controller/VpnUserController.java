@@ -18,6 +18,7 @@ import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import com.ruoyi.yianlian.domain.LineApp;
 import com.ruoyi.yianlian.domain.VpnDept;
+import com.ruoyi.yianlian.constant.SyncProxyConstants;
 import com.ruoyi.yianlian.domain.VpnRole;
 import com.ruoyi.yianlian.domain.VpnUser;
 import com.ruoyi.yianlian.domain.YalDeptAuth;
@@ -181,9 +182,8 @@ public class VpnUserController extends BaseController {
             if (vpnUser != null && StringUtils.isEmpty(roleAppId)) {
                 roleAppId = vpnUser.getAppId();
             }
-            if (vpnUser != null && vpnUser.getRoles() != null) {
-                ajax.put("roleIds", vpnUser.getRoles().stream().map(r -> r.getRoleId()).collect(Collectors.toList()));
-            }
+            List<Long> roleIds = roleService.selectRoleListByUserId(userId);
+            ajax.put("roleIds", roleIds != null ? roleIds : Collections.emptyList());
         }
         VpnRole roleQuery = new VpnRole();
         roleQuery.setAppId(roleAppId);
@@ -207,6 +207,42 @@ public class VpnUserController extends BaseController {
         user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
         user.setEncryptedPwd(aesUtils.encrypt(plainPassword));
         return toAjax(userService.insertUserWithSync(user, plainPassword));
+    }
+
+    /**
+     * 根据用户编号获取授权角色
+     */
+    @RequiresPermissions("vpn:user:query")
+    @GetMapping("/authRole/{userId}")
+    public AjaxResult authRole(@PathVariable("userId") Long userId) {
+        AjaxResult ajax = AjaxResult.success();
+        VpnUser user = userService.selectUserById(userId);
+        ajax.put("user", user);
+        VpnRole roleQuery = new VpnRole();
+        if (user != null && StringUtils.isNotEmpty(user.getAppId())) {
+            roleQuery.setAppId(user.getAppId());
+        }
+        List<VpnRole> roles = roleService.selectRoleList(roleQuery);
+        List<Long> userRoleIds = roleService.selectRoleListByUserId(userId);
+        Set<Long> userRoleIdSet = userRoleIds != null
+            ? new HashSet<>(userRoleIds)
+            : Collections.emptySet();
+        for (VpnRole role : roles) {
+            role.setFlag(userRoleIdSet.contains(role.getRoleId()));
+        }
+        ajax.put("roles", roles);
+        return ajax;
+    }
+
+    /**
+     * 用户授权角色
+     */
+    @RequiresPermissions("vpn:user:edit")
+    @Log(title = "用户管理", businessType = BusinessType.GRANT)
+    @PutMapping("/authRole")
+    public AjaxResult insertAuthRole(Long userId, Long[] roleIds) {
+        userService.insertUserAuth(userId, roleIds);
+        return success();
     }
 
     @RequiresPermissions("vpn:user:edit")
@@ -290,7 +326,27 @@ public class VpnUserController extends BaseController {
         vpnLoginUser.setVpnUser(apiUser);
         vpnLoginUser.setUserid(vpnUser.getUserId());
         vpnLoginUser.setUsername(vpnUser.getUserName());
+        List<VpnRole> roleList = roleService.selectUserRolesByUserId(vpnUser.getUserId());
+        if (roleList != null && !roleList.isEmpty())
+        {
+            String effectiveAppId = StringUtils.isNotEmpty(appId) ? appId : vpnUser.getAppId();
+            Set<String> roleKeys = roleList.stream()
+                .filter(role -> includeRoleKeyForLogin(role, effectiveAppId))
+                .map(SyncProxyConstants::resolveRoleKey)
+                .filter(StringUtils::isNotEmpty)
+                .collect(Collectors.toSet());
+            vpnLoginUser.setRoles(roleKeys);
+        }
         return R.ok(vpnLoginUser);
+    }
+
+    private boolean includeRoleKeyForLogin(VpnRole role, String lineAppId)
+    {
+        if (SyncProxyConstants.ROLE_SYNC_PROXY.equals(SyncProxyConstants.resolveRoleKey(role)))
+        {
+            return SyncProxyConstants.matchesSyncProxyRole(role, lineAppId);
+        }
+        return true;
     }
 
     @InnerAuth
@@ -300,7 +356,7 @@ public class VpnUserController extends BaseController {
         user.setUserId(vpnUser.getUserId());
         user.setLoginIp(vpnUser.getLoginIp());
         user.setLoginDate(vpnUser.getLoginDate());
-        userService.updateUser(user);
+        userService.updateUserLogin(user);
         return R.ok(true);
     }
 

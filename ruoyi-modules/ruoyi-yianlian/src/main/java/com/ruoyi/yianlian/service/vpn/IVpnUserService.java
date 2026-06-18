@@ -97,6 +97,14 @@ public interface IVpnUserService
     public int updateUser(VpnUser user);
 
     /**
+     * 仅记录登录信息（登录IP、登录时间），不触碰角色
+     *
+     * @param user 用户信息（userId、loginIp、loginDate）
+     * @return 结果
+     */
+    public int updateUserLogin(VpnUser user);
+
+    /**
      * 用户授权角色
      *
      * @param userId 用户ID

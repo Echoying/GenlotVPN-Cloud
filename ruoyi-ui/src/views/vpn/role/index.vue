@@ -65,6 +65,16 @@
       </el-col>
       <el-col :span="1.5">
         <el-button
+          type="warning"
+          plain
+          icon="el-icon-connection"
+          size="mini"
+          @click="handleAddSyncProxyRole"
+          v-hasPermi="['yianlian:role:add']"
+        >同步代理角色</el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button
           type="success"
           plain
           icon="el-icon-edit"
@@ -92,6 +102,7 @@
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="角色编号" prop="roleId" width="120" />
       <el-table-column label="角色名称" prop="roleName" :show-overflow-tooltip="true" width="150" />
+      <el-table-column label="权限字符" prop="roleKey" :show-overflow-tooltip="true" width="120" />
       <el-table-column label="角色描述" prop="remark" :show-overflow-tooltip="true" />
       <el-table-column label="状态" width="100">
         <template slot-scope="scope">
@@ -120,13 +131,6 @@
           <el-button
             size="mini"
             type="text"
-            icon="el-icon-key"
-            @click="handleAuth(scope.row)"
-            v-hasPermi="['yianlian:role:edit']"
-          >授权</el-button>
-          <el-button
-            size="mini"
-            type="text"
             icon="el-icon-delete"
             @click="handleDelete(scope.row)"
             v-hasPermi="['yianlian:role:remove']"
@@ -143,11 +147,14 @@
       @pagination="getList"
     />
 
-    <!-- 添加或修改角色对话框 -->
-    <el-dialog :title="title" :visible.sync="open" width="500px" append-to-body>
+    <!-- 添加或修改角色对话框（含应用授权） -->
+    <el-dialog :title="title" :visible.sync="open" width="900px" append-to-body @close="handleDialogClose">
       <el-form ref="form" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="角色名称" prop="roleName">
           <el-input v-model="form.roleName" placeholder="请输入角色名称" />
+        </el-form-item>
+        <el-form-item label="权限字符" prop="roleKey">
+          <el-input v-model="form.roleKey" placeholder="同步代理填 sync_proxy，其它角色可留空" />
         </el-form-item>
         <el-form-item label="角色描述" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入角色描述" />
@@ -161,36 +168,16 @@
             >{{ dict.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
-      </el-form>
-      <div slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="submitForm">确 定</el-button>
-        <el-button @click="cancel">取 消</el-button>
-      </div>
-    </el-dialog>
 
-    <!-- 角色授权对话框 -->
-    <el-dialog
-      :title="'角色授权 - ' + authRoleName"
-      :visible.sync="authOpen"
-      width="900px"
-      append-to-body
-      @close="handleAuthClose"
-    >
-      <el-form>
+        <el-divider content-position="left">应用授权</el-divider>
         <div class="auth-container">
-          <!-- 授权组列表 -->
           <div v-for="(group, index) in authGroups" :key="index" class="auth-group">
-            <div class="auth-group-header">
-              <span class="auth-group-title">角色授权配置</span>
-            </div>
             <el-row :gutter="12">
-              <!-- 第1列：线路（与列表当前线路一致，不可修改） -->
               <el-col :span="8">
                 <el-form-item label="线路" label-width="50px">
                   <el-input :value="currentLineName" disabled />
                 </el-form-item>
               </el-col>
-              <!-- 第2列：应用组选择（多选树） -->
               <el-col :span="8">
                 <el-form-item label="应用组" label-width="60px">
                   <div style="display:flex;align-items:center;gap:4px">
@@ -220,7 +207,6 @@
                   </div>
                 </el-form-item>
               </el-col>
-              <!-- 第3列：应用服务选择（多选树，只能选叶子应用） -->
               <el-col :span="8">
                 <el-form-item label="应用服务" label-width="70px">
                   <div style="display:flex;align-items:center;gap:4px">
@@ -252,12 +238,11 @@
               </el-col>
             </el-row>
           </div>
-
         </div>
       </el-form>
       <div slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="submitAuth" :loading="authSaving">确 定</el-button>
-        <el-button @click="authOpen = false">取 消</el-button>
+        <el-button type="primary" @click="submitForm" :loading="formSubmitting">确 定</el-button>
+        <el-button @click="cancel">取 消</el-button>
       </div>
     </el-dialog>
   </div>
@@ -316,11 +301,8 @@ export default {
           { required: true, message: "角色名称不能为空", trigger: "blur" }
         ]
       },
-      // ---- 授权相关 ----
-      authRoleId: null,
-      authRoleName: "",
-      authOpen: false,
-      authSaving: false,
+      // ---- 应用授权（并入新增/修改对话框） ----
+      formSubmitting: false,
       authGroups: []
     }
   },
@@ -411,39 +393,79 @@ export default {
       }
       this.reset()
       this.form.appId = this.currentAppId
-      this.open = true
-      this.title = "添加VPN角色"
+      this.initAuthGroupsForCurrentLine().then(() => {
+        this.open = true
+        this.title = "添加VPN角色"
+      })
+    },
+
+    /** 新增同步代理管理员角色 */
+    handleAddSyncProxyRole() {
+      if (!this.currentAppId) {
+        this.$modal.msgWarning('请先选择线路')
+        return
+      }
+      this.reset()
+      this.form.appId = this.currentAppId
+      this.form.roleName = '同步代理管理员'
+      this.form.roleKey = 'sync_proxy'
+      this.form.remark = 'GenlotVPN 内置 OpenAPI 同步代理，每线路单独配置'
+      this.initAuthGroupsForCurrentLine().then(() => {
+        this.open = true
+        this.title = '添加同步代理管理员角色'
+      })
     },
 
     /** 修改按钮操作 */
     handleUpdate(row) {
+      if (!this.currentAppId) {
+        this.$modal.msgWarning('请先选择线路')
+        return
+      }
       this.reset()
       const id = row.roleId || this.ids[0]
       getRole(id).then(response => {
         this.form = response.data
+        return this.loadRoleAuthGroups(id)
+      }).then(() => {
         this.open = true
         this.title = "修改VPN角色"
+      }).catch(() => {
+        this.$modal.msgError('加载角色数据失败')
       })
     },
 
-    /** 提交表单 */
+    /** 提交表单：保存角色 + 应用授权 */
     submitForm() {
       this.$refs["form"].validate(valid => {
-        if (valid) {
-          if (this.form.roleId != undefined) {
-            updateRole(this.form).then(() => {
-              this.$modal.msgSuccess("修改成功")
-              this.open = false
-              this.getList()
-            })
-          } else {
-            addRole(this.form).then(() => {
-              this.$modal.msgSuccess("新增成功")
-              this.open = false
-              this.getList()
-            })
-          }
+        if (!valid) {
+          return
         }
+        if (!this.currentAppId) {
+          this.$modal.msgWarning('请先选择线路')
+          return
+        }
+        this.formSubmitting = true
+        const isUpdate = this.form.roleId != undefined
+        const saveRolePromise = isUpdate
+          ? updateRole(this.form).then(() => this.form.roleId)
+          : addRole(this.form).then(res => res.data)
+
+        saveRolePromise.then(roleId => {
+          return batchSaveRoleAuth({
+            roleId: roleId,
+            lineId: this.currentAppId,
+            authList: this.buildAuthList()
+          })
+        }).then(() => {
+          this.$modal.msgSuccess(isUpdate ? "修改成功" : "新增成功")
+          this.open = false
+          this.getList()
+        }).catch(() => {
+          this.$modal.msgError("保存失败")
+        }).finally(() => {
+          this.formSubmitting = false
+        })
       })
     },
 
@@ -453,16 +475,23 @@ export default {
       this.reset()
     },
 
+    /** 对话框关闭时清理授权数据 */
+    handleDialogClose() {
+      this.authGroups = []
+    },
+
     /** 表单重置 */
     reset() {
       this.form = {
         roleId: undefined,
         appId: this.currentAppId,
         roleName: undefined,
+        roleKey: undefined,
         roleSort: 0,
         remark: undefined,
         status: "0"
       }
+      this.authGroups = []
       this.resetForm("form")
     },
 
@@ -477,45 +506,31 @@ export default {
       }).catch(() => {})
     },
 
-    // ==================== 角色授权 ====================
+    // ==================== 应用授权 ====================
 
-    /** 授权按钮操作：线路固定为列表当前线路 */
-    handleAuth(row) {
-      if (!this.currentAppId) {
-        this.$modal.msgWarning('请先选择线路')
-        return
+    /** 初始化当前线路的授权组（新增或编辑回显） */
+    initAuthGroupsForCurrentLine(authRecord) {
+      const group = this.createEmptyGroup()
+      group.lineId = this.currentAppId
+      if (authRecord) {
+        group.appGroupIds = authRecord.appGroupIds
+          ? authRecord.appGroupIds.split(",").filter(Boolean).map(id => Number(id))
+          : []
+        group.appIds = authRecord.appIds
+          ? authRecord.appIds.split(",").filter(Boolean).map(id => 'service_' + id)
+          : []
       }
-      this.authRoleId = row.roleId
-      this.authRoleName = row.roleName
-      this.authGroups = []
-
-      listByRoleId(row.roleId, this.currentAppId).then(response => {
-        const list = response.data || []
-        const group = this.createEmptyGroup()
-        group.lineId = this.currentAppId
-        if (list.length > 0) {
-          const auth = list[0]
-          group.appGroupIds = auth.appGroupIds
-            ? auth.appGroupIds.split(",").filter(Boolean).map(id => Number(id))
-            : []
-          group.appIds = auth.appIds
-            ? auth.appIds.split(",").filter(Boolean).map(id => 'service_' + id)
-            : []
-        }
-        this.authGroups = [group]
-        this.loadGroupOptions(group, this.currentAppId).then(() => {
-          this.authOpen = true
-        })
-      }).catch(() => {
-        this.$modal.msgError('加载授权数据失败')
-      })
+      this.authGroups = [group]
+      return this.loadGroupOptions(group, this.currentAppId)
     },
 
-    /** 关闭授权弹窗时清理 */
-    handleAuthClose() {
-      this.authGroups = []
-      this.authRoleId = null
-      this.authRoleName = ""
+    /** 加载角色已有授权 */
+    loadRoleAuthGroups(roleId) {
+      return listByRoleId(roleId, this.currentAppId).then(response => {
+        const list = response.data || []
+        const auth = list.length > 0 ? list[0] : null
+        return this.initAuthGroupsForCurrentLine(auth)
+      })
     },
 
     /** 创建空授权组对象 */
@@ -530,28 +545,6 @@ export default {
         serviceLoading: false,
         groupExpanded: false,
         serviceExpanded: false
-      }
-    },
-
-    /** 添加授权组 */
-    addAuthGroup() {
-      this.authGroups.push(this.createEmptyGroup())
-    },
-
-    /** 移除授权组 */
-    removeAuthGroup(index) {
-      this.authGroups.splice(index, 1)
-    },
-
-    /** 线路变更时重新加载应用组和服务树 */
-    handleLineChange(lineId, index) {
-      const group = this.authGroups[index]
-      group.appGroupIds = []
-      group.appIds = []
-      group.appGroupOptions = []
-      group.serviceTreeOptions = []
-      if (lineId) {
-        this.loadGroupOptions(group, lineId)
       }
     },
 
@@ -577,11 +570,6 @@ export default {
       })
 
       return Promise.all([p1, p2])
-    },
-
-    /** 判断线路是否已被其他授权组占用 */
-    isLineUsed(lineId, currentIndex) {
-      return this.authGroups.some((g, i) => i !== currentIndex && g.lineId === lineId)
     },
 
     /** 应用组 treeselect normalizer */
@@ -638,16 +626,9 @@ export default {
       return [...new Set(leafIds)]
     },
 
-    /** 提交授权保存 */
-    submitAuth() {
-      if (!this.currentAppId) {
-        this.$modal.msgWarning('请先选择线路')
-        return
-      }
-
-      this.authSaving = true
-      const authList = this.authGroups.map(group => {
-        // 应用组：只取最底层叶子节点，去掉 "group_" 前缀
+    /** 构造授权保存列表 */
+    buildAuthList() {
+      return this.authGroups.map(group => {
         let finalGroupIds = []
         if (group.appGroupIds && group.appGroupIds.length > 0) {
           finalGroupIds = this.getLeafIds(group.appGroupOptions, group.appGroupIds)
@@ -657,7 +638,6 @@ export default {
         }
         const cleanGroupIds = finalGroupIds.map(id => String(id).replace('group_', ''))
 
-        // 应用：去掉 "service_" 前缀
         let finalAppIds = []
         if (group.appIds && group.appIds.length > 0) {
           finalAppIds = group.appIds.map(id => String(id).replace('service_', ''))
@@ -668,19 +648,6 @@ export default {
           appGroupIds: cleanGroupIds.join(","),
           appIds: finalAppIds.join(",")
         }
-      })
-
-      batchSaveRoleAuth({
-        roleId: this.authRoleId,
-        lineId: this.currentAppId,
-        authList: authList
-      }).then(() => {
-        this.$modal.msgSuccess("授权保存成功")
-        this.authOpen = false
-      }).catch(() => {
-        this.$modal.msgError("授权保存失败")
-      }).finally(() => {
-        this.authSaving = false
       })
     }
   }

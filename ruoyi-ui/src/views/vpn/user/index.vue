@@ -82,7 +82,6 @@
                 <el-button size="mini" type="text" icon="el-icon-d-arrow-right">更多</el-button>
                 <el-dropdown-menu slot="dropdown">
                   <el-dropdown-item command="handleResetPwd" icon="el-icon-key" v-hasPermi="['yianlian:user:resetPwd']">重置密码</el-dropdown-item>
-                  <el-dropdown-item command="handleAuthRole" icon="el-icon-circle-check" v-hasPermi="['yianlian:user:edit']">分配角色</el-dropdown-item>
                   <el-dropdown-item command="handleAuth" icon="el-icon-setting" v-hasPermi="['yianlian:user:edit']">授权</el-dropdown-item>
                 </el-dropdown-menu>
               </el-dropdown>
@@ -516,9 +515,6 @@ export default {
         case "handleResetPwd":
           this.handleResetPwd(row)
           break
-        case "handleAuthRole":
-          this.handleAuthRole(row)
-          break
         case "handleAuth":
           this.handleAuth(row)
           break
@@ -539,6 +535,7 @@ export default {
         this.title = "添加用户"
         this.form.appId = this.currentAppId
         this.form.password = this.initPassword
+        this.$set(this.form, "roleIds", [])
       })
     },
     /** 修改按钮操作 */
@@ -549,7 +546,7 @@ export default {
         this.form = response.data
         this.form.appId = this.currentAppId
         this.roleOptions = response.roles
-        this.$set(this.form, "roleIds", response.roleIds)
+        this.$set(this.form, "roleIds", response.roleIds || [])
         this.open = true
         this.title = "修改用户"
         this.form.password = ""
@@ -574,23 +571,31 @@ export default {
         })
       }).catch(() => {})
     },
-    /** 分配角色操作 */
-    handleAuthRole(row) {
-      const userId = row.userId
-      this.$router.push("/system/user-auth/role/" + userId)
-    },
     /** 提交按钮 */
     submitForm() {
       this.$refs["form"].validate(valid => {
         if (valid) {
+          const roleIds = (this.form.roleIds || []).map(id => Number(id))
+          const basePayload = {
+            userName: this.form.userName,
+            deptId: this.form.deptId,
+            nickName: this.form.nickName,
+            phonenumber: this.form.phonenumber,
+            email: this.form.email,
+            sex: this.form.sex,
+            status: this.form.status,
+            remark: this.form.remark,
+            appId: this.currentAppId,
+            roleIds
+          }
           if (this.form.userId != undefined) {
-            updateUser(this.form).then(() => {
+            updateUser({ ...basePayload, userId: this.form.userId }).then(() => {
               this.$modal.msgSuccess("修改成功")
               this.open = false
               this.getList()
             })
           } else {
-            addUser(this.form).then(() => {
+            addUser({ ...basePayload, password: this.form.password }).then(() => {
               this.$modal.msgSuccess("新增成功")
               this.open = false
               this.getList()

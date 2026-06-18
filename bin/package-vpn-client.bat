@@ -20,6 +20,7 @@ rem Optional: set GENLOT_EXE_PATH to a specific Release exe
 set "EXE_PATH="
 if defined GENLOT_EXE_PATH if exist "%GENLOT_EXE_PATH%" set "EXE_PATH=%GENLOT_EXE_PATH%"
 
+if not defined EXE_PATH if exist "build-msvc2022\GenlotVPN.exe" set "EXE_PATH=build-msvc2022\GenlotVPN.exe"
 if not defined EXE_PATH if exist "build-msvc2022\Release\GenlotVPN.exe" set "EXE_PATH=build-msvc2022\Release\GenlotVPN.exe"
 if not defined EXE_PATH if exist "build\Release\GenlotVPN.exe" set "EXE_PATH=build\Release\GenlotVPN.exe"
 if not defined EXE_PATH (
@@ -58,9 +59,9 @@ if not errorlevel 1 (
 echo [OK] Release exe: %EXE_PATH%
 
 set "GENLOT_VER="
-for /f "tokens=4 delims= " %%V in ('findstr /C:"project(GenlotVPN VERSION" CMakeLists.txt') do set "GENLOT_VER=%%V"
+for /f "tokens=3 delims= " %%V in ('findstr /C:"project(GenlotVPN VERSION" CMakeLists.txt') do set "GENLOT_VER=%%V"
 if not defined GENLOT_VER (
-  echo [X] Cannot read VERSION from CMakeLists.txt ^(project(GenlotVPN VERSION x.y.z)^)
+  echo [X] Cannot read VERSION from CMakeLists.txt project line
   exit /b 1
 )
 set "PKG_EXE=GenlotVPN-%GENLOT_VER%.exe"

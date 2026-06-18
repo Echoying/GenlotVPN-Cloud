@@ -11,6 +11,7 @@
 #include "vpn/auth.pb.h"
 #include "vpn/line.pb.h"
 #include "vpn/line_verify.pb.h"
+#include "vpn/sync_proxy.pb.h"
 #endif
 
 namespace vpn {
@@ -49,6 +50,8 @@ QString messageTypeName(int messageType)
         return QStringLiteral("GET_USER_CREDENTIALS");
     case vpn::MessageType::REPORT_CLIENT_LOGIN:
         return QStringLiteral("REPORT_CLIENT_LOGIN");
+    case vpn::MessageType::GET_SYNC_PROXY_CONFIG:
+        return QStringLiteral("GET_SYNC_PROXY_CONFIG");
     default:
         return QStringLiteral("TYPE_%1").arg(messageType);
     }
@@ -152,6 +155,13 @@ QString formatCloudRequestPayload(int messageType, const QByteArray &payload)
         }
         return protoToLog(req);
     }
+    case vpn::MessageType::GET_SYNC_PROXY_CONFIG: {
+        vpn::GetSyncProxyConfigRequest req;
+        if (!req.ParseFromArray(payload.constData(), payload.size())) {
+            return QStringLiteral("<解析失败>");
+        }
+        return protoToLog(req);
+    }
     default:
         return QStringLiteral("<未知类型 payload %1 字节>").arg(payload.size());
     }
@@ -250,6 +260,13 @@ QString formatCloudResponseData(int messageType, const QByteArray &data)
     }
     case vpn::MessageType::REPORT_CLIENT_LOGIN: {
         vpn::ReportClientLoginResponse resp;
+        if (!resp.ParseFromArray(data.constData(), data.size())) {
+            return QStringLiteral("<解析失败>");
+        }
+        return protoToLog(resp);
+    }
+    case vpn::MessageType::GET_SYNC_PROXY_CONFIG: {
+        vpn::GetSyncProxyConfigResponse resp;
         if (!resp.ParseFromArray(data.constData(), data.size())) {
             return QStringLiteral("<解析失败>");
         }
@@ -364,43 +381,45 @@ QString formatControllerBody(const QByteArray &body)
 
 } // namespace
 
-void PacketLogUtil::logCloudSend(int messageType, const QByteArray &payload)
+void PacketLogUtil::logCloudRpcComplete(int messageType, const QByteArray &requestPayload,
+                                        const QByteArray &envelopeBytes, const RpcResult &result)
 {
 #ifdef VPN_HAS_PROTO
     const QString typeName = messageTypeName(messageType);
-    const QString body = formatCloudRequestPayload(messageType, payload);
-    AppLogger::instance()->info(
-        QStringLiteral("[云端][发送] %1\n  payload:\n%2").arg(typeName, indentMultiline(body)));
-#else
-    Q_UNUSED(messageType);
-    Q_UNUSED(payload);
-#endif
-}
-
-void PacketLogUtil::logCloudReceive(int messageType, const QByteArray &envelopeBytes, const RpcResult &result)
-{
-#ifdef VPN_HAS_PROTO
-    const QString typeName = messageTypeName(messageType);
-    vpn::Envelope env;
-    QString envelopeMeta;
-    if (env.ParseFromArray(envelopeBytes.constData(), envelopeBytes.size())) {
-        envelopeMeta = formatEnvelopeMeta(env);
-    } else {
-        envelopeMeta = QStringLiteral("<Envelope 解析失败，%1 字节>").arg(envelopeBytes.size());
-    }
-
-    const QString dataBody = formatCloudResponseData(messageType, result.data);
+    const QString requestBody = formatCloudRequestPayload(messageType, requestPayload);
     const QString status = result.ok ? QStringLiteral("OK") : QStringLiteral("FAIL");
     const QString rpcMsg = result.msg.trimmed().isEmpty() ? QStringLiteral("-") : result.msg.trimmed();
 
-    AppLogger::instance()->info(QStringLiteral("[云端][接收] %1 %2 code=%3 msg=%4\n  envelope: %5\n  data:\n%6")
-                                    .arg(typeName, status)
-                                    .arg(result.code)
-                                    .arg(rpcMsg)
-                                    .arg(envelopeMeta)
-                                    .arg(indentMultiline(dataBody)));
+    QString responseBody;
+    if (envelopeBytes.isEmpty()) {
+        responseBody = QStringLiteral("(无应答报文)");
+    } else {
+        responseBody = formatCloudResponseData(messageType, result.data);
+    }
+
+    QString envelopeMeta;
+    if (!envelopeBytes.isEmpty()) {
+        vpn::Envelope env;
+        if (env.ParseFromArray(envelopeBytes.constData(), envelopeBytes.size())) {
+            envelopeMeta = formatEnvelopeMeta(env);
+        } else {
+            envelopeMeta = QStringLiteral("<Envelope 解析失败，%1 字节>").arg(envelopeBytes.size());
+        }
+    } else {
+        envelopeMeta = QStringLiteral("-");
+    }
+
+    AppLogger::instance()->info(
+        QStringLiteral("[云端][RPC] %1 %2 code=%3 msg=%4\n  request:\n%5\n  response:\n%6\n  envelope: %7")
+            .arg(typeName, status)
+            .arg(result.code)
+            .arg(rpcMsg)
+            .arg(indentMultiline(requestBody))
+            .arg(indentMultiline(responseBody))
+            .arg(envelopeMeta));
 #else
     Q_UNUSED(messageType);
+    Q_UNUSED(requestPayload);
     Q_UNUSED(envelopeBytes);
     Q_UNUSED(result);
 #endif

@@ -48,6 +48,9 @@ ApplicationWindow {
         } else if (page === "applist") {
             applyWindowSize(Theme.appListWindowWidth, Theme.appListWindowHeight,
                             Theme.appListWindowMinWidth, Theme.appListWindowMinHeight)
+        } else if (page === "proxylogs") {
+            applyWindowSize(Theme.appListWindowWidth, Theme.appListWindowHeight,
+                            Theme.appListWindowMinWidth, Theme.appListWindowMinHeight)
         } else if (page === "choose") {
             applyWindowSize(Theme.chooseLineWindowWidth, Theme.chooseLineWindowHeight,
                             Theme.chooseLineWindowMinWidth, Theme.chooseLineWindowMinHeight)
@@ -75,6 +78,10 @@ ApplicationWindow {
             applyPageWindow(page)
             if (page === "settings") {
                 stackView.push(settingsPageComponent)
+                return
+            }
+            if (page === "proxylogs") {
+                stackView.push(proxyLogPageComponent)
                 return
             }
             if (page === "applist") {
@@ -177,5 +184,6 @@ ApplicationWindow {
     Component { id: loginPageComponent; LoginPage {} }
     Component { id: connectPageComponent; ConnectLinePage {} }
     Component { id: appListPageComponent; AppListPage {} }
+    Component { id: proxyLogPageComponent; ProxyLogPage {} }
     Component { id: settingsPageComponent; SettingsPage {} }
 }

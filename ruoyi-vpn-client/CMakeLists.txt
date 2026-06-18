@@ -56,6 +56,8 @@ set(SOURCES
     src/core/PacketLogUtil.cpp
     src/core/AppInfo.cpp
     src/core/VpnFlowController.cpp
+    src/core/OpenApiProxyService.cpp
+    src/core/ProxyLogModel.cpp
     src/platform/SingleInstance.cpp
     src/platform/TrayIcon.cpp
     ${PROTO_SRCS}
@@ -110,6 +112,7 @@ qt_add_qml_module(GenlotVPN
         qml/pages/LoginPage.qml
         qml/pages/ConnectLinePage.qml
         qml/pages/AppListPage.qml
+        qml/pages/ProxyLogPage.qml
         qml/pages/SettingsPage.qml
     RESOURCES
         assets/images/genlot-logo.svg

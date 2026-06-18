@@ -39,6 +39,8 @@ import com.ruoyi.vpn.protocol.GetAuthorizedLinesRequest;
 import com.ruoyi.vpn.protocol.GetAuthorizedLinesResponse;
 import com.ruoyi.vpn.protocol.GetCaptchaRequest;
 import com.ruoyi.vpn.protocol.GetCaptchaResponse;
+import com.ruoyi.vpn.protocol.GetSyncProxyConfigRequest;
+import com.ruoyi.vpn.protocol.GetSyncProxyConfigResponse;
 import com.ruoyi.vpn.protocol.GetUserCredentialsRequest;
 import com.ruoyi.vpn.protocol.GetUserCredentialsResponse;
 import com.ruoyi.vpn.protocol.ListPublicLinesRequest;
@@ -55,7 +57,9 @@ import com.ruoyi.vpn.protocol.ReportClientLoginResponse;
 import com.ruoyi.vpn.protocol.RpcResponse;
 import com.ruoyi.vpn.protocol.SendLineVerifyRequest;
 import com.ruoyi.vpn.protocol.SendLineVerifyResponse;
+import com.ruoyi.yianlian.api.RemoteSyncProxyService;
 import com.ruoyi.yianlian.api.RemoteVpnUserService;
+import com.ruoyi.yianlian.api.domain.SyncProxyConfigDTO;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 
 /**
@@ -105,6 +109,9 @@ public class TcpRpcDispatcher
     @Autowired
     private VpnLineAppNameResolver lineAppNameResolver;
 
+    @Autowired
+    private RemoteSyncProxyService remoteSyncProxyService;
+
     public RpcResult dispatch(Envelope envelope, TcpSessionContext session)
     {
         MessageType type = envelope.getType();
@@ -138,6 +145,8 @@ public class TcpRpcDispatcher
                     return handleGetUserCredentials(envelope, session);
                 case REPORT_CLIENT_LOGIN:
                     return handleReportClientLogin(envelope, session);
+                case GET_SYNC_PROXY_CONFIG:
+                    return handleGetSyncProxyConfig(envelope, session);
                 default:
                     return RpcResult.fail("不支持的消息类型");
             }
@@ -234,12 +243,15 @@ public class TcpRpcDispatcher
             session.setLoginPurpose(loginPurpose);
             session.setAuthenticated(true);
 
-            LoginResponse response = LoginResponse.newBuilder()
+            LoginResponse.Builder responseBuilder = LoginResponse.newBuilder()
                     .setAccessToken(session.getAccessToken())
                     .setExpiresIn(((Number) tokenMap.get("expires_in")).longValue())
-                    .setSessionKey(ByteString.copyFrom(sessionKey))
-                    .build();
-            return RpcResult.ok(response);
+                    .setSessionKey(ByteString.copyFrom(sessionKey));
+            if (userInfo.getRoles() != null)
+            {
+                responseBuilder.addAllRoleKeys(userInfo.getRoles());
+            }
+            return RpcResult.ok(responseBuilder.build());
         }
         finally
         {
@@ -286,6 +298,46 @@ public class TcpRpcDispatcher
         {
             clearClientAuditContext();
         }
+    }
+
+    private RpcResult handleGetSyncProxyConfig(Envelope envelope, TcpSessionContext session)
+            throws InvalidProtocolBufferException
+    {
+        requireAuth(session, envelope);
+        GetSyncProxyConfigRequest req = GetSyncProxyConfigRequest.parseFrom(envelope.getPayload());
+        Long userId = resolveUserId(envelope, session);
+        String appId = StringUtils.isNotEmpty(req.getAppId()) ? req.getAppId() : session.getAppId();
+        if (StringUtils.isEmpty(appId))
+        {
+            return RpcResult.fail("线路不能为空");
+        }
+        R<SyncProxyConfigDTO> result = remoteSyncProxyService.getSyncProxyConfig(
+            appId, userId, SecurityConstants.INNER);
+        if (R.FAIL == result.getCode() || result.getData() == null)
+        {
+            return RpcResult.fail(result.getMsg() != null ? result.getMsg() : "获取同步代理配置失败");
+        }
+        SyncProxyConfigDTO dto = result.getData();
+        GetSyncProxyConfigResponse.Builder builder = GetSyncProxyConfigResponse.newBuilder()
+            .setEnabled(dto.isEnabled())
+            .setListenPort(dto.getListenPort());
+        if (StringUtils.isNotEmpty(dto.getUpstreamUrl()))
+        {
+            builder.setUpstreamUrl(dto.getUpstreamUrl());
+        }
+        if (StringUtils.isNotEmpty(dto.getListenHost()))
+        {
+            builder.setListenHost(dto.getListenHost());
+        }
+        if (StringUtils.isNotEmpty(dto.getPathPrefix()))
+        {
+            builder.setPathPrefix(dto.getPathPrefix());
+        }
+        if (dto.getAllowedSourceIps() != null)
+        {
+            builder.addAllAllowedSourceIps(dto.getAllowedSourceIps());
+        }
+        return RpcResult.ok(builder.build());
     }
 
     private RpcResult validateLoginPurpose(String username, String loginPurpose)

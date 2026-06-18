@@ -58,6 +58,14 @@ public interface VpnUserMapper
     public int updateUser(VpnUser user);
 
     /**
+     * 仅更新用户登录信息（登录IP、登录时间），不触碰角色关联
+     *
+     * @param user 用户信息（userId、loginIp、loginDate）
+     * @return 结果
+     */
+    public int updateUserLogin(VpnUser user);
+
+    /**
      * 修改用户头像
      *
      * @param userName 用户名

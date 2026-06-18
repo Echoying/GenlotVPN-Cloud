@@ -29,6 +29,14 @@ public interface IVpnRoleService
     public List<VpnRole> selectRolesByUserId(Long userId);
 
     /**
+     * 查询用户已分配的角色（不含未选中的全量角色）
+     *
+     * @param userId 用户ID
+     * @return 已分配角色列表
+     */
+    public List<VpnRole> selectUserRolesByUserId(Long userId);
+
+    /**
      * 根据用户ID查询角色权限
      *
      * @param userId 用户ID
@@ -67,6 +75,13 @@ public interface IVpnRoleService
      */
     public boolean checkRoleNameUnique(VpnRole role);
 
+    /**
+     * 校验同线路下角色权限字符是否唯一
+     *
+     * @param role 角色信息
+     * @return 结果
+     */
+    public boolean checkRoleKeyUnique(VpnRole role);
 
     /**
      * 通过角色ID查询角色使用数量

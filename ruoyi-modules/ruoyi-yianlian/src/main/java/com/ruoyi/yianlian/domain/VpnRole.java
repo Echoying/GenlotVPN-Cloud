@@ -35,6 +35,9 @@ public class VpnRole extends BaseEntity
     @Excel(name = "角色名称")
     private String roleName;
 
+    /** 角色权限字符 */
+    private String roleKey;
+
     /** 角色排序 */
     @Excel(name = "角色排序")
     private Integer roleSort;

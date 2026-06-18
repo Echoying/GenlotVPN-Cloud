@@ -16,6 +16,7 @@ import com.ruoyi.yianlian.constant.YiAnLianConstants;
 import com.ruoyi.yianlian.constant.YiAnLianResultCode;
 import com.ruoyi.yianlian.domain.LineApp;
 import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
+import com.ruoyi.yianlian.service.sync.SyncProxyEndpointResolver;
 import com.ruoyi.yianlian.utils.AesUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +46,9 @@ public class OpenApiClient
 
     @Autowired
     private AesUtils aesUtils;
+
+    @Autowired
+    private SyncProxyEndpointResolver syncProxyEndpointResolver;
 
     private static final Logger log = LoggerFactory.getLogger(OpenApiClient.class);
 
@@ -120,20 +124,36 @@ public class OpenApiClient
         {
             throw new ServiceException("易安联接口路径未配置");
         }
-        log.debug("调用易安联接口 - URL: {}, 请求参数: {}, accessToken: {}", path, body, accessToken);
+        final boolean viaSyncProxy = isSyncProxyUrl(path);
+        if (viaSyncProxy)
+        {
+            log.info("调用易安联接口(经同步代理) - URL: {}", path);
+        }
+        else
+        {
+            log.debug("调用易安联接口 - URL: {}, 请求参数: {}, accessToken: {}", path, body, accessToken);
+        }
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         if (StringUtils.isNotEmpty(accessToken))
         {
             headers.set("accessToken", accessToken);
         }
+        applySyncProxyHeaders(path, headers);
 
         T response = restTemplate.postForEntity(
             path,
             new HttpEntity<>(body, headers),
             responseType
         ).getBody();
-        log.debug("易安联接口返回 - URL: {}, 响应数据: {}", path, response);
+        if (viaSyncProxy)
+        {
+            log.info("易安联接口返回(经同步代理) - URL: {}", path);
+        }
+        else
+        {
+            log.debug("易安联接口返回 - URL: {}, 响应数据: {}", path, response);
+        }
 
         return response;
     }
@@ -150,7 +170,7 @@ public class OpenApiClient
         try
         {
             LineApp lineApp = requireLineApp(appId);
-            String url = lineApp.getUrl() + path;
+            String url = resolveApiBaseUrl(lineApp) + path;
             if (queryParams != null && !queryParams.isEmpty())
             {
                 StringBuilder queryString = new StringBuilder("?");
@@ -207,7 +227,7 @@ public class OpenApiClient
 
     private String invokePostWithTokenRetry(LineApp lineApp, String path, Object body) throws Exception
     {
-        String url = lineApp.getUrl() + path;
+        String url = resolveApiBaseUrl(lineApp) + path;
         for (int attempt = 0; attempt < TOKEN_RETRY_MAX; attempt++)
         {
             TokenVO tokenVO = obtainAccessToken(lineApp, attempt > 0);
@@ -263,7 +283,7 @@ public class OpenApiClient
         request.setAppSecret(aesUtils.decrypt(lineApp.getAppSecret()));
         log.debug("获取易安联token, appId: {}", lineApp.getAppId());
 
-        String tokenResponseStr = post(lineApp.getUrl() + YiAnLianConstants.tokenPath, request, null, String.class);
+        String tokenResponseStr = post(resolveApiBaseUrl(lineApp) + YiAnLianConstants.tokenPath, request, null, String.class);
         log.debug("易安联token接口原始响应: {}", tokenResponseStr);
 
         int tokenCode = parseResponseCode(tokenResponseStr);
@@ -377,13 +397,22 @@ public class OpenApiClient
         {
             throw new ServiceException("易安联接口路径未配置");
         }
-        log.debug("调用易安联GET接口 - URL: {}, accessToken: {}", url, accessToken);
+        final boolean viaSyncProxy = isSyncProxyUrl(url);
+        if (viaSyncProxy)
+        {
+            log.info("调用易安联GET接口(经同步代理) - URL: {}", url);
+        }
+        else
+        {
+            log.debug("调用易安联GET接口 - URL: {}, accessToken: {}", url, accessToken);
+        }
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         if (StringUtils.isNotEmpty(accessToken))
         {
             headers.set("accessToken", accessToken);
         }
+        applySyncProxyHeaders(url, headers);
 
         T response = restTemplate.exchange(
             url,
@@ -391,13 +420,43 @@ public class OpenApiClient
             new HttpEntity<>(headers),
             responseType
         ).getBody();
-        log.debug("易安联GET接口返回 - URL: {}, 响应数据: {}", url, response);
+        if (viaSyncProxy)
+        {
+            log.info("易安联GET接口返回(经同步代理) - URL: {}", url);
+        }
+        else
+        {
+            log.debug("易安联GET接口返回 - URL: {}, 响应数据: {}", url, response);
+        }
 
         return response;
+    }
+
+    /**
+     * 同步代理走 HTTP 短连接，禁止 HttpClient 复用已被代理关闭的连接
+     */
+    private boolean isSyncProxyUrl(String url)
+    {
+        return StringUtils.isNotEmpty(url)
+            && url.regionMatches(true, 0, "http://", 0, 7);
+    }
+
+    private void applySyncProxyHeaders(String url, HttpHeaders headers)
+    {
+        if (isSyncProxyUrl(url))
+        {
+            headers.setConnection("close");
+            headers.set("Accept-Encoding", "identity");
+        }
     }
 
     private String buildCacheKey(String appId)
     {
         return CacheConstants.YIANLIAN_TOKEN_KEY + appId;
+    }
+
+    private String resolveApiBaseUrl(LineApp lineApp)
+    {
+        return syncProxyEndpointResolver.resolveApiBaseUrl(lineApp);
     }
 }

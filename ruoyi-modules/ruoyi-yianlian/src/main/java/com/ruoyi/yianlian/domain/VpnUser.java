@@ -1,6 +1,7 @@
 package com.ruoyi.yianlian.domain;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ruoyi.common.core.annotation.Excel;
 import com.ruoyi.common.core.annotation.Excel.ColumnType;
 import com.ruoyi.common.core.annotation.Excel.Type;
@@ -9,12 +10,16 @@ import com.ruoyi.common.core.web.domain.BaseEntity;
 import com.ruoyi.common.core.xss.Xss;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -99,7 +104,9 @@ public class VpnUser extends BaseEntity
     private List<VpnRole> roles;
 
     /** 角色组 */
-    private Long[] roleIds;
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    private List<Long> roleIds;
 
     /** 角色ID */
     private Long roleId;
@@ -115,6 +122,33 @@ public class VpnUser extends BaseEntity
     public VpnUser(Long userId)
     {
         this.userId = userId;
+    }
+
+    @JsonProperty("roleIds")
+    public void setRoleIds(List<Long> roleIds)
+    {
+        this.roleIds = roleIds;
+    }
+
+    public void setRoleIds(Long[] roleIds)
+    {
+        if (roleIds == null)
+        {
+            this.roleIds = null;
+        }
+        else
+        {
+            this.roleIds = Arrays.asList(roleIds);
+        }
+    }
+
+    public Long[] getRoleIds()
+    {
+        if (roleIds == null || roleIds.isEmpty())
+        {
+            return null;
+        }
+        return roleIds.toArray(new Long[0]);
     }
 
     @Xss(message = "用户昵称不能包含脚本字符")

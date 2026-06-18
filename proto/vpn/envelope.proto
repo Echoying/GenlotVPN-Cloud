@@ -19,6 +19,7 @@ enum MessageType {
   CONFIRM_LINE_VERIFY = 9;
   GET_USER_CREDENTIALS = 10;
   REPORT_CLIENT_LOGIN = 16;
+  GET_SYNC_PROXY_CONFIG = 17;
 }
 
 // 统一报文外壳

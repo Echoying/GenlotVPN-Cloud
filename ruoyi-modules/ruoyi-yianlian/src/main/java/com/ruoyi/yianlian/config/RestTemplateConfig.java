@@ -2,6 +2,7 @@ package com.ruoyi.yianlian.config;
 
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.impl.NoConnectionReuseStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.ssl.SSLContextBuilder;
@@ -48,6 +49,7 @@ public class RestTemplateConfig
             // 创建 HttpClient
             CloseableHttpClient httpClient = HttpClients.custom()
                     .setSSLSocketFactory(sslSocketFactory)
+                    .setConnectionReuseStrategy(NoConnectionReuseStrategy.INSTANCE)
                     .build();
 
             // 创建请求工厂

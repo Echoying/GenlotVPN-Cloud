@@ -7,6 +7,7 @@ import com.ruoyi.yianlian.client.dto.YiAnLianDeptListResp;
 import com.ruoyi.yianlian.constant.YiAnLianConstants;
 import com.ruoyi.yianlian.domain.LineApp;
 import com.ruoyi.yianlian.service.yianlian.IYiAnLianDeptService;
+import com.ruoyi.yianlian.service.sync.SyncProxyEndpointResolver;
 import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,9 @@ public class YiAnLianDeptServiceImpl implements IYiAnLianDeptService
 
     @Autowired
     private IVpnLineAppService lineAppService;
+
+    @Autowired
+    private SyncProxyEndpointResolver syncProxyEndpointResolver;
 
 
     public YiAnLianDeptListResp getDeptList(YiAnLianDeptListRequest request){
@@ -100,6 +104,6 @@ public class YiAnLianDeptServiceImpl implements IYiAnLianDeptService
         log.error("获取部门列表参数错误: 线路不存在{}", appId);
             return null;
         }
-        return lineApp.getUrl() + YiAnLianConstants.deptListPath ;
+        return syncProxyEndpointResolver.resolveApiBaseUrl(lineApp) + YiAnLianConstants.deptListPath ;
     }
 }

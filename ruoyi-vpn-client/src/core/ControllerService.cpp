@@ -105,9 +105,19 @@ void ControllerService::detectServer(const QVariantMap &server)
 {
     QJsonArray arr;
     arr.append(QJsonObject::fromVariantMap(serverToJson(server)));
-    postJson(QStringLiteral("/api/v1/control/detect"), QJsonDocument(arr), [this](const QJsonObject &obj) {
+    postJson(QStringLiteral("/api/v1/control/detect"), QJsonDocument(arr),
+             [this, server](const QJsonObject &obj) {
         const QJsonArray data = obj.value(QStringLiteral("data")).toArray();
         if (data.isEmpty()) {
+            const QString msg = extractControllerError(obj, QString());
+            if (msg.isEmpty() || msg.compare(QStringLiteral("Success"), Qt::CaseInsensitive) == 0) {
+                QVariantMap result = server;
+                result[QStringLiteral("available")] = true;
+                AppLogger::instance()->info(
+                    QStringLiteral("[控制器] POST /api/v1/control/detect 成功（code=200, messages=Success, data 为空）"));
+                emit detectSucceeded(result);
+                return;
+            }
             const QString err = QStringLiteral("探测未返回数据");
             AppLogger::instance()->error(QStringLiteral("[控制器] POST /api/v1/control/detect 失败: %1").arg(err));
             emit operationFailed(err);

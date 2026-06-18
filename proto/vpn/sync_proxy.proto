@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package vpn;
+
+option java_package = "com.ruoyi.vpn.protocol";
+option java_multiple_files = true;
+
+message GetSyncProxyConfigRequest {
+  string app_id = 1;
+}
+
+message GetSyncProxyConfigResponse {
+  bool enabled = 1;
+  string upstream_url = 2;
+  string listen_host = 3;
+  int32 listen_port = 4;
+  string path_prefix = 5;
+  repeated string allowed_source_ips = 6;
+}

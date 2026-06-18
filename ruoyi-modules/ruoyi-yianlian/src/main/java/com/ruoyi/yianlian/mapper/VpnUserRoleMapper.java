@@ -42,7 +42,7 @@ public interface VpnUserRoleMapper
      * @param userRoleList 用户角色列表
      * @return 结果
      */
-    public int batchUserRole(List<VpnUserRole> userRoleList);
+    public int batchUserRole(@Param("list") List<VpnUserRole> userRoleList);
 
     /**
      * 删除用户和角色关联信息

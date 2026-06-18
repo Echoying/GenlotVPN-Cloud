@@ -33,8 +33,17 @@ public class LineApp extends BaseEntity
     /** 线路密钥 */
     private String appSecret;
 
-    /** 管理系统URL */
+    /** 管理系统URL（易安联 OpenAPI 上游，供同步代理转发） */
     private String url;
+
+    /** 同步代理监听 IP，空则使用 Nacos 默认 */
+    private String proxyHost;
+
+    /** 同步代理监听端口，空则使用 Nacos 默认 */
+    private Integer proxyPort;
+
+    /** 是否启用同步代理（0否直连 1是） */
+    private String proxyEnabled;
 
     /** 服务器域名或IP */
     private String host;

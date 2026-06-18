@@ -1,0 +1,9 @@
+# 同步代理 Nacos 配置片段（合并到 ruoyi-yianlian-dev.yml）
+yianlian:
+  sync-proxy:
+    enabled: true
+    default-host: 10.27.0.94
+    default-port: 18001
+    default-scheme: http
+    allowed-source-ips:
+      - 10.27.0.92

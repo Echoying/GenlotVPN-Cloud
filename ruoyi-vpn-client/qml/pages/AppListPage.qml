@@ -17,17 +17,63 @@ Item {
 
         Row {
             width: parent.width
-            spacing: 12
+            spacing: 8
+
+            Item {
+                width: parent.width - proxyLogBtn.implicitWidth - parent.spacing
+                height: proxyLogBtn.implicitHeight
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width
+                    text: vpnFlow.selectedLine.appName || vpnFlow.pendingLine.appName || "当前线路"
+                    color: Theme.navy
+                    font.pixelSize: 17
+                    font.bold: true
+                    elide: Text.ElideRight
+                }
+            }
+
+            GhostButton {
+                id: proxyLogBtn
+                visible: vpnFlow.hasSyncProxyRole && vpnFlow.lineSyncProxyEnabled
+                text: "同步代理日志"
+                onClicked: vpnFlow.goToProxyLogs()
+            }
+        }
+
+        Row {
+            width: parent.width
+            spacing: 8
+            visible: vpnFlow.lineSyncProxyEnabled
 
             Text {
-                width: parent.width
                 anchors.verticalCenter: parent.verticalCenter
-                text: vpnFlow.selectedLine.appName || vpnFlow.pendingLine.appName || "当前线路"
+                text: "同步代理服务"
                 color: Theme.navy
-                font.pixelSize: 17
-                font.bold: true
-                elide: Text.ElideRight
+                font.pixelSize: 13
             }
+
+            TlsSwitch {
+                id: proxySwitch
+                anchors.verticalCenter: parent.verticalCenter
+                checked: vpnFlow.syncProxyRunning
+                onToggled: vpnFlow.setSyncProxyEnabled(checked)
+            }
+        }
+
+        Connections {
+            target: vpnFlow
+            function onSyncProxyRunningChanged() {
+                proxySwitch.checked = vpnFlow.syncProxyRunning
+            }
+        }
+
+        Text {
+            visible: vpnFlow.lineSyncProxyEnabled && vpnFlow.syncProxyRunning
+            text: "同步代理: " + (vpnFlow.syncProxyEndpoint || "未启动")
+            font.pixelSize: 11
+            color: Theme.textSecondary
         }
 
         Text {

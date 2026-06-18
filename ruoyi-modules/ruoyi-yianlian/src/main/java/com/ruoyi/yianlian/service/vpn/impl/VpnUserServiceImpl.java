@@ -220,6 +220,18 @@ public class VpnUserServiceImpl implements IVpnUserService
     }
 
     /**
+     * 仅记录登录信息（登录IP、登录时间），不触碰角色关联
+     *
+     * @param user 用户信息
+     * @return 结果
+     */
+    @Override
+    public int updateUserLogin(VpnUser user)
+    {
+        return userMapper.updateUserLogin(user);
+    }
+
+    /**
      * 用户授权角色
      *
      * @param userId 用户ID
@@ -438,16 +450,14 @@ public class VpnUserServiceImpl implements IVpnUserService
     }
 
     /**
-     * 校验用户是否允许操作
+     * 校验用户是否允许操作（VPN 用户无内置超级管理员，不做限制）
      *
      * @param user 用户信息
      */
+    @Override
     public void checkUserAllowed(VpnUser user)
     {
-        if (StringUtils.isNotNull(user.getUserId()) && user.getUserId().equals(1L))
-        {
-            throw new ServiceException("不允许操作超级管理员用户");
-        }
+        // VPN 用户体系与系统用户不同，不存在 userId=1 的超级管理员保护
     }
 
     @Override

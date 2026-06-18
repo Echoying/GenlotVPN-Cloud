@@ -37,6 +37,7 @@ nbdist/
 .nb-gradle/
 */build/*
 */.qtcreator/*
+*/build-msvc*/*
 
 ######################################################################
 # Frontend (Vue / npm)

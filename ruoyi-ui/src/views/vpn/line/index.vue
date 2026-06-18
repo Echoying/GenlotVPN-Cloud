@@ -98,6 +98,11 @@
       <el-table-column label="线路ID" align="center" prop="appId" :show-overflow-tooltip="true" />
       <el-table-column label="线路密钥" align="center" prop="appSecret" :show-overflow-tooltip="true" />
       <el-table-column label="管理系统URL" align="center" prop="url" :show-overflow-tooltip="true" />
+      <el-table-column label="同步代理" align="center" prop="proxyEnabled" width="90">
+        <template slot-scope="scope">
+          <span>{{ scope.row.proxyEnabled === '1' ? '是' : '否' }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="服务器" align="center" prop="host" :show-overflow-tooltip="true" />
       <el-table-column label="服务器端口" align="center" prop="srvPort" />
       <el-table-column label="敲门端口" align="center" prop="spaPort" />
@@ -164,7 +169,40 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="管理系统URL" prop="url">
-              <el-input v-model="form.url" placeholder="请输入管理系统URL" />
+              <el-input v-model="form.url" placeholder="易安联 OpenAPI 上游地址（VPN 隧道内可达）" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="24">
+            <el-alert
+              title="同步代理：开启后管理系统经 GenlotVPN 代理访问易安联；关闭则 ruoyi-yianlian 直连管理系统 URL。需在「VPN角色管理」中为该线路配置 sync_proxy 角色。"
+              type="info"
+              :closable="false"
+              show-icon
+              style="margin-bottom: 12px"
+            />
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="启用同步代理" prop="proxyEnabled">
+              <el-radio-group v-model="form.proxyEnabled">
+                <el-radio label="0">否（直连）</el-radio>
+                <el-radio label="1">是（经代理）</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16" v-if="form.proxyEnabled === '1'">
+          <el-col :span="12">
+            <el-form-item label="代理监听IP" prop="proxyHost">
+              <el-input v-model="form.proxyHost" placeholder="留空则使用 Nacos 默认管理机 IP" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="代理监听端口" prop="proxyPort">
+              <el-input v-model.number="form.proxyPort" type="number" placeholder="留空则使用 Nacos 默认端口" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -332,6 +370,9 @@ export default {
         appId: undefined,
         appSecret: undefined,
         url: undefined,
+        proxyEnabled: '0',
+        proxyHost: undefined,
+        proxyPort: undefined,
         host: undefined,
         srvPort: undefined,
         spaPort: undefined,

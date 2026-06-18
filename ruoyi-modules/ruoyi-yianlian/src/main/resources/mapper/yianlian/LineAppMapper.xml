@@ -9,6 +9,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="appName"    column="app_name"    />
         <result property="appSecret"     column="app_secret"     />
         <result property="url"     column="url"     />
+        <result property="proxyHost" column="proxy_host" />
+        <result property="proxyPort" column="proxy_port" />
+        <result property="proxyEnabled" column="proxy_enabled" />
         <result property="host"    column="host"    />
         <result property="srvPort" column="srv_port" />
         <result property="spaPort" column="spa_port" />
@@ -22,7 +25,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectLineAppVo">
-        select app_id, app_name, app_secret, url, host, srv_port, spa_port, spa_key, status, create_by, create_time, update_by, update_time, remark
+        select app_id, app_name, app_secret, url, proxy_host, proxy_port, proxy_enabled, host, srv_port, spa_port, spa_key, status, create_by, create_time, update_by, update_time, remark
 		from line_app
     </sql>
     
@@ -72,6 +75,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 			<if test="appName != null and appName != '' ">app_name,</if>
 			<if test="appSecret != null and appSecret != '' ">app_secret,</if>
 			<if test="url != null and url != '' ">url,</if>
+			<if test="proxyHost != null and proxyHost != '' ">proxy_host,</if>
+			<if test="proxyPort != null ">proxy_port,</if>
+			<if test="proxyEnabled != null and proxyEnabled != '' ">proxy_enabled,</if>
 			<if test="host != null and host != '' ">host,</if>
 			<if test="srvPort != null ">srv_port,</if>
 			<if test="spaPort != null ">spa_port,</if>
@@ -85,6 +91,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 			<if test="appName != null and appName != ''">#{appName},</if>
 			<if test="appSecret != null and appSecret != ''">#{appSecret},</if>
 			<if test="url != null and url != ''">#{url},</if>
+			<if test="proxyHost != null and proxyHost != ''">#{proxyHost},</if>
+			<if test="proxyPort != null">#{proxyPort},</if>
+			<if test="proxyEnabled != null and proxyEnabled != ''">#{proxyEnabled},</if>
 			<if test="host != null and host != ''">#{host},</if>
 			<if test="srvPort != null">#{srvPort},</if>
 			<if test="spaPort != null">#{spaPort},</if>
@@ -102,6 +111,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="appName != null and appName != ''">app_name = #{appName},</if>
             <if test="appSecret != null and appSecret != ''">app_secret = #{appSecret},</if>
             <if test="url != null and url != ''">url = #{url},</if>
+            <if test="proxyHost != null">proxy_host = #{proxyHost},</if>
+            <if test="proxyPort != null">proxy_port = #{proxyPort},</if>
+            <if test="proxyEnabled != null and proxyEnabled != ''">proxy_enabled = #{proxyEnabled},</if>
             <if test="host != null and host != ''">host = #{host},</if>
             <if test="srvPort != null">srv_port = #{srvPort},</if>
             <if test="spaPort != null">spa_port = #{spaPort},</if>

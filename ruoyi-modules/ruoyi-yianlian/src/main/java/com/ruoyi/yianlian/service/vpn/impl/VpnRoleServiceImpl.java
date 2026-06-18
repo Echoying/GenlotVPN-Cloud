@@ -73,6 +73,12 @@ public class VpnRoleServiceImpl implements IVpnRoleService
         return roles;
     }
 
+    @Override
+    public List<VpnRole> selectUserRolesByUserId(Long userId)
+    {
+        return roleMapper.selectRolePermissionByUserId(userId);
+    }
+
     /**
      * 根据用户ID查询权限
      *
@@ -88,7 +94,14 @@ public class VpnRoleServiceImpl implements IVpnRoleService
         {
             if (StringUtils.isNotNull(perm))
             {
-                permsSet.add(perm.getRoleName());
+                if (StringUtils.isNotEmpty(perm.getRoleKey()))
+                {
+                    permsSet.add(perm.getRoleKey());
+                }
+                else
+                {
+                    permsSet.add(perm.getRoleName());
+                }
             }
         }
         return permsSet;
@@ -147,6 +160,21 @@ public class VpnRoleServiceImpl implements IVpnRoleService
         return UserConstants.UNIQUE;
     }
 
+    @Override
+    public boolean checkRoleKeyUnique(VpnRole role)
+    {
+        if (StringUtils.isEmpty(role.getRoleKey()))
+        {
+            return UserConstants.UNIQUE;
+        }
+        Long roleId = StringUtils.isNull(role.getRoleId()) ? -1L : role.getRoleId();
+        VpnRole info = roleMapper.checkRoleKeyUnique(role.getRoleKey(), role.getAppId());
+        if (StringUtils.isNotNull(info) && info.getRoleId().longValue() != roleId.longValue())
+        {
+            return UserConstants.NOT_UNIQUE;
+        }
+        return UserConstants.UNIQUE;
+    }
 
     /**
      * 通过角色ID查询角色使用数量

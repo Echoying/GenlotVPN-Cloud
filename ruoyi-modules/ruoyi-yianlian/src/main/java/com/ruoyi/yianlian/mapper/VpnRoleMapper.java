@@ -67,6 +67,14 @@ public interface VpnRoleMapper
      */
     public VpnRole checkRoleNameUnique(@Param("roleName") String roleName, @Param("appId") String appId);
 
+    /**
+     * 校验角色权限字符是否唯一
+     *
+     * @param roleKey 角色权限字符
+     * @param appId 线路ID
+     * @return 角色信息
+     */
+    public VpnRole checkRoleKeyUnique(@Param("roleKey") String roleKey, @Param("appId") String appId);
 
     /**
      * 新增角色信息
