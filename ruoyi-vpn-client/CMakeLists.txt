@@ -46,6 +46,7 @@ set(SOURCES
     src/transport/FrameCodec.cpp
     src/transport/CertificatePinner.cpp
     src/core/TcpHmacUtils.cpp
+    src/crypto/AgentAesCrypto.cpp
     src/core/VpnCloudService.cpp
     src/core/ControllerService.cpp
     src/core/SessionManager.cpp
@@ -126,7 +127,7 @@ target_link_libraries(GenlotVPN PRIVATE
     ${Protobuf_LIBRARIES}
 )
 if(WIN32)
-    target_link_libraries(GenlotVPN PRIVATE crypt32)
+    target_link_libraries(GenlotVPN PRIVATE crypt32 bcrypt)
 endif()
 
 target_include_directories(GenlotVPN PRIVATE src ${CMAKE_CURRENT_BINARY_DIR})

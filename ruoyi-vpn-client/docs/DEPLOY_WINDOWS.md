@@ -125,6 +125,7 @@ Test-NetConnection -ComputerName <服务器IP> -Port 9443
 | `useTls` | 生产必须为 `true` |
 | `certPinSha256` | 服务端证书 SPKI SHA-256，64 位 hex；启用 TLS 时必填 |
 | `certPinSha256Backup` | 证书轮换时的备用指纹，可选 |
+| `controllerAesEnabled` | 访问本机 Agent `127.0.0.1:30303` 是否全包 AES 传输，**默认 true**；旧版 Agent 可设 `false` 回退明文 JSON。修改后需重启客户端 |
 
 指纹获取：见 [TLS_PINNING.md](TLS_PINNING.md) 第二节，或查阅 `ruoyi-vpn-auth` 启动日志中的 `VPN TCP 证书 SPKI Pin`。
 
@@ -222,7 +223,7 @@ Test-NetConnection -ComputerName <服务器IP> -Port 9443
 - **不要**在工单/邮件中明文传播 `config.json` 中的生产 Pin（可内网 KB 维护）
 - 记住密码为 DPAPI 保护，**不换机复制 profile** 到其他用户无效
 - 云端 `session_key` 仅存内存，不落盘；会话过期需重新登录
-- 控制器密码为服务端 AES 密文，客户端不解密，直接交 Agent
+- 控制器：`controllerAesEnabled=true`（默认）时，30303 请求/响应全包 AES；`loginWithAccount` 的 `password` 仍为字段级 AES 密文（与云端下发一致），外层再整包加密。设为 `false` 时保持旧版明文 JSON 传输
 
 ---
 

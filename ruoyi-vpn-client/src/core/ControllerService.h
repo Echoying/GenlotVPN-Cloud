@@ -14,6 +14,9 @@ class ControllerService : public QObject {
 public:
     explicit ControllerService(QObject *parent = nullptr);
 
+    void setControllerAesEnabled(bool enabled) { m_controllerAesEnabled = enabled; }
+    bool controllerAesEnabled() const { return m_controllerAesEnabled; }
+
     Q_INVOKABLE void detectServer(const QVariantMap &server);
     Q_INVOKABLE void selectServer(const QVariantMap &server);
     Q_INVOKABLE void fetchVersions(const QVariantMap &server);
@@ -43,10 +46,13 @@ private:
     void postJson(const QString &path, const QJsonDocument &doc,
                   std::function<void(const QJsonObject &)> onSuccess);
     void getJson(const QString &path, std::function<void(const QJsonObject &)> onSuccess);
+    QByteArray encodeControllerBody(const QByteArray &plainJson) const;
+    QByteArray decodeControllerBody(const QByteArray &wireBody) const;
     static QVariantMap serverToJson(const QVariantMap &server);
 
     QNetworkAccessManager m_nam;
     QString m_baseUrl{QStringLiteral("http://127.0.0.1:30303")};
+    bool m_controllerAesEnabled{true};
 };
 
 } // namespace vpn

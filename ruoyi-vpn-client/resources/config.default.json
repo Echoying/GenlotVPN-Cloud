@@ -5,5 +5,6 @@
   "certPinSha256": "cfaed547fc3b72894931ddcd7f94090bb909e95357510d3a79c94345f5e4d6fb",
   "certPinSha256Backup": "",
   "tcpReconnectMaxRetries": 3,
-  "tcpReconnectDelayMs": 1500
+  "tcpReconnectDelayMs": 1500,
+  "controllerAesEnabled": true
 }

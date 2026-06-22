@@ -1,4 +1,5 @@
 #include "ControllerService.h"
+#include "crypto/AgentAesCrypto.h"
 #include "AppLogger.h"
 #include "PacketLogUtil.h"
 #include <QJsonArray>
@@ -29,42 +30,91 @@ QString extractControllerError(const QJsonObject &obj, const QString &fallback)
     return fallback;
 }
 
+QJsonObject parseControllerJson(const QByteArray &plainJson, QString *errorOut)
+{
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(plainJson, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        if (errorOut) {
+            *errorOut = QStringLiteral("控制器响应解析失败");
+        }
+        return QJsonObject();
+    }
+    return doc.object();
+}
+
 } // namespace
 
 ControllerService::ControllerService(QObject *parent) : QObject(parent) {}
 
-QVariantMap ControllerService::serverToJson(const QVariantMap &server)
+QByteArray ControllerService::encodeControllerBody(const QByteArray &plainJson) const
 {
-    QVariantMap obj;
-    obj[QStringLiteral("host")] = server.value(QStringLiteral("host")).toString();
-    obj[QStringLiteral("srvPort")] = server.value(QStringLiteral("srvPort")).toString();
-    obj[QStringLiteral("spaPort")] = server.value(QStringLiteral("spaPort")).toString();
-    obj[QStringLiteral("spaKey")] = server.value(QStringLiteral("spaKey")).toString();
-    obj[QStringLiteral("enablePortMapping")] = false;
-    obj[QStringLiteral("mappingPort")] = server.value(QStringLiteral("srvPort")).toString();
-    obj[QStringLiteral("device_spa_enable")] = false;
-    return obj;
+    if (!m_controllerAesEnabled) {
+        return plainJson;
+    }
+    const QString cipher = AgentAesCrypto::encryptToBase64(plainJson);
+    if (cipher.isEmpty() && !plainJson.isEmpty()) {
+        return QByteArray();
+    }
+    return cipher.toLatin1();
+}
+
+QByteArray ControllerService::decodeControllerBody(const QByteArray &wireBody) const
+{
+    if (!m_controllerAesEnabled) {
+        return wireBody;
+    }
+    const QByteArray plain = AgentAesCrypto::decryptFromBase64(wireBody);
+    if (plain.isEmpty() && !wireBody.isEmpty()) {
+        return QByteArray();
+    }
+    return plain;
 }
 
 void ControllerService::postJson(const QString &path, const QJsonDocument &doc,
                                  std::function<void(const QJsonObject &)> onSuccess)
 {
-    const QByteArray requestBody = doc.toJson(QJsonDocument::Compact);
-    PacketLogUtil::logControllerSend(QStringLiteral("POST"), path, requestBody);
+    const QByteArray plainJson = doc.toJson(QJsonDocument::Compact);
+    const QByteArray requestBody = encodeControllerBody(plainJson);
+    if (requestBody.isEmpty() && !plainJson.isEmpty()) {
+        const QString err = QStringLiteral("控制器请求加密失败");
+        AppLogger::instance()->error(QStringLiteral("[控制器] POST %1 失败: %2").arg(path, err));
+        emit operationFailed(err);
+        return;
+    }
+
+    PacketLogUtil::logControllerSend(QStringLiteral("POST"), path, plainJson);
     QNetworkRequest req(QUrl(m_baseUrl + path));
-    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    if (m_controllerAesEnabled) {
+        req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("text/plain; charset=UTF-8"));
+    } else {
+        req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    }
     auto *reply = m_nam.post(req, requestBody);
     connect(reply, &QNetworkReply::finished, this, [this, reply, path, onSuccess = std::move(onSuccess)]() {
         reply->deleteLater();
-        const QByteArray responseBody = reply->readAll();
-        PacketLogUtil::logControllerReceive(QStringLiteral("POST"), path, responseBody);
+        const QByteArray wireBody = reply->readAll();
+        const QByteArray plainJson = decodeControllerBody(wireBody);
+        PacketLogUtil::logControllerReceive(QStringLiteral("POST"), path, plainJson.isEmpty() ? wireBody : plainJson);
         if (reply->error() != QNetworkReply::NoError) {
             const QString err = reply->errorString();
             AppLogger::instance()->error(QStringLiteral("[控制器] POST %1 失败: %2").arg(path, err));
             emit operationFailed(err);
             return;
         }
-        const QJsonObject obj = QJsonDocument::fromJson(responseBody).object();
+        if (plainJson.isEmpty() && !wireBody.isEmpty()) {
+            const QString err = QStringLiteral("控制器响应解密失败");
+            AppLogger::instance()->error(QStringLiteral("[控制器] POST %1 失败: %2").arg(path, err));
+            emit operationFailed(err);
+            return;
+        }
+        QString parseError;
+        const QJsonObject obj = parseControllerJson(plainJson, &parseError);
+        if (!parseError.isEmpty()) {
+            AppLogger::instance()->error(QStringLiteral("[控制器] POST %1 失败: %2").arg(path, parseError));
+            emit operationFailed(parseError);
+            return;
+        }
         if (obj.value(QStringLiteral("code")).toString() != QStringLiteral("200")) {
             const QString err = extractControllerError(obj, QStringLiteral("控制器请求失败"));
             AppLogger::instance()->error(QStringLiteral("[控制器] POST %1 失败: %2").arg(path, err));
@@ -82,15 +132,28 @@ void ControllerService::getJson(const QString &path, std::function<void(const QJ
     auto *reply = m_nam.get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply, path, onSuccess = std::move(onSuccess)]() {
         reply->deleteLater();
-        const QByteArray responseBody = reply->readAll();
-        PacketLogUtil::logControllerReceive(QStringLiteral("GET"), path, responseBody);
+        const QByteArray wireBody = reply->readAll();
+        const QByteArray plainJson = decodeControllerBody(wireBody);
+        PacketLogUtil::logControllerReceive(QStringLiteral("GET"), path, plainJson.isEmpty() ? wireBody : plainJson);
         if (reply->error() != QNetworkReply::NoError) {
             const QString err = QStringLiteral("无法连接本地控制器(127.0.0.1:30303)，请确保易安联 Agent 已启动");
             AppLogger::instance()->error(QStringLiteral("[控制器] GET %1 失败: %2").arg(path, reply->errorString()));
             emit operationFailed(err);
             return;
         }
-        const QJsonObject obj = QJsonDocument::fromJson(responseBody).object();
+        if (plainJson.isEmpty() && !wireBody.isEmpty()) {
+            const QString err = QStringLiteral("控制器响应解密失败");
+            AppLogger::instance()->error(QStringLiteral("[控制器] GET %1 失败: %2").arg(path, err));
+            emit operationFailed(err);
+            return;
+        }
+        QString parseError;
+        const QJsonObject obj = parseControllerJson(plainJson, &parseError);
+        if (!parseError.isEmpty()) {
+            AppLogger::instance()->error(QStringLiteral("[控制器] GET %1 失败: %2").arg(path, parseError));
+            emit operationFailed(parseError);
+            return;
+        }
         if (obj.value(QStringLiteral("code")).toString() != QStringLiteral("200")) {
             const QString err = extractControllerError(obj, QStringLiteral("控制器请求失败"));
             AppLogger::instance()->error(QStringLiteral("[控制器] GET %1 失败: %2").arg(path, err));
@@ -152,6 +215,7 @@ void ControllerService::loginWithAccount(const QString &username, const QString 
 {
     QJsonObject body;
     body[QStringLiteral("username")] = username;
+    // password 保持云端下发的字段级 AES 密文；开启传输加密时由 postJson 再整包加密
     body[QStringLiteral("password")] = encryptedPassword;
     postJson(QStringLiteral("/api/v1/user/loginWithAccount"), QJsonDocument(body), [this](const QJsonObject &) {
         emit loginControllerSucceeded();
@@ -230,6 +294,19 @@ void ControllerService::fetchAppList(const QString &serviceName)
 void ControllerService::controllerLogout()
 {
     postJson(QStringLiteral("/api/v1/user/logout"), QJsonDocument(QJsonObject()), [](const QJsonObject &) {});
+}
+
+QVariantMap ControllerService::serverToJson(const QVariantMap &server)
+{
+    QVariantMap obj;
+    obj[QStringLiteral("host")] = server.value(QStringLiteral("host")).toString();
+    obj[QStringLiteral("srvPort")] = server.value(QStringLiteral("srvPort")).toString();
+    obj[QStringLiteral("spaPort")] = server.value(QStringLiteral("spaPort")).toString();
+    obj[QStringLiteral("spaKey")] = server.value(QStringLiteral("spaKey")).toString();
+    obj[QStringLiteral("enablePortMapping")] = false;
+    obj[QStringLiteral("mappingPort")] = server.value(QStringLiteral("srvPort")).toString();
+    obj[QStringLiteral("device_spa_enable")] = false;
+    return obj;
 }
 
 } // namespace vpn

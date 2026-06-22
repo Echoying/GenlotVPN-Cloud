@@ -26,7 +26,8 @@ QByteArray embeddedDefaultConfigJson()
         "  \"certPinSha256\": \"cfaed547fc3b72894931ddcd7f94090bb909e95357510d3a79c94345f5e4d6fb\",\n"
         "  \"certPinSha256Backup\": \"\",\n"
         "  \"tcpReconnectMaxRetries\": 3,\n"
-        "  \"tcpReconnectDelayMs\": 1500\n"
+        "  \"tcpReconnectDelayMs\": 1500,\n"
+        "  \"controllerAesEnabled\": true\n"
         "}\n");
 }
 
@@ -97,6 +98,11 @@ QVariantMap SecureStorage::loadConfigFile() const
         cfg.contains(QStringLiteral("tcpReconnectDelayMs"))
             ? cfg.value(QStringLiteral("tcpReconnectDelayMs")).toInt()
             : kDefaultTcpReconnectDelayMs;
+    if (cfg.contains(QStringLiteral("controllerAesEnabled"))) {
+        result[QStringLiteral("controllerAesEnabled")] = cfg.value(QStringLiteral("controllerAesEnabled")).toBool();
+    } else {
+        result[QStringLiteral("controllerAesEnabled")] = true;
+    }
     return result;
 }
 

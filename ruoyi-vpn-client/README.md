@@ -91,6 +91,7 @@ cmake --build build-msvc2022 --config Release
 - 证书生成：`scripts/vpn-tls/gen-cert.bat`
 - Pin 导出：`scripts/vpn-tls/export-pin.bat`
 - 设置页：**安全连接** → 启用 TLS → 填写证书指纹
+- `controllerAesEnabled`：控制本机 Agent `30303` 全包 AES（默认 `true`），见 `config.default.json`
 
 ## 部署与运维（Windows）
 
@@ -109,7 +110,7 @@ cmake --build build-msvc2022 --config Release
 - 登录后 RPC 携带 **HMAC-SHA256(session_key)**
 - 启用 TLS 时必须配置 `certPinSha256`（64 位 hex）
 - 记住密码使用 Windows DPAPI 加密存储（macOS 计划 Keychain）
-- 控制器密码使用服务端 AES 密文，**客户端不解密**，直接传给 Agent
+- 控制器密码：云端经 TLS 下发表字段级 AES 密文，客户端原样写入 `loginWithAccount`；`controllerAesEnabled=true` 时再对整段 JSON 做传输层 AES 加密
 
 ## 日志
 

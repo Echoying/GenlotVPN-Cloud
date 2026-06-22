@@ -1279,9 +1279,13 @@ void VpnFlowController::reloadServerSettings()
     }
     if (m_tcpReconnectDelayMs < 500) {
         m_tcpReconnectDelayMs = 500;
-    } else if (m_tcpReconnectDelayMs > 60000) {
+    } else     if (m_tcpReconnectDelayMs > 60000) {
         m_tcpReconnectDelayMs = 60000;
     }
+
+    const bool controllerAesEnabled = !cfg.contains(QStringLiteral("controllerAesEnabled"))
+                                          || cfg.value(QStringLiteral("controllerAesEnabled")).toBool();
+    m_controller->setControllerAesEnabled(controllerAesEnabled);
 }
 
 void VpnFlowController::applyReconnectPolicyToCloud()
@@ -1309,6 +1313,10 @@ void VpnFlowController::bootstrapServer()
            QStringLiteral("TCP 自动重连: 最多 %1 次，间隔 %2ms")
                .arg(m_tcpReconnectMaxRetries)
                .arg(m_tcpReconnectDelayMs));
+    addLog(QStringLiteral("info"),
+           QStringLiteral("控制器传输加密: %1（config.json controllerAesEnabled）")
+               .arg(m_controller->controllerAesEnabled() ? QStringLiteral("开启")
+                                                         : QStringLiteral("关闭")));
     emit serverConfigChanged();
     emit reconnectConfigChanged();
 }
