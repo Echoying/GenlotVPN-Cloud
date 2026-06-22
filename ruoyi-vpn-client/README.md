@@ -111,6 +111,7 @@ cmake --build build-msvc2022 --config Release
 - 启用 TLS 时必须配置 `certPinSha256`（64 位 hex）
 - 记住密码使用 Windows DPAPI 加密存储（macOS 计划 Keychain）
 - 控制器密码：云端经 TLS 下发表字段级 AES 密文，客户端原样写入 `loginWithAccount`；`controllerAesEnabled=true` 时再对整段 JSON 做传输层 AES 加密
+- **30303 AES 密钥/IV**：与易安联 Agent SDK 一致的**协议固定参数**（非业务密钥），硬编码于客户端以便与本机 Agent 互通；主要约束本机回环上的明文 JSON 可见性，**不抵御**同机恶意软件或逆向。远程敏感数据依赖 **TLS 9443** 与 Agent 登录后会话；`controllerAesEnabled` 用于协议版本/兼容，勿当作额外安全开关
 
 ## 日志
 
