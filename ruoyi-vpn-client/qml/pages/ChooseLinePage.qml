@@ -25,7 +25,7 @@ Item {
             return "已达 50 字上限"
         if (purposeLen >= 5)
             return "已输入 " + purposeLen + "/50 字"
-        return "必填，5～50 字"
+        return ""
     }
 
     readonly property bool purposeIsError: {
@@ -39,10 +39,6 @@ Item {
     }
 
     property string purposeErrorText: ""
-
-    function openSettings() {
-        vpnFlow.goToSettings()
-    }
 
     function openPurposeDialog(line) {
         pendingSelectLine = line
@@ -119,18 +115,6 @@ Item {
         }
     }
 
-    GhostButton {
-        id: settingsBtn
-        z: 20
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.topMargin: 10
-        anchors.rightMargin: 12
-        text: "设置"
-        emphasized: true
-        onClicked: root.openSettings()
-    }
-
     Rectangle {
         id: purposeOverlay
         visible: false
@@ -162,27 +146,29 @@ Item {
 
                 Text {
                     width: parent.width
+                    text: pendingSelectLine && pendingSelectLine.appName
+                          ? pendingSelectLine.appName
+                          : ""
+                    visible: text.length > 0
+                    horizontalAlignment: Text.AlignHCenter
+                    color: Theme.navy
+                    font.pixelSize: 15
+                    font.bold: true
+                    wrapMode: Text.Wrap
+                }
+
+                Text {
+                    width: parent.width
                     text: "登录用途"
                     color: Theme.navy
                     font.pixelSize: 15
                     font.bold: true
                 }
 
-                Text {
-                    width: parent.width
-                    text: pendingSelectLine && pendingSelectLine.appName
-                          ? ("线路：" + pendingSelectLine.appName)
-                          : ""
-                    visible: text.length > 0
-                    color: Theme.textSecondary
-                    font.pixelSize: 12
-                    wrapMode: Text.Wrap
-                }
-
                 FlatTextArea {
                     id: purposeField
                     width: parent.width
-                    placeholderText: "必填，5～50 字"
+                    placeholderText: "请输入登录用途"
                     maximumLength: 50
                     hasError: root.purposeIsError
                     onTextChanged: purposeErrorText = ""
@@ -190,6 +176,7 @@ Item {
 
                 Text {
                     width: parent.width
+                    visible: root.purposeHint.length > 0
                     text: root.purposeHint
                     color: root.purposeIsError ? Theme.danger : Theme.textSecondary
                     font.pixelSize: 12
