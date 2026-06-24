@@ -311,12 +311,14 @@ void VpnCloudService::fetchAuthorizedLines()
 #endif
 }
 
-void VpnCloudService::sendLineVerify(const QString &appId, const QString &lineName)
+void VpnCloudService::sendLineVerify(const QString &appId, const QString &lineName,
+                                     const QString &loginPurpose)
 {
 #ifdef VPN_HAS_PROTO
     vpn::SendLineVerifyRequest req;
     req.set_app_id(appId.toStdString());
     req.set_line_name(lineName.toStdString());
+    req.set_login_purpose(loginPurpose.toStdString());
     sendRpc(static_cast<int>(vpn::MessageType::SEND_LINE_VERIFY), serializeProto(req),
             [this](const RpcResult &r) {
         if (!r.ok) return;

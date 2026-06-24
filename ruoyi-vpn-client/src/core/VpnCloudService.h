@@ -32,7 +32,8 @@ public:
                            const QString &appId, const QString &appName, const QString &code,
                            const QString &uuid, const QString &loginPurpose);
     Q_INVOKABLE void fetchAuthorizedLines();
-    Q_INVOKABLE void sendLineVerify(const QString &appId, const QString &lineName);
+    Q_INVOKABLE void sendLineVerify(const QString &appId, const QString &lineName,
+                                    const QString &loginPurpose);
     Q_INVOKABLE void confirmLineVerify(const QString &appId, const QString &code);
     Q_INVOKABLE void fetchUserCredentials(const QString &appId);
     Q_INVOKABLE void changePassword(const QString &username, const QString &oldPassword,

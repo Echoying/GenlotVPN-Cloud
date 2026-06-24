@@ -211,10 +211,13 @@ public class TcpRpcDispatcher
         try
         {
             String loginPurpose = StringUtils.trim(req.getLoginPurpose());
-            RpcResult purposeError = validateLoginPurpose(req.getUsername(), loginPurpose);
-            if (purposeError != null)
+            if (StringUtils.isNotEmpty(loginPurpose))
             {
-                return purposeError;
+                RpcResult purposeError = validateLoginPurpose(req.getUsername(), loginPurpose);
+                if (purposeError != null)
+                {
+                    return purposeError;
+                }
             }
             if (!vpnTcpRateLimitService.tryAcquireLogin(session.getClientIp()))
             {
@@ -505,6 +508,13 @@ public class TcpRpcDispatcher
         Long userId = resolveUserId(envelope, session);
         vpnLoginService.assertLocalUserAuthorizedForLine(userId, req.getAppId());
         String username = resolveUsername(envelope, session);
+        String loginPurpose = StringUtils.trim(req.getLoginPurpose());
+        RpcResult purposeError = validateLoginPurpose(username, loginPurpose);
+        if (purposeError != null)
+        {
+            return purposeError;
+        }
+        session.setLoginPurpose(loginPurpose);
         Map<String, String> result = vpnLineVerifyService.sendCode(userId, username, req.getAppId(), req.getLineName());
         SendLineVerifyResponse.Builder builder = SendLineVerifyResponse.newBuilder();
         if (result.get("expireAt") != null)

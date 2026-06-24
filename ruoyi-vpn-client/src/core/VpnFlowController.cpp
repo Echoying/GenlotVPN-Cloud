@@ -175,6 +175,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         setLoading(false);
         m_loginPending = false;
         setLoginError(QString());
+        m_awaitingPublicLineLogin = false;
         setLoggedIn(true);
         emit hasSyncProxyRoleChanged();
         m_connectChainActive = true;
@@ -517,13 +518,20 @@ void VpnFlowController::loadAuthorizedLines()
     m_cloud->fetchAuthorizedLines();
 }
 
-void VpnFlowController::selectAuthorizedLine(const QVariantMap &line)
+void VpnFlowController::selectAuthorizedLine(const QVariantMap &line, const QString &loginPurpose)
 {
     const QString appId = line.value(QStringLiteral("appId")).toString();
     if (appId.isEmpty()) {
         emit toast(QStringLiteral("请选择有效线路"), true);
         return;
     }
+    const QString purposeErr = validateLoginPurpose(loginPurpose);
+    if (!purposeErr.isEmpty()) {
+        emit toast(purposeErr, true);
+        return;
+    }
+    m_loginPurpose = loginPurpose.trimmed();
+    m_awaitingPublicLineLogin = false;
     setLoginError(QString());
     m_pendingLine = line;
     m_verifyLine = line;
@@ -536,8 +544,15 @@ void VpnFlowController::selectAuthorizedLine(const QVariantMap &line)
     setVerifyDialogVisible(true);
 }
 
-void VpnFlowController::selectPublicLine(const QVariantMap &line)
+void VpnFlowController::selectPublicLine(const QVariantMap &line, const QString &loginPurpose)
 {
+    const QString purposeErr = validateLoginPurpose(loginPurpose);
+    if (!purposeErr.isEmpty()) {
+        emit toast(purposeErr, true);
+        return;
+    }
+    m_loginPurpose = loginPurpose.trimmed();
+    m_awaitingPublicLineLogin = true;
     setLoginError(QString());
     m_pendingLine = line;
     m_session->setPendingLine(line);
@@ -555,20 +570,27 @@ void VpnFlowController::prepareLogin()
     }
 }
 
-void VpnFlowController::doLogin(const QString &username, const QString &password, const QString &code,
-                                 bool rememberMe, const QString &loginPurpose)
+QString VpnFlowController::validateLoginPurpose(const QString &loginPurpose) const
 {
     const QString purpose = loginPurpose.trimmed();
     if (purpose.isEmpty()) {
-        setLoginError(QStringLiteral("请填写登录用途"));
-        return;
+        return QStringLiteral("请填写登录用途");
     }
     if (purpose.length() < 5) {
-        setLoginError(QStringLiteral("登录用途至少填写5个字"));
-        return;
+        return QStringLiteral("登录用途至少填写5个字");
     }
     if (purpose.length() > 50) {
-        setLoginError(QStringLiteral("登录用途不能超过50个字"));
+        return QStringLiteral("登录用途不能超过50个字");
+    }
+    return QString();
+}
+
+void VpnFlowController::doLogin(const QString &username, const QString &password, const QString &code,
+                                 bool rememberMe)
+{
+    // 仅公开线路「先选线填用途再登录」需要此时校验用途
+    if (m_awaitingPublicLineLogin && m_loginPurpose.trimmed().isEmpty()) {
+        setLoginError(QStringLiteral("请先在选线页填写登录用途"));
         return;
     }
     setLoginError(QString());
@@ -578,7 +600,7 @@ void VpnFlowController::doLogin(const QString &username, const QString &password
     addLog(QStringLiteral("info"), QStringLiteral("正在登录云端，用户: %1").arg(username));
     setLoading(true);
     m_loginPending = true;
-    m_cloud->login(username, password, QString(), QString(), code, m_captchaUuid, purpose);
+    m_cloud->login(username, password, QString(), QString(), code, m_captchaUuid, m_loginPurpose);
 }
 
 void VpnFlowController::clearLoginError()
@@ -616,7 +638,8 @@ void VpnFlowController::sendVerifyCode()
     setLoading(true);
     const QVariantMap line = m_verifyLine.isEmpty() ? m_pendingLine : m_verifyLine;
     m_cloud->sendLineVerify(line.value(QStringLiteral("appId")).toString(),
-                            line.value(QStringLiteral("appName")).toString());
+                            line.value(QStringLiteral("appName")).toString(),
+                            m_loginPurpose);
 }
 
 void VpnFlowController::confirmVerifyCode(const QString &code)
@@ -985,13 +1008,11 @@ void VpnFlowController::finishLogout(bool clearUsername)
     m_connectChainActive = false;
     setLoginError(QString());
     setVerifyError(QString());
+    m_loginPurpose.clear();
+    m_awaitingPublicLineLogin = false;
+    m_pendingLine.clear();
     m_cloud->clearSession();
     m_session->clear();
-
-    if (m_pendingLine.isEmpty() && !m_selectedLine.isEmpty()) {
-        m_pendingLine = m_selectedLine;
-        m_session->setPendingLine(m_pendingLine);
-    }
 
     m_selectedLine.clear();
     m_verifyLine.clear();

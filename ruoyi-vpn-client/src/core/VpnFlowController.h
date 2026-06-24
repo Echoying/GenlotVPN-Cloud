@@ -101,12 +101,13 @@ public:
 
     Q_INVOKABLE void loadPublicLines();
     Q_INVOKABLE void loadAuthorizedLines();
-    Q_INVOKABLE void selectPublicLine(const QVariantMap &line);
-    Q_INVOKABLE void selectAuthorizedLine(const QVariantMap &line);
+    Q_INVOKABLE void selectPublicLine(const QVariantMap &line, const QString &loginPurpose);
+    Q_INVOKABLE void selectAuthorizedLine(const QVariantMap &line, const QString &loginPurpose);
     Q_INVOKABLE void prepareLogin();
     Q_INVOKABLE void clearLoginError();
+    Q_INVOKABLE QString validateLoginPurpose(const QString &loginPurpose) const;
     Q_INVOKABLE void doLogin(const QString &username, const QString &password, const QString &code,
-                             bool rememberMe, const QString &loginPurpose);
+                             bool rememberMe);
     Q_INVOKABLE void startAutoConnect();
     Q_INVOKABLE void sendVerifyCode();
     Q_INVOKABLE void confirmVerifyCode(const QString &code);
@@ -230,6 +231,8 @@ private:
     bool m_lineVerifyPending = false;
     bool m_sendLineVerifyPending = false;
     QString m_loginError;
+    QString m_loginPurpose;
+    bool m_awaitingPublicLineLogin = false;
     QString m_verifyError;
     QTimer *m_countdownTimer = nullptr;
     bool m_autoConnectPending = false;
