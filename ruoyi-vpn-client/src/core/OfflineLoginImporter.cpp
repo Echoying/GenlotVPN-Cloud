@@ -1,6 +1,7 @@
 #include "OfflineLoginImporter.h"
 
 #include "AppLogger.h"
+#include "crypto/AgentAesCrypto.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -125,6 +126,8 @@ bool OfflineLoginImporter::parseFromFile(const QString &filePath, OfflineLoginPa
     const QString spaKey = readString(root, "spa_key", "spaKey");
     const QString userName = readString(root, "user_name", "userName");
     const QString password = readString(root, "password");
+    const QString localUserName = readString(root, "local_user_name", "localUserName");
+    const QString localPassword = readString(root, "local_password", "localPassword");
     const QString expireAtText = readString(root, "expire_at", "expireAt");
 
     if (appId.isEmpty() || appName.isEmpty() || host.isEmpty()) {
@@ -138,6 +141,9 @@ bool OfflineLoginImporter::parseFromFile(const QString &filePath, OfflineLoginPa
     }
     if (userName.isEmpty() || password.isEmpty()) {
         return fail(QObject::tr("离线登录文件缺少账号或密码"));
+    }
+    if (localUserName.isEmpty() || localPassword.isEmpty()) {
+        return fail(QObject::tr("离线登录文件缺少本地用户信息"));
     }
     if (expireAtText.isEmpty()) {
         return fail(QObject::tr("离线登录文件缺少有效时间"));
@@ -165,7 +171,36 @@ bool OfflineLoginImporter::parseFromFile(const QString &filePath, OfflineLoginPa
     out->line = line;
     out->userName = userName;
     out->encryptedPassword = password;
+    out->localUserName = localUserName;
+    out->localEncryptedPassword = localPassword;
     out->expireAt = expireAt;
+    return true;
+}
+
+bool OfflineLoginImporter::verifyLocalCredentials(const OfflineLoginPayload &payload,
+                                                  const QString &inputUser,
+                                                  const QString &inputPassword,
+                                                  QString *errorOut)
+{
+    auto fail = [errorOut](const QString &msg) {
+        if (errorOut) {
+            *errorOut = msg;
+        }
+        return false;
+    };
+
+    if (payload.localUserName.trimmed() != inputUser.trimmed()) {
+        return fail(QObject::tr("本地账号或密码不正确"));
+    }
+
+    const QByteArray plain =
+        AgentAesCrypto::decryptFromBase64(payload.localEncryptedPassword.toUtf8());
+    if (plain.isEmpty() && !payload.localEncryptedPassword.isEmpty()) {
+        return fail(QObject::tr("本地账号或密码不正确"));
+    }
+    if (QString::fromUtf8(plain) != inputPassword) {
+        return fail(QObject::tr("本地账号或密码不正确"));
+    }
     return true;
 }
 

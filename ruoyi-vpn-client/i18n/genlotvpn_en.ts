@@ -181,6 +181,31 @@
         <source>‹ 返回</source>
         <translation>‹ Back</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="140"/>
+        <source>本地账号验证</source>
+        <translation>Local Account Verification</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="149"/>
+        <source>请输入本地账号</source>
+        <translation>Enter local username</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="155"/>
+        <source>请输入本地密码</source>
+        <translation>Enter local password</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="165"/>
+        <source>确定</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="172"/>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
 </context>
 <context>
     <name>ConnectLinePage</name>
@@ -468,7 +493,19 @@ See the logs directory for details.</translation>
         <translation>Offline login file is missing username or password</translation>
     </message>
     <message>
-        <location filename="../src/core/OfflineLoginImporter.cpp" line="87"/>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="145"/>
+        <source>离线登录文件缺少本地用户信息</source>
+        <translation>Offline login file is missing local user information</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="186"/>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="192"/>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="195"/>
+        <source>本地账号或密码不正确</source>
+        <translation>Incorrect local username or password</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="151"/>
         <source>离线登录文件缺少有效时间</source>
         <translation>Offline login file is missing expiry time</translation>
     </message>
@@ -788,12 +825,17 @@ See the logs directory for details.</translation>
     </message>
     <message>
         <location filename="../src/core/VpnFlowController.cpp" line="719"/>
-        <location filename="../src/core/VpnFlowController.cpp" line="726"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="727"/>
         <source>离线登录文件无效</source>
         <translation>Invalid offline login file</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="804"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="732"/>
+        <source>本地账号或密码不正确</source>
+        <translation>Incorrect local username or password</translation>
+    </message>
+    <message>
+        <location filename="../src/core/VpnFlowController.cpp" line="809"/>
         <source>请输入6位数字验证码</source>
         <translation>Please enter a 6-digit code</translation>
     </message>

@@ -119,7 +119,8 @@ public:
                              bool rememberMe);
     Q_INVOKABLE void goOfflineChooseLine();
     Q_INVOKABLE void loadOfflineLoginFiles();
-    Q_INVOKABLE void connectOfflineLine(int index);
+    Q_INVOKABLE void connectOfflineLine(int index, const QString &localUsername,
+                                        const QString &localPassword);
     Q_INVOKABLE void goBackToLogin();
     Q_INVOKABLE void startAutoConnect();
     Q_INVOKABLE void sendVerifyCode();

@@ -703,7 +703,8 @@ void VpnFlowController::loadOfflineLoginFiles()
     }
 }
 
-void VpnFlowController::connectOfflineLine(int index)
+void VpnFlowController::connectOfflineLine(int index, const QString &localUsername,
+                                           const QString &localPassword)
 {
     if (m_loading) {
         return;
@@ -725,6 +726,10 @@ void VpnFlowController::connectOfflineLine(int index)
     if (!OfflineLoginImporter::parseFromFile(filePath, &payload, &error)) {
         emit toast(error.isEmpty() ? tr("离线登录文件无效") : error, true);
         loadOfflineLoginFiles();
+        return;
+    }
+    if (!OfflineLoginImporter::verifyLocalCredentials(payload, localUsername, localPassword, &error)) {
+        emit toast(error.isEmpty() ? tr("本地账号或密码不正确") : error, true);
         return;
     }
     startOfflineConnect(payload);

@@ -32,6 +32,12 @@ public class VpnOfflineLoginDatPayload
     @JsonProperty("expire_at")
     private String expireAt;
 
+    @JsonProperty("local_user_name")
+    private String localUserName;
+
+    @JsonProperty("local_password")
+    private String localPassword;
+
     public String getAppId()
     {
         return appId;
@@ -120,5 +126,25 @@ public class VpnOfflineLoginDatPayload
     public void setExpireAt(String expireAt)
     {
         this.expireAt = expireAt;
+    }
+
+    public String getLocalUserName()
+    {
+        return localUserName;
+    }
+
+    public void setLocalUserName(String localUserName)
+    {
+        this.localUserName = localUserName;
+    }
+
+    public String getLocalPassword()
+    {
+        return localPassword;
+    }
+
+    public void setLocalPassword(String localPassword)
+    {
+        this.localPassword = localPassword;
     }
 }

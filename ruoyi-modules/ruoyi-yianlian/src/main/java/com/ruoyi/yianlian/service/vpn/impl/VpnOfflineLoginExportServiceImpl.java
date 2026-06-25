@@ -42,7 +42,6 @@ import java.util.zip.ZipOutputStream;
 @Service
 public class VpnOfflineLoginExportServiceImpl implements IVpnOfflineLoginExportService
 {
-    private static final DateTimeFormatter FILE_TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final DateTimeFormatter EXPIRE_TS = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     @Autowired
@@ -99,12 +98,11 @@ public class VpnOfflineLoginExportServiceImpl implements IVpnOfflineLoginExportS
         }
 
         LocalDateTime now = LocalDateTime.now();
-        String batchTs = now.format(FILE_TS);
         String expireAt = validity.resolveExpireAt(now).format(EXPIRE_TS);
         Map<String, LineApp> lineMap = loadEnabledLineMap();
 
         response.setContentType("application/zip");
-        String zipName = "offline-login-" + sanitizeFileName(localUser.getUserName()) + "-" + batchTs + ".zip";
+        String zipName = "offline-login-" + sanitizeFileName(localUser.getUserName()) + ".zip";
         try
         {
             String encodedName = URLEncoder.encode(zipName, StandardCharsets.UTF_8.name()).replace("+", "%20");
@@ -122,10 +120,10 @@ public class VpnOfflineLoginExportServiceImpl implements IVpnOfflineLoginExportS
                 {
                     throw new ServiceException("线路用户不存在或已停用: " + line.getAppName());
                 }
-                VpnOfflineLoginDatPayload payload = buildPayload(line, lineUser, expireAt);
+                VpnOfflineLoginDatPayload payload = buildPayload(line, lineUser, localUser, expireAt);
                 String json = objectMapper.writeValueAsString(payload);
                 String entryName = sanitizeFileName(line.getAppName()) + "-"
-                    + sanitizeFileName(lineUser.getUserName()) + "-" + batchTs + ".dat";
+                    + sanitizeFileName(lineUser.getUserName()) + ".dat";
                 zip.putNextEntry(new ZipEntry(entryName));
                 zip.write(json.getBytes(StandardCharsets.UTF_8));
                 zip.closeEntry();
@@ -202,12 +200,18 @@ public class VpnOfflineLoginExportServiceImpl implements IVpnOfflineLoginExportS
         return lineMap;
     }
 
-    private VpnOfflineLoginDatPayload buildPayload(LineApp line, VpnUser lineUser, String expireAt)
+    private VpnOfflineLoginDatPayload buildPayload(LineApp line, VpnUser lineUser, VpnLocalUser localUser,
+                                                   String expireAt)
     {
         String plainPassword = decryptPassword(lineUser.getEncryptedPwd());
         if (StringUtils.isEmpty(plainPassword))
         {
             throw new ServiceException("线路「" + line.getAppName() + "」无法获取用户密码，请在线路用户管理中重置密码");
+        }
+        String plainLocalPassword = decryptPassword(localUser.getEncryptedPwd());
+        if (StringUtils.isEmpty(plainLocalPassword))
+        {
+            throw new ServiceException("本地用户「" + localUser.getUserName() + "」无法获取密码，请在本地用户管理中重置密码");
         }
         VpnOfflineLoginDatPayload payload = new VpnOfflineLoginDatPayload();
         payload.setAppId(line.getAppId());
@@ -223,6 +227,8 @@ public class VpnOfflineLoginExportServiceImpl implements IVpnOfflineLoginExportS
         payload.setSpaKey(spaKey);
         payload.setUserName(lineUser.getUserName());
         payload.setPassword(aesUtils.encrypt(plainPassword));
+        payload.setLocalUserName(localUser.getUserName());
+        payload.setLocalPassword(aesUtils.encrypt(plainLocalPassword));
         payload.setExpireAt(expireAt);
         return payload;
     }

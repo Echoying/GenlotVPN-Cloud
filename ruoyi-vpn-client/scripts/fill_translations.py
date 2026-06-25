@@ -189,6 +189,11 @@ EN_MAP = {
     "未找到可用的离线登录文件": "No valid offline login files found",
     "无法创建离线登录目录": "Cannot create offline login directory",
     "离线登录目录不存在": "Offline login directory does not exist",
+    "本地账号验证": "Local Account Verification",
+    "请输入本地账号": "Enter local username",
+    "请输入本地密码": "Enter local password",
+    "本地账号或密码不正确": "Incorrect local username or password",
+    "离线登录文件缺少本地用户信息": "Offline login file is missing local user information",
     "界面加载失败，请查看 logs 目录中的 [QML] 日志。": "Failed to load UI. Check [QML] entries in the logs folder.",
 }
 

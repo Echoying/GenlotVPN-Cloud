@@ -12,6 +12,8 @@ struct OfflineLoginPayload {
     QVariantMap line;
     QString userName;
     QString encryptedPassword;
+    QString localUserName;
+    QString localEncryptedPassword;
     QDateTime expireAt;
 };
 
@@ -24,6 +26,8 @@ public:
     static bool ensureDirectoryExists(QString *errorOut = nullptr);
     static QVariantList scanDirectory(const QString &dir, QString *errorOut = nullptr);
     static bool parseFromFile(const QString &filePath, OfflineLoginPayload *out, QString *errorOut);
+    static bool verifyLocalCredentials(const OfflineLoginPayload &payload, const QString &inputUser,
+                                       const QString &inputPassword, QString *errorOut);
 };
 
 } // namespace vpn

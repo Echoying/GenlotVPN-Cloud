@@ -441,8 +441,7 @@ export default {
             this.$modal.msgError(rspObj.msg || '导出失败')
             return
           }
-          const ts = this.parseTime(new Date(), '{y}{m}{d}{h}{i}{s}')
-          const zipName = 'offline-login-' + this.offlineUser.userName + '-' + ts + '.zip'
+          const zipName = 'offline-login-' + this.offlineUser.userName + '.zip'
           saveAs(new Blob([data], { type: 'application/zip' }), zipName)
           this.$modal.msgSuccess('导出成功')
           this.offlineOpen = false

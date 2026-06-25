@@ -181,6 +181,31 @@
         <source>‹ 返回</source>
         <translation>‹ 返回</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="140"/>
+        <source>本地账号验证</source>
+        <translation>本地账号验证</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="149"/>
+        <source>请输入本地账号</source>
+        <translation>请输入本地账号</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="155"/>
+        <source>请输入本地密码</source>
+        <translation>请输入本地密码</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="165"/>
+        <source>确定</source>
+        <translation>确定</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="172"/>
+        <source>取消</source>
+        <translation>取消</translation>
+    </message>
 </context>
 <context>
     <name>ConnectLinePage</name>
@@ -468,7 +493,19 @@
         <translation>离线登录文件缺少账号或密码</translation>
     </message>
     <message>
-        <location filename="../src/core/OfflineLoginImporter.cpp" line="87"/>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="145"/>
+        <source>离线登录文件缺少本地用户信息</source>
+        <translation>离线登录文件缺少本地用户信息</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="186"/>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="192"/>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="195"/>
+        <source>本地账号或密码不正确</source>
+        <translation>本地账号或密码不正确</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="151"/>
         <source>离线登录文件缺少有效时间</source>
         <translation>离线登录文件缺少有效时间</translation>
     </message>
@@ -788,12 +825,17 @@
     </message>
     <message>
         <location filename="../src/core/VpnFlowController.cpp" line="719"/>
-        <location filename="../src/core/VpnFlowController.cpp" line="726"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="727"/>
         <source>离线登录文件无效</source>
         <translation>离线登录文件无效</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="804"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="732"/>
+        <source>本地账号或密码不正确</source>
+        <translation>本地账号或密码不正确</translation>
+    </message>
+    <message>
+        <location filename="../src/core/VpnFlowController.cpp" line="809"/>
         <source>请输入6位数字验证码</source>
         <translation>请输入6位数字验证码</translation>
     </message>
