@@ -166,6 +166,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     , m_controller(controller)
     , m_session(session)
     , m_storage(storage)
+    , m_offlineLoginDir(OfflineLoginImporter::defaultDirectory())
 {
     m_syncProxy = new OpenApiProxyService(this);
     connect(m_syncProxy, &OpenApiProxyService::started, this, [this]() { emit syncProxyRunningChanged(); });
@@ -405,6 +406,11 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     connect(m_controller, &ControllerService::versionsReady, this, [this](const QString &sv, const QString &cv) {
         addLog(QStringLiteral("info"), QStringLiteral("服务器版本: %1").arg(sv));
         addLog(QStringLiteral("info"), QStringLiteral("客户端版本: %1").arg(cv));
+        if (m_offlineMode) {
+            addLog(QStringLiteral("info"), QStringLiteral("正在登录控制器（离线）..."));
+            m_controller->loginWithAccount(m_username, m_offlineEncryptedPassword);
+            return;
+        }
         addLog(QStringLiteral("info"), QStringLiteral("正在获取登录凭证..."));
         const QString appId = (m_verifyLine.isEmpty() ? m_pendingLine : m_verifyLine).value(QStringLiteral("appId")).toString();
         m_cloud->fetchUserCredentials(appId);
@@ -412,9 +418,11 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     connect(m_controller, &ControllerService::loginControllerSucceeded, this, [this]() {
         addLog(QStringLiteral("info"), QStringLiteral("控制器登录成功"));
         const QVariantMap line = m_verifyLine.isEmpty() ? m_pendingLine : m_verifyLine;
-        reportClientLoginAudit(true, QStringLiteral("connect"),
-                               QStringLiteral("客户端登录成功，线路：%1")
-                                   .arg(line.value(QStringLiteral("appName")).toString()));
+        if (!m_offlineMode) {
+            reportClientLoginAudit(true, QStringLiteral("connect"),
+                                   QStringLiteral("客户端登录成功，线路：%1")
+                                       .arg(line.value(QStringLiteral("appName")).toString()));
+        }
         m_connectChainActive = false;
         m_selectedLine = line;
         m_session->setSelectedLine(m_selectedLine);
@@ -432,7 +440,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         startTunnelStatusPolling();
         m_lineSyncProxyEnabled = false;
         emit lineSyncProxyEnabledChanged();
-        if (m_cloud->hasSyncProxyRole()) {
+        if (!m_offlineMode && m_cloud->hasSyncProxyRole()) {
             const QString appId = line.value(QStringLiteral("appId")).toString();
             m_cloud->fetchSyncProxyConfig(appId);
         }
@@ -649,6 +657,109 @@ void VpnFlowController::doLogin(const QString &username, const QString &password
 void VpnFlowController::clearLoginError()
 {
     setLoginError(QString());
+}
+
+void VpnFlowController::goOfflineChooseLine()
+{
+    if (m_loading) {
+        return;
+    }
+    emit navigateTo(QStringLiteral("offlinechoose"));
+}
+
+void VpnFlowController::loadOfflineLoginFiles()
+{
+    if (m_loading) {
+        return;
+    }
+
+    const QString dirPath = OfflineLoginImporter::defaultDirectory();
+    if (dirPath != m_offlineLoginDir) {
+        m_offlineLoginDir = dirPath;
+        emit offlineLoginDirChanged();
+    }
+
+    QString dirError;
+    if (!OfflineLoginImporter::ensureDirectoryExists(&dirError)) {
+        m_offlineLoginLines.clear();
+        emit offlineLoginLinesChanged();
+        emit toast(dirError, true);
+        return;
+    }
+
+    setLoading(true);
+    QString scanError;
+    const QVariantList lines = OfflineLoginImporter::scanDirectory(dirPath, &scanError);
+    m_offlineLoginLines = lines;
+    emit offlineLoginLinesChanged();
+    setLoading(false);
+
+    if (!scanError.isEmpty()) {
+        emit toast(scanError, true);
+    } else if (lines.isEmpty()) {
+        setStatusMessage(tr("未找到可用的离线登录文件"));
+    } else {
+        setStatusMessage(QString());
+    }
+}
+
+void VpnFlowController::connectOfflineLine(int index)
+{
+    if (m_loading) {
+        return;
+    }
+    if (index < 0 || index >= m_offlineLoginLines.size()) {
+        emit toast(tr("请选择离线登录线路"), true);
+        return;
+    }
+
+    const QVariantMap line = m_offlineLoginLines.at(index).toMap();
+    const QString filePath = line.value(QStringLiteral("offlineFilePath")).toString();
+    if (filePath.isEmpty()) {
+        emit toast(tr("离线登录文件无效"), true);
+        return;
+    }
+
+    OfflineLoginPayload payload;
+    QString error;
+    if (!OfflineLoginImporter::parseFromFile(filePath, &payload, &error)) {
+        emit toast(error.isEmpty() ? tr("离线登录文件无效") : error, true);
+        loadOfflineLoginFiles();
+        return;
+    }
+    startOfflineConnect(payload);
+}
+
+void VpnFlowController::goBackToLogin()
+{
+    emit navigateTo(QStringLiteral("login"));
+}
+
+void VpnFlowController::startOfflineConnect(const OfflineLoginPayload &payload)
+{
+    setLoginError(QString());
+    setVerifyError(QString());
+    m_verifyLine.clear();
+    m_awaitingPublicLineLogin = false;
+    m_loginPurpose.clear();
+
+    m_offlineMode = true;
+    emit offlineModeChanged();
+    m_offlineEncryptedPassword = payload.encryptedPassword;
+    m_pendingLine = payload.line;
+    m_session->setPendingLine(m_pendingLine);
+    emit pendingLineChanged();
+
+    m_username = payload.userName;
+    emit usernameChanged();
+
+    m_connectChainActive = true;
+    setLoading(true);
+    addLog(QStringLiteral("info"),
+           QStringLiteral("[离线登录] 线路: %1，有效至: %2")
+               .arg(payload.line.value(QStringLiteral("appName")).toString(),
+                    payload.expireAt.toString(Qt::ISODate)));
+    proceedControllerConnect(m_pendingLine);
 }
 
 void VpnFlowController::startAutoConnect()
@@ -1053,6 +1164,12 @@ void VpnFlowController::finishLogout(bool clearUsername)
     setVerifyError(QString());
     m_loginPurpose.clear();
     m_awaitingPublicLineLogin = false;
+    const bool wasOffline = m_offlineMode;
+    if (m_offlineMode) {
+        m_offlineMode = false;
+        m_offlineEncryptedPassword.clear();
+        emit offlineModeChanged();
+    }
     m_pendingLine.clear();
     m_cloud->clearSession();
     m_session->clear();
@@ -1085,7 +1202,9 @@ void VpnFlowController::finishLogout(bool clearUsername)
         emit authorizedLinesChanged();
     }
     emit navigateTo(QStringLiteral("login"));
-    m_cloud->fetchCaptcha();
+    if (!wasOffline) {
+        m_cloud->fetchCaptcha();
+    }
 }
 
 void VpnFlowController::changePassword(const QString &username, const QString &oldPwd,

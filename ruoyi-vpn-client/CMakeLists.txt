@@ -57,6 +57,7 @@ set(SOURCES
     src/core/PacketLogUtil.cpp
     src/core/AppInfo.cpp
     src/core/VpnFlowController.cpp
+    src/core/OfflineLoginImporter.cpp
     src/core/LocaleManager.cpp
     src/core/OpenApiProxyService.cpp
     src/core/ProxyLogModel.cpp
@@ -111,6 +112,7 @@ qt_add_qml_module(GenlotVPN
         qml/components/TlsSwitch.qml
         qml/components/Card.qml
         qml/pages/ChooseLinePage.qml
+        qml/pages/OfflineChooseLinePage.qml
         qml/pages/LoginPage.qml
         qml/pages/ConnectLinePage.qml
         qml/pages/AppListPage.qml

@@ -54,6 +54,9 @@ ApplicationWindow {
         } else if (page === "choose") {
             applyWindowSize(Theme.chooseLineWindowWidth, Theme.chooseLineWindowHeight,
                             Theme.chooseLineWindowMinWidth, Theme.chooseLineWindowMinHeight)
+        } else if (page === "offlinechoose") {
+            applyWindowSize(Theme.chooseLineWindowWidth, Theme.chooseLineWindowHeight,
+                            Theme.chooseLineWindowMinWidth, Theme.chooseLineWindowMinHeight)
         } else if (page === "login") {
             applyWindowSize(Theme.loginWindowWidth, Theme.loginWindowHeight,
                             Theme.loginWindowMinWidth, Theme.loginWindowMinHeight)
@@ -88,6 +91,8 @@ ApplicationWindow {
                 stackView.replace(appListPageComponent)
             } else if (page === "choose") {
                 stackView.replace(choosePageComponent)
+            } else if (page === "offlinechoose") {
+                stackView.replace(offlineChoosePageComponent)
             } else if (page === "login") {
                 stackView.replace(loginPageComponent)
             } else if (page === "connect") {
@@ -99,7 +104,7 @@ ApplicationWindow {
 
     Rectangle {
         id: topBar
-        visible: vpnFlow.loggedIn
+        visible: vpnFlow.loggedIn || vpnFlow.offlineMode
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
@@ -107,17 +112,21 @@ ApplicationWindow {
         color: Theme.windowBg
         z: 10
 
-        Text {
+        Row {
             anchors.left: parent.left
             anchors.leftMargin: 16
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(180, window.width * 0.35)
-            text: vpnFlow.username
-            visible: vpnFlow.username.length > 0
-            color: Theme.textPrimary
-            font.pixelSize: 13
-            font.bold: true
-            elide: Text.ElideRight
+            spacing: 6
+
+            Text {
+                text: vpnFlow.username
+                visible: vpnFlow.username.length > 0
+                color: Theme.textPrimary
+                font.pixelSize: 13
+                font.bold: true
+                elide: Text.ElideRight
+                width: Math.min(160, window.width * 0.32)
+            }
         }
 
         GhostButton {
@@ -181,6 +190,7 @@ ApplicationWindow {
     }
 
     Component { id: choosePageComponent; ChooseLinePage {} }
+    Component { id: offlineChoosePageComponent; OfflineChooseLinePage {} }
     Component { id: loginPageComponent; LoginPage {} }
     Component { id: connectPageComponent; ConnectLinePage {} }
     Component { id: appListPageComponent; AppListPage {} }

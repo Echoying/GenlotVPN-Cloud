@@ -58,7 +58,8 @@ Item {
     }
 
     function goBack() {
-        const backPage = vpnFlow.loggedIn ? "choose" : "login"
+        const backPage = vpnFlow.offlineMode ? "applist"
+                        : (vpnFlow.loggedIn ? "choose" : "login")
         if (appWindow && typeof appWindow.applyPageWindow === "function") {
             appWindow.applyPageWindow(backPage)
         } else if (appWindow) {
@@ -67,6 +68,11 @@ Item {
                 appWindow.minimumHeight = Theme.loginWindowMinHeight
                 appWindow.width = Theme.loginWindowWidth
                 appWindow.height = Theme.loginWindowHeight
+            } else if (backPage === "applist") {
+                appWindow.minimumWidth = Theme.appListWindowMinWidth
+                appWindow.minimumHeight = Theme.appListWindowMinHeight
+                appWindow.width = Theme.appListWindowWidth
+                appWindow.height = Theme.appListWindowHeight
             } else {
                 appWindow.minimumWidth = Theme.chooseLineWindowMinWidth
                 appWindow.minimumHeight = Theme.chooseLineWindowMinHeight

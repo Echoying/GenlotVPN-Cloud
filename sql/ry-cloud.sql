@@ -399,6 +399,7 @@ INSERT INTO `sys_menu` (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`
 (1076, '本地用户删除', 1072, 4, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:localUser:remove', '#', 'admin', '2026-06-18 12:00:00', '', NULL, ''),
 (1077, '本地用户重置密码', 1072, 5, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:localUser:resetPwd', '#', 'admin', '2026-06-18 12:00:00', '', NULL, ''),
 (1078, '同步到线路', 1072, 6, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:localUser:sync', '#', 'admin', '2026-06-18 12:00:00', '', NULL, ''),
+(1079, '离线登录', 1072, 7, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:localUser:offlineLogin', '#', 'admin', '2026-06-25 12:00:00', '', NULL, ''),
 (1066, '应用组管理', 1061, 2, 'serviceGroup', 'vpn/serviceGroup/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:serviceGroup:list', 'component', 'admin', '2026-05-11 17:56:53', 'admin', '2026-05-13 18:14:11', ''),
 (1067, '应用管理', 1061, 3, 'service', 'vpn/service/index', NULL, '', 1, 0, 'C', '0', '0', 'yianlian:service:list', 'nested', 'admin', '2026-05-11 19:51:11', 'admin', '2026-05-13 18:14:24', ''),
 (1068, '登录日志', 1061, 7, 'logininfor', 'vpn/logininfor/index', NULL, '', 1, 0, 'C', '0', '0', 'vpn:logininfor:list', 'logininfor', 'admin', '2026-06-12 12:00:00', '', NULL, 'VPN用户登录审计'),

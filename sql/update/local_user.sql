@@ -107,7 +107,11 @@ INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component,
 SELECT 1078, '同步到线路', 1072, 6, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:localUser:sync', '#', 'admin', NOW(), '', NULL, ''
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE menu_id = 1078);
 
+INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, route_name, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+SELECT 1079, '离线登录', 1072, 7, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:localUser:offlineLogin', '#', 'admin', NOW(), '', NULL, ''
+FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE menu_id = 1079);
+
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT 1, m.menu_id FROM sys_menu m
-WHERE m.menu_id BETWEEN 1072 AND 1078
+WHERE m.menu_id BETWEEN 1072 AND 1079
   AND NOT EXISTS (SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = 1 AND rm.menu_id = m.menu_id);

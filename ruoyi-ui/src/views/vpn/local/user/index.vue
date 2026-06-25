@@ -40,11 +40,12 @@
           <span>{{ parseTime(scope.row.createTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="220" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="300" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button size="mini" type="text" icon="el-icon-edit" @click="handleUpdate(scope.row)" v-hasPermi="['vpn:localUser:edit']">修改</el-button>
           <el-button size="mini" type="text" icon="el-icon-delete" @click="handleDelete(scope.row)" v-hasPermi="['vpn:localUser:remove']">删除</el-button>
           <el-button size="mini" type="text" icon="el-icon-upload2" @click="handleSync(scope.row)" v-hasPermi="['vpn:localUser:sync']">同步</el-button>
+          <el-button size="mini" type="text" icon="el-icon-download" @click="handleOfflineLogin(scope.row)" v-hasPermi="['vpn:localUser:offlineLogin']">离线登录</el-button>
           <el-dropdown size="mini" @command="(command) => handleCommand(command, scope.row)" v-hasPermi="['vpn:localUser:resetPwd']">
             <el-button size="mini" type="text" icon="el-icon-d-arrow-right">更多</el-button>
             <el-dropdown-menu slot="dropdown">
@@ -119,6 +120,43 @@
       </div>
     </el-dialog>
 
+    <el-dialog :title="offlineTitle" :visible.sync="offlineOpen" width="560px" append-to-body>
+      <el-alert
+        v-if="!offlineLineOptions.length"
+        title="暂无可导出线路，请先同步用户到线路并配置部门/角色/用户授权"
+        type="warning"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px"
+      />
+      <el-form ref="offlineForm" :model="offlineForm" :rules="offlineRules" label-width="90px">
+        <el-form-item label="线路选择" prop="appIds">
+          <el-checkbox-group v-model="offlineForm.appIds">
+            <el-checkbox
+              v-for="line in offlineLineOptions"
+              :key="line.appId"
+              :label="line.appId"
+              style="display: block; margin-bottom: 8px;"
+            >
+              {{ line.appName }}
+              <span v-if="line.host" style="color: #909399; margin-left: 6px;">
+                ({{ line.host }}{{ line.srvPort ? (':' + line.srvPort) : '' }})
+              </span>
+            </el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+        <el-form-item label="有效时间" prop="validity">
+          <el-select v-model="offlineForm.validity" placeholder="请选择有效时间" style="width: 100%">
+            <el-option v-for="item in validityOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" :loading="offlineExporting" :disabled="!offlineLineOptions.length" @click="submitOfflineExport">导 出</el-button>
+        <el-button @click="offlineOpen = false">取 消</el-button>
+      </div>
+    </el-dialog>
+
     <el-dialog :title="syncTitle" :visible.sync="syncOpen" width="520px" append-to-body>
       <el-alert v-if="allLinesSynced" title="该用户已同步到所有线路" type="info" :closable="false" show-icon style="margin-bottom: 12px" />
       <el-form ref="syncForm" :model="syncForm" :rules="syncRules" label-width="90px">
@@ -151,10 +189,12 @@
 </template>
 
 <script>
-import { listLocalUser, getLocalUser, addLocalUser, updateLocalUser, delLocalUser, resetLocalUserPwd, changeLocalUserStatus, syncLocalUserToLine, listLineUsers } from '@/api/vpn/localUser'
+import { listLocalUser, getLocalUser, addLocalUser, updateLocalUser, delLocalUser, resetLocalUserPwd, changeLocalUserStatus, syncLocalUserToLine, listLineUsers, listOfflineLoginLines, exportOfflineLogin } from '@/api/vpn/localUser'
 import { listLineApp } from '@/api/vpn/line'
 import { listRole } from '@/api/vpn/role'
 import { deptTreeSelect } from '@/api/vpn/user'
+import { blobValidate } from '@/utils/ruoyi'
+import { saveAs } from 'file-saver'
 import Treeselect from '@riophae/vue-treeselect'
 import '@riophae/vue-treeselect/dist/vue-treeselect.css'
 
@@ -173,6 +213,19 @@ export default {
       syncOpen: false,
       syncTitle: '',
       syncUser: null,
+      offlineOpen: false,
+      offlineTitle: '',
+      offlineExporting: false,
+      offlineUser: null,
+      offlineLineOptions: [],
+      validityOptions: [
+        { value: 'H6', label: '6个小时' },
+        { value: 'D1', label: '一天' },
+        { value: 'D3', label: '三天' },
+        { value: 'W1', label: '一个星期' },
+        { value: 'M1', label: '一个月' },
+        { value: 'Y1', label: '一年' }
+      ],
       syncedAppIds: [],
       lineOptions: [],
       deptOptions: [],
@@ -201,6 +254,15 @@ export default {
       syncRules: {
         appId: [{ required: true, message: '请选择线路', trigger: 'change' }],
         deptId: [{ required: true, message: '请选择部门', trigger: 'change' }]
+      },
+      offlineForm: {
+        localUserId: undefined,
+        appIds: [],
+        validity: 'D1'
+      },
+      offlineRules: {
+        appIds: [{ type: 'array', required: true, message: '请至少选择一条线路', trigger: 'change' }],
+        validity: [{ required: true, message: '请选择有效时间', trigger: 'change' }]
       }
     }
   },
@@ -345,6 +407,49 @@ export default {
           if (!this.syncedAppIds.includes(this.syncForm.appId)) {
             this.syncedAppIds.push(this.syncForm.appId)
           }
+        })
+      })
+    },
+    handleOfflineLogin(row) {
+      this.offlineUser = row
+      this.offlineTitle = '离线登录 - ' + row.userName
+      this.offlineForm = {
+        localUserId: row.localUserId,
+        appIds: [],
+        validity: 'D1'
+      }
+      this.offlineLineOptions = []
+      listOfflineLoginLines(row.localUserId).then(res => {
+        this.offlineLineOptions = res.data || []
+        this.offlineOpen = true
+        this.$nextTick(() => {
+          if (this.$refs.offlineForm) {
+            this.$refs.offlineForm.clearValidate()
+          }
+        })
+      })
+    },
+    submitOfflineExport() {
+      this.$refs['offlineForm'].validate(valid => {
+        if (!valid) return
+        this.offlineExporting = true
+        exportOfflineLogin(this.offlineForm).then(async data => {
+          const isBlob = blobValidate(data)
+          if (!isBlob) {
+            const resText = await data.text()
+            const rspObj = JSON.parse(resText)
+            this.$modal.msgError(rspObj.msg || '导出失败')
+            return
+          }
+          const ts = this.parseTime(new Date(), '{y}{m}{d}{h}{i}{s}')
+          const zipName = 'offline-login-' + this.offlineUser.userName + '-' + ts + '.zip'
+          saveAs(new Blob([data], { type: 'application/zip' }), zipName)
+          this.$modal.msgSuccess('导出成功')
+          this.offlineOpen = false
+        }).catch(() => {
+          this.$modal.msgError('导出失败')
+        }).finally(() => {
+          this.offlineExporting = false
         })
       })
     }

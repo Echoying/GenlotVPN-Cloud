@@ -130,6 +130,26 @@ Item {
             }
         }
 
+        Row {
+            width: parent.width
+            spacing: 10
+
+            GhostButton {
+                width: (parent.width - parent.spacing) / 2
+                text: qsTr("离线登录")
+                enabled: !vpnFlow.loading
+                onClicked: vpnFlow.goOfflineChooseLine()
+            }
+
+            GhostButton {
+                width: (parent.width - parent.spacing) / 2
+                text: qsTr("修改密码")
+                emphasized: true
+                enabled: !vpnFlow.loading
+                onClicked: root.openChangePwdDialog()
+            }
+        }
+
         Rectangle {
             visible: vpnFlow.loginError.length > 0
             width: parent.width
@@ -171,14 +191,6 @@ Item {
                     wrapMode: Text.Wrap
                 }
             }
-        }
-
-        GhostButton {
-            id: changePwdBtn
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: qsTr("修改密码")
-            emphasized: true
-            onClicked: root.openChangePwdDialog()
         }
     }
 

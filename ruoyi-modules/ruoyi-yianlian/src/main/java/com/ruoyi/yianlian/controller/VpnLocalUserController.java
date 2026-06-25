@@ -19,8 +19,10 @@ import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import com.ruoyi.yianlian.domain.VpnLocalUser;
 import com.ruoyi.yianlian.domain.VpnUser;
 import com.ruoyi.yianlian.domain.vo.VpnLocalUserSyncRequest;
+import com.ruoyi.yianlian.domain.vo.VpnOfflineLoginExportRequest;
 import com.ruoyi.yianlian.service.vpn.IVpnLocalUserService;
 import com.ruoyi.yianlian.service.vpn.IVpnLocalUserSyncService;
+import com.ruoyi.yianlian.service.vpn.IVpnOfflineLoginExportService;
 import com.ruoyi.yianlian.service.vpn.IVpnUserService;
 import com.ruoyi.yianlian.utils.AesUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -47,6 +49,9 @@ public class VpnLocalUserController extends BaseController
 
     @Autowired
     private IVpnUserService userService;
+
+    @Autowired
+    private IVpnOfflineLoginExportService offlineLoginExportService;
 
     @Autowired
     private AesUtils aesUtils;
@@ -135,6 +140,21 @@ public class VpnLocalUserController extends BaseController
     public AjaxResult lineUsers(@PathVariable Long localUserId)
     {
         return success(userService.selectUsersByLocalUserId(localUserId));
+    }
+
+    @RequiresPermissions("vpn:localUser:offlineLogin")
+    @GetMapping("/offline-lines/{localUserId}")
+    public AjaxResult offlineLines(@PathVariable Long localUserId)
+    {
+        return success(offlineLoginExportService.listSelectableLines(localUserId));
+    }
+
+    @RequiresPermissions("vpn:localUser:offlineLogin")
+    @Log(title = "离线登录导出", businessType = BusinessType.EXPORT)
+    @PostMapping("/offline-export")
+    public void offlineExport(HttpServletResponse response, @Validated @RequestBody VpnOfflineLoginExportRequest request)
+    {
+        offlineLoginExportService.exportZip(response, request);
     }
 
     @InnerAuth

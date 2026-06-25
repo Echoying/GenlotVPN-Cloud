@@ -160,6 +160,29 @@
     </message>
 </context>
 <context>
+    <name>OfflineChooseLinePage</name>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="12"/>
+        <source>请选择离线登录线路</source>
+        <translation>请选择离线登录线路</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="19"/>
+        <source>正在加载离线线路...</source>
+        <translation>正在加载离线线路...</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="48"/>
+        <source>请将管理端导出的 .dat 文件放入：%1</source>
+        <translation>请将管理端导出的 .dat 文件放入：%1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/OfflineChooseLinePage.qml" line="63"/>
+        <source>‹ 返回</source>
+        <translation>‹ 返回</translation>
+    </message>
+</context>
+<context>
     <name>ConnectLinePage</name>
     <message>
         <location filename="../qml/pages/ConnectLinePage.qml" line="13"/>
@@ -253,43 +276,48 @@
         <translation>登 录</translation>
     </message>
     <message>
-        <location filename="../qml/pages/LoginPage.qml" line="179"/>
-        <location filename="../qml/pages/LoginPage.qml" line="228"/>
+        <location filename="../qml/pages/LoginPage.qml" line="134"/>
+        <source>离线登录</source>
+        <translation>离线登录</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/LoginPage.qml" line="186"/>
+        <location filename="../qml/pages/LoginPage.qml" line="235"/>
         <source>修改密码</source>
         <translation>修改密码</translation>
     </message>
     <message>
-        <location filename="../qml/pages/LoginPage.qml" line="192"/>
+        <location filename="../qml/pages/LoginPage.qml" line="199"/>
         <source>设置</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../qml/pages/LoginPage.qml" line="237"/>
+        <location filename="../qml/pages/LoginPage.qml" line="244"/>
         <source>用户名</source>
         <translation>用户名</translation>
     </message>
     <message>
-        <location filename="../qml/pages/LoginPage.qml" line="243"/>
+        <location filename="../qml/pages/LoginPage.qml" line="250"/>
         <source>旧密码</source>
         <translation>旧密码</translation>
     </message>
     <message>
-        <location filename="../qml/pages/LoginPage.qml" line="250"/>
+        <location filename="../qml/pages/LoginPage.qml" line="257"/>
         <source>新密码（5-20 位）</source>
         <translation>新密码（5-20 位）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/LoginPage.qml" line="257"/>
+        <location filename="../qml/pages/LoginPage.qml" line="264"/>
         <source>确认新密码</source>
         <translation>确认新密码</translation>
     </message>
     <message>
-        <location filename="../qml/pages/LoginPage.qml" line="267"/>
+        <location filename="../qml/pages/LoginPage.qml" line="274"/>
         <source>确定</source>
         <translation>确定</translation>
     </message>
     <message>
-        <location filename="../qml/pages/LoginPage.qml" line="278"/>
+        <location filename="../qml/pages/LoginPage.qml" line="285"/>
         <source>取消</source>
         <translation>取消</translation>
     </message>
@@ -297,23 +325,27 @@
 <context>
     <name>Main</name>
     <message>
-        <location filename="../src/main.cpp" line="56"/>
-        <location filename="../src/main.cpp" line="68"/>
+        <location filename="../src/main.cpp" line="57"/>
+        <location filename="../src/main.cpp" line="69"/>
         <source>Genlot VPN</source>
         <translation>Genlot VPN</translation>
     </message>
     <message>
-        <location filename="../src/main.cpp" line="119"/>
+        <location filename="../src/main.cpp" line="120"/>
         <source>Genlot VPN 已在运行中。</source>
         <translation>Genlot VPN 已在运行中。</translation>
     </message>
     <message>
-        <location filename="../src/main.cpp" line="142"/>
+        <location filename="../src/main.cpp" line="143"/>
         <source>通过 vpnFlow.proxyLogs 访问</source>
         <translation>通过 vpnFlow.proxyLogs 访问</translation>
     </message>
     <message>
-        <location filename="../src/main.cpp" line="153"/>
+        <location filename="../src/main.cpp" line="161"/>
+        <source>界面加载失败，请查看 logs 目录中的 [QML] 日志。</source>
+        <translation>界面加载失败，请查看 logs 目录中的 [QML] 日志。</translation>
+    </message>
+    <message>
         <source>界面加载失败，请确认安装目录下存在 GenlotVPN 文件夹。
 详细日志见 logs 目录。</source>
         <translation>界面加载失败，请确认安装目录下存在 GenlotVPN 文件夹。
@@ -394,6 +426,64 @@
     </message>
 </context>
 <context>
+    <name>QObject</name>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="54"/>
+        <source>无法创建离线登录目录</source>
+        <translation>无法创建离线登录目录</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="67"/>
+        <source>离线登录目录不存在</source>
+        <translation>离线登录目录不存在</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="109"/>
+        <source>无法打开文件</source>
+        <translation>无法打开文件</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="59"/>
+        <source>离线登录文件格式无效</source>
+        <translation>离线登录文件格式无效</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="75"/>
+        <source>离线登录文件缺少线路信息</source>
+        <translation>离线登录文件缺少线路信息</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="78"/>
+        <source>离线登录文件端口无效</source>
+        <translation>离线登录文件端口无效</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="81"/>
+        <source>离线登录文件缺少 spa_key</source>
+        <translation>离线登录文件缺少 spa_key</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="84"/>
+        <source>离线登录文件缺少账号或密码</source>
+        <translation>离线登录文件缺少账号或密码</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="87"/>
+        <source>离线登录文件缺少有效时间</source>
+        <translation>离线登录文件缺少有效时间</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="95"/>
+        <source>离线登录文件有效时间格式无效</source>
+        <translation>离线登录文件有效时间格式无效</translation>
+    </message>
+    <message>
+        <location filename="../src/core/OfflineLoginImporter.cpp" line="98"/>
+        <source>离线凭证已过期，请重新导出</source>
+        <translation>离线凭证已过期，请重新导出</translation>
+    </message>
+</context>
+<context>
     <name>SettingsPage</name>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="12"/>
@@ -416,108 +506,106 @@
         <translation>关于</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="107"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="113"/>
         <source>‹ 返回</source>
         <translation>‹ 返回</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="114"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="120"/>
         <source>设置</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="228"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="234"/>
         <source>服务器地址</source>
         <translation>服务器地址</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="236"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="242"/>
         <source>请输入服务器地址</source>
         <translation>请输入服务器地址</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="245"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="251"/>
         <source>端口</source>
         <translation>端口</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="269"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="275"/>
         <source>重试次数</source>
         <translation>重试次数</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="288"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="294"/>
         <source>重试间隔（秒）</source>
         <translation>重试间隔（秒）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="309"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="315"/>
         <source>当前模式: %1</source>
         <translation>当前模式: %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="316"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="322"/>
         <source>云端 TCP 请求失败时自动重连，默认最多 3 次、间隔 1.5 秒。</source>
         <translation>云端 TCP 请求失败时自动重连，默认最多 3 次、间隔 1.5 秒。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="329"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="335"/>
         <source>恢复默认</source>
         <translation>恢复默认</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="336"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="454"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="342"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="446"/>
         <source>保存</source>
         <translation>保存</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="352"/>
         <source>界面语言</source>
         <translation>界面语言</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="373"/>
         <source>切换后立即生效，无需重启。</source>
         <translation>切换后立即生效，无需重启。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="392"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="384"/>
         <source>启用 TLS</source>
         <translation>启用 TLS</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="408"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="400"/>
         <source>证书指纹（主）</source>
         <translation>证书指纹（主）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="416"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="408"/>
         <source>64 位十六进制 SPKI SHA-256</source>
         <translation>64 位十六进制 SPKI SHA-256</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="426"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="418"/>
         <source>证书指纹（备用，可选）</source>
         <translation>证书指纹（备用，可选）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="434"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="426"/>
         <source>证书轮换时使用</source>
         <translation>证书轮换时使用</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="441"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="433"/>
         <source>启用 TLS 后必须填写主指纹。导出方式见文档 TLS_PINNING.md</source>
         <translation>启用 TLS 后必须填写主指纹。导出方式见文档 TLS_PINNING.md</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="477"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="469"/>
         <source>版本 %1</source>
         <translation>版本 %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="484"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="476"/>
         <source>桌面客户端 · TLS/TCP 云端 + 易安联本地控制器</source>
         <translation>桌面客户端 · TLS/TCP 云端 + 易安联本地控制器</translation>
     </message>
@@ -553,7 +641,12 @@
 <context>
     <name>main</name>
     <message>
-        <location filename="../qml/main.qml" line="127"/>
+        <location filename="../qml/main.qml" line="128"/>
+        <source>离线</source>
+        <translation>离线</translation>
+    </message>
+    <message>
+        <location filename="../qml/main.qml" line="139"/>
         <source>退出登录</source>
         <translation>退出登录</translation>
     </message>
@@ -574,234 +667,250 @@
 <context>
     <name>vpn::VpnFlowController</name>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="203"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="204"/>
         <source>服务器未返回可用线路，请确认 yianlian 模块线路已启用</source>
         <translation>服务器未返回可用线路，请确认 yianlian 模块线路已启用</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="206"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="207"/>
         <source>共 %1 条线路</source>
         <translation>共 %1 条线路</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="236"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="237"/>
         <source>暂无授权线路，请联系管理员同步</source>
         <translation>暂无授权线路，请联系管理员同步</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="239"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="240"/>
         <source>共 %1 条授权线路</source>
         <translation>共 %1 条授权线路</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="260"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="261"/>
         <source>您无权访问所选线路</source>
         <translation>您无权访问所选线路</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="267"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="268"/>
         <source>验证码已发送到 VPN 群</source>
         <translation>验证码已发送到 VPN 群</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="274"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="275"/>
         <source>验证通过</source>
         <translation>验证通过</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="285"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="286"/>
         <source>密码修改成功，请使用新密码登录</source>
         <translation>密码修改成功，请使用新密码登录</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="325"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="326"/>
         <source>登录失败，请重试</source>
         <translation>登录失败，请重试</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="344"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="345"/>
         <source>发送验证码失败，请重试</source>
         <translation>发送验证码失败，请重试</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="359"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="360"/>
         <source>验证码校验失败，请重试</source>
         <translation>验证码校验失败，请重试</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="369"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="370"/>
         <source>验证失败，请重试</source>
         <translation>验证失败，请重试</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="379"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="380"/>
         <source>请求失败，请重试</source>
         <translation>请求失败，请重试</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="512"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="520"/>
         <source>切换网关失败</source>
         <translation>切换网关失败</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="515"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="523"/>
         <source>切换网关失败：%1</source>
         <translation>切换网关失败：%1</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="548"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="556"/>
         <source>正在连接 %1 ...</source>
         <translation>正在连接 %1 ...</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="560"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="568"/>
         <source>正在加载授权线路...</source>
         <translation>正在加载授权线路...</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="568"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="576"/>
         <source>请选择有效线路</source>
         <translation>请选择有效线路</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="620"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="628"/>
         <source>请填写登录用途</source>
         <translation>请填写登录用途</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="623"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="631"/>
         <source>登录用途至少填写5个字</source>
         <translation>登录用途至少填写5个字</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="626"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="634"/>
         <source>登录用途不能超过50个字</source>
         <translation>登录用途不能超过50个字</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="636"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="644"/>
         <source>请先在选线页填写登录用途</source>
         <translation>请先在选线页填写登录用途</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="693"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="700"/>
+        <source>未找到可用的离线登录文件</source>
+        <translation>未找到可用的离线登录文件</translation>
+    </message>
+    <message>
+        <location filename="../src/core/VpnFlowController.cpp" line="712"/>
+        <source>请选择离线登录线路</source>
+        <translation>请选择离线登录线路</translation>
+    </message>
+    <message>
+        <location filename="../src/core/VpnFlowController.cpp" line="719"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="726"/>
+        <source>离线登录文件无效</source>
+        <translation>离线登录文件无效</translation>
+    </message>
+    <message>
+        <location filename="../src/core/VpnFlowController.cpp" line="804"/>
         <source>请输入6位数字验证码</source>
         <translation>请输入6位数字验证码</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="881"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="939"/>
         <source>已切换到 %1</source>
         <translation>已切换到 %1</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="889"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="947"/>
         <source>切换网关后连接超时</source>
         <translation>切换网关后连接超时</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="892"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="950"/>
         <source>网关连接超时</source>
         <translation>网关连接超时</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1001"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1059"/>
         <source>登录已过期，请重新登录</source>
         <translation>登录已过期，请重新登录</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1096"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1162"/>
         <source>请填写完整信息</source>
         <translation>请填写完整信息</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1100"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1166"/>
         <source>两次输入的密码不一致</source>
         <translation>两次输入的密码不一致</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1104"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1170"/>
         <source>新密码不能与旧密码相同</source>
         <translation>新密码不能与旧密码相同</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1108"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1174"/>
         <source>密码长度在 5 到 20 个字符</source>
         <translation>密码长度在 5 到 20 个字符</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1176"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1242"/>
         <source>同步代理已启动 %1</source>
         <translation>同步代理已启动 %1</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1179"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1245"/>
         <source>同步代理启动失败</source>
         <translation>同步代理启动失败</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1200"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1266"/>
         <source>链接已复制</source>
         <translation>链接已复制</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1293"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1359"/>
         <source>TLS（未配置指纹）</source>
         <translation>TLS（未配置指纹）</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1296"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1362"/>
         <source>明文 TCP</source>
         <translation>明文 TCP</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1406"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1472"/>
         <source>请输入服务器地址</source>
         <translation>请输入服务器地址</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1410"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1476"/>
         <source>请输入有效端口号（1-65535）</source>
         <translation>请输入有效端口号（1-65535）</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1417"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1483"/>
         <source>启用 TLS 时必须填写证书指纹</source>
         <translation>启用 TLS 时必须填写证书指纹</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1421"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1487"/>
         <source>证书指纹须为 64 位十六进制</source>
         <translation>证书指纹须为 64 位十六进制</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1435"/>
-        <location filename="../src/core/VpnFlowController.cpp" line="1470"/>
-        <location filename="../src/core/VpnFlowController.cpp" line="1491"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1501"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1536"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1557"/>
         <source>保存 config.json 失败</source>
         <translation>保存 config.json 失败</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1447"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1513"/>
         <source>服务器 %1:%2（%3）</source>
         <translation>服务器 %1:%2（%3）</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1457"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1523"/>
         <source>重试次数须在 0-10 之间</source>
         <translation>重试次数须在 0-10 之间</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1461"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1527"/>
         <source>重试间隔须在 0.5-60 秒之间</source>
         <translation>重试间隔须在 0.5-60 秒之间</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1480"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1546"/>
         <source>连接设置已保存</source>
         <translation>连接设置已保存</translation>
     </message>
     <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1501"/>
+        <location filename="../src/core/VpnFlowController.cpp" line="1567"/>
         <source>已恢复默认重连设置</source>
         <translation>已恢复默认重连设置</translation>
     </message>

@@ -11,6 +11,7 @@
 #include "SecureStorage.h"
 #include "OpenApiProxyService.h"
 #include "ProxyLogModel.h"
+#include "OfflineLoginImporter.h"
 
 namespace vpn {
 
@@ -49,6 +50,9 @@ class VpnFlowController : public QObject {
     Q_PROPERTY(int tcpReconnectMaxRetries READ tcpReconnectMaxRetries NOTIFY reconnectConfigChanged)
     Q_PROPERTY(int tcpReconnectDelayMs READ tcpReconnectDelayMs NOTIFY reconnectConfigChanged)
     Q_PROPERTY(bool loggedIn READ loggedIn NOTIFY loggedInChanged)
+    Q_PROPERTY(bool offlineMode READ offlineMode NOTIFY offlineModeChanged)
+    Q_PROPERTY(QVariantList offlineLoginLines READ offlineLoginLines NOTIFY offlineLoginLinesChanged)
+    Q_PROPERTY(QString offlineLoginDir READ offlineLoginDir NOTIFY offlineLoginDirChanged)
     Q_PROPERTY(QString loginError READ loginError NOTIFY loginErrorChanged)
     Q_PROPERTY(int loginErrorKind READ loginErrorKind NOTIFY loginErrorChanged)
     Q_PROPERTY(QString verifyError READ verifyError NOTIFY verifyErrorChanged)
@@ -88,6 +92,9 @@ public:
     int tcpReconnectMaxRetries() const { return m_tcpReconnectMaxRetries; }
     int tcpReconnectDelayMs() const { return m_tcpReconnectDelayMs; }
     bool loggedIn() const { return m_loggedIn; }
+    bool offlineMode() const { return m_offlineMode; }
+    QVariantList offlineLoginLines() const { return m_offlineLoginLines; }
+    QString offlineLoginDir() const { return m_offlineLoginDir; }
     QString loginError() const { return m_loginError; }
     int loginErrorKind() const { return m_loginErrorKind; }
     QString verifyError() const { return m_verifyError; }
@@ -110,6 +117,10 @@ public:
     Q_INVOKABLE QString validateLoginPurpose(const QString &loginPurpose) const;
     Q_INVOKABLE void doLogin(const QString &username, const QString &password, const QString &code,
                              bool rememberMe);
+    Q_INVOKABLE void goOfflineChooseLine();
+    Q_INVOKABLE void loadOfflineLoginFiles();
+    Q_INVOKABLE void connectOfflineLine(int index);
+    Q_INVOKABLE void goBackToLogin();
     Q_INVOKABLE void startAutoConnect();
     Q_INVOKABLE void sendVerifyCode();
     Q_INVOKABLE void confirmVerifyCode(const QString &code);
@@ -154,6 +165,9 @@ signals:
     void serverConfigChanged();
     void reconnectConfigChanged();
     void loggedInChanged();
+    void offlineModeChanged();
+    void offlineLoginLinesChanged();
+    void offlineLoginDirChanged();
     void loginErrorChanged();
     void verifyErrorChanged();
     void selectedGatewayIdChanged();
@@ -178,6 +192,7 @@ private:
     void setVerifyError(const QString &msg);
     void setLoggedIn(bool v);
     void proceedControllerConnect(const QVariantMap &line);
+    void startOfflineConnect(const OfflineLoginPayload &payload);
     void reloadServerSettings();
     void applyReconnectPolicyToCloud();
     void finishLogout(bool clearUsername);
@@ -229,6 +244,10 @@ private:
     int m_tcpReconnectMaxRetries = SecureStorage::kDefaultTcpReconnectMaxRetries;
     int m_tcpReconnectDelayMs = SecureStorage::kDefaultTcpReconnectDelayMs;
     bool m_loggedIn = false;
+    bool m_offlineMode = false;
+    QString m_offlineEncryptedPassword;
+    QVariantList m_offlineLoginLines;
+    QString m_offlineLoginDir;
     bool m_loginPending = false;
     bool m_lineVerifyPending = false;
     bool m_sendLineVerifyPending = false;

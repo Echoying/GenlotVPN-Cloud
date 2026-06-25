@@ -16,19 +16,12 @@ import com.ruoyi.common.security.utils.SecurityUtils;
 import com.ruoyi.yianlian.api.domain.VpnChangePasswordRequest;
 import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
-import com.ruoyi.yianlian.domain.LineApp;
 import com.ruoyi.yianlian.domain.VpnDept;
 import com.ruoyi.yianlian.constant.SyncProxyConstants;
 import com.ruoyi.yianlian.domain.VpnRole;
 import com.ruoyi.yianlian.domain.VpnUser;
-import com.ruoyi.yianlian.domain.YalDeptAuth;
-import com.ruoyi.yianlian.domain.YalRoleAuth;
-import com.ruoyi.yianlian.domain.YalUserAuth;
-import com.ruoyi.yianlian.mapper.YalDeptAuthMapper;
-import com.ruoyi.yianlian.mapper.YalRoleAuthMapper;
-import com.ruoyi.yianlian.mapper.YalUserAuthMapper;
 import com.ruoyi.yianlian.service.vpn.IVpnDeptService;
-import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
+import com.ruoyi.yianlian.service.vpn.IVpnLineAuthService;
 import com.ruoyi.yianlian.service.vpn.IVpnRoleService;
 import com.ruoyi.yianlian.service.vpn.IVpnUserService;
 import com.ruoyi.yianlian.utils.AesUtils;
@@ -57,19 +50,10 @@ public class VpnUserController extends BaseController {
     private IVpnRoleService roleService;
 
     @Autowired
-    private IVpnLineAppService lineAppService;
-
-    @Autowired
     private IVpnDeptService deptService;
 
     @Autowired
-    private YalDeptAuthMapper yalDeptAuthMapper;
-
-    @Autowired
-    private YalRoleAuthMapper yalRoleAuthMapper;
-
-    @Autowired
-    private YalUserAuthMapper yalUserAuthMapper;
+    private IVpnLineAuthService lineAuthService;
 
     @Autowired
     private AesUtils aesUtils;
@@ -87,64 +71,12 @@ public class VpnUserController extends BaseController {
             return R.fail("用户不存在");
         }
 
-        Set<String> lineIdSet = new LinkedHashSet<>();
-        String userAppId = vpnUser.getAppId();
-
-        if (vpnUser.getDeptId() != null) {
-            List<YalDeptAuth> deptAuths = yalDeptAuthMapper.selectYalDeptAuthByDeptId(vpnUser.getDeptId());
-            for (YalDeptAuth auth : deptAuths) {
-                if (auth.getLineId() != null && matchUserLine(userAppId, auth.getLineId())) {
-                    lineIdSet.add(auth.getLineId());
-                }
-            }
-        }
-
-        if (vpnUser.getRoles() != null) {
-            for (VpnRole role : vpnUser.getRoles()) {
-                List<YalRoleAuth> roleAuths = yalRoleAuthMapper.selectYalRoleAuthByRoleId(role.getRoleId());
-                for (YalRoleAuth auth : roleAuths) {
-                    if (auth.getLineId() != null && matchUserLine(userAppId, auth.getLineId())) {
-                        lineIdSet.add(auth.getLineId());
-                    }
-                }
-            }
-        }
-
-        List<YalUserAuth> userAuths = yalUserAuthMapper.selectYalUserAuthByUserId(userId);
-        for (YalUserAuth auth : userAuths) {
-            if (auth.getLineId() != null && matchUserLine(userAppId, auth.getLineId())) {
-                lineIdSet.add(auth.getLineId());
-            }
-        }
-
+        Set<String> lineIdSet = lineAuthService.resolveAuthorizedLineIds(vpnUser);
         if (lineIdSet.isEmpty()) {
             return R.ok(Collections.emptyList());
         }
 
-        List<LineApp> allLines = lineAppService.selectLineAppList(new LineApp());
-        List<Map<String, Object>> result = allLines.stream()
-            .filter(line -> lineIdSet.contains(line.getAppId()) && "0".equals(line.getStatus()))
-            .map(line -> {
-                Map<String, Object> vo = new LinkedHashMap<>();
-                vo.put("appId", line.getAppId());
-                vo.put("appName", line.getAppName());
-                vo.put("host", line.getHost());
-                vo.put("srvPort", line.getSrvPort());
-                vo.put("spaPort", line.getSpaPort());
-                String spaKey = line.getSpaKey();
-                if (spaKey != null && !spaKey.isEmpty()) {
-                    spaKey = AesUtils.md5(aesUtils.decrypt(spaKey));
-                }
-                vo.put("spaKey", spaKey);
-                return vo;
-            })
-            .collect(Collectors.toList());
-
-        return R.ok(result);
-    }
-
-    private boolean matchUserLine(String userAppId, String lineId) {
-        return StringUtils.isEmpty(userAppId) || userAppId.equals(lineId);
+        return R.ok(lineAuthService.toAuthorizedLineVos(lineIdSet));
     }
 
     @RequiresPermissions("vpn:user:list")
