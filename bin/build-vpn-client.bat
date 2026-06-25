@@ -31,6 +31,16 @@ if not defined Protobuf_ROOT (
 cd ruoyi-vpn-client
 set "BUILD_DIR=build-msvc2022"
 
+rem 更新翻译源（lupdate）
+if defined CMAKE_PREFIX_PATH (
+  set "LUPDATE=%CMAKE_PREFIX_PATH%\bin\lupdate.exe"
+  if exist "!LUPDATE!" (
+    echo [..] 更新翻译源 lupdate ...
+    "!LUPDATE!" src qml -ts i18n\genlotvpn_zh_CN.ts i18n\genlotvpn_en.ts >nul 2>&1
+    if exist scripts\fill_translations.py python scripts\fill_translations.py >nul 2>&1
+  )
+)
+
 rem 选择与 VS 版本无关的单配置生成器：优先 Ninja，其次 JOM，最后 NMake（nmake 随 vcvars 必有）
 for %%P in ("%CMAKE_PREFIX_PATH%\..\..") do set "QT_ROOT=%%~fP"
 set "GENERATOR=NMake Makefiles"

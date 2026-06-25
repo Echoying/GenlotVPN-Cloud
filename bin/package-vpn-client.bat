@@ -103,6 +103,22 @@ if not exist "%DIST%\GenlotVPN\qmldir" (
 )
 echo [OK] GenlotVPN QML module
 
+set "I18N_SRC="
+if exist "!EXE_DIR!i18n\genlotvpn_zh_CN.qm" set "I18N_SRC=!EXE_DIR!i18n"
+if not defined I18N_SRC if exist "build-msvc2022\i18n\genlotvpn_zh_CN.qm" set "I18N_SRC=build-msvc2022\i18n"
+if not defined I18N_SRC (
+  for /d %%D in (build\Desktop_Qt_*-*Release build\Desktop_Qt_*_Release) do (
+    if exist "%%D\i18n\genlotvpn_zh_CN.qm" set "I18N_SRC=%%D\i18n"
+  )
+)
+if defined I18N_SRC (
+  if not exist "%DIST%\i18n" mkdir "%DIST%\i18n"
+  copy /y "!I18N_SRC!\*.qm" "%DIST%\i18n\" >nul
+  echo [OK] i18n translation files
+) else (
+  echo [!] i18n QM files not found - language switching may not work in package
+)
+
 set "QMLDIR=%CD%\qml"
 echo [..] Running windeployqt ...
 pushd "%DIST%"

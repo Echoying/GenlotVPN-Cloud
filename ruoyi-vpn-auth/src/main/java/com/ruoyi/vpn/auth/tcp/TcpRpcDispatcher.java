@@ -515,7 +515,8 @@ public class TcpRpcDispatcher
             return purposeError;
         }
         session.setLoginPurpose(loginPurpose);
-        Map<String, String> result = vpnLineVerifyService.sendCode(userId, username, req.getAppId(), req.getLineName());
+        Map<String, String> result = vpnLineVerifyService.sendCode(
+            userId, username, req.getAppId(), req.getLineName(), loginPurpose);
         SendLineVerifyResponse.Builder builder = SendLineVerifyResponse.newBuilder();
         if (result.get("expireAt") != null)
         {

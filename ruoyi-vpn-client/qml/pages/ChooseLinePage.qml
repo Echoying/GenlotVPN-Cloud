@@ -18,13 +18,13 @@ Item {
         if (purposeErrorText.length > 0)
             return purposeErrorText
         if (purposeAttempted && purposeLen === 0)
-            return "请填写登录用途"
+            return qsTr("请填写登录用途")
         if (purposeLen > 0 && purposeLen < 5)
-            return "登录用途至少填写5个字（还需 " + (5 - purposeLen) + " 字）"
+            return qsTr("登录用途至少填写5个字（还需 %1 字）").arg(5 - purposeLen)
         if (purposeRawLen >= 50)
-            return "已达 50 字上限"
+            return qsTr("已达 50 字上限")
         if (purposeLen >= 5)
-            return "已输入 " + purposeLen + "/50 字"
+            return qsTr("已输入 %1/50 字").arg(purposeLen)
         return ""
     }
 
@@ -78,13 +78,13 @@ Item {
         anchors.fill: parent
         spacious: true
         bodySpacing: 24
-        headerSubtitle: "请选择要连接的 VPN 线路"
+        headerSubtitle: qsTr("请选择要连接的 VPN 线路")
         headerSubtitleBold: true
         headerSubtitleFontSize: 15
         showProgress: vpnFlow.loading
         progress: vpnFlow.loading ? 0.35 : 0
         statusText: vpnFlow.loading
-                    ? (useAuthorized ? "正在加载授权线路..." : "正在加载线路...")
+                    ? (useAuthorized ? qsTr("正在加载授权线路...") : qsTr("正在加载线路..."))
                     : vpnFlow.statusMessage
 
         ActionRow {
@@ -159,7 +159,7 @@ Item {
 
                 Text {
                     width: parent.width
-                    text: "登录用途"
+                    text: qsTr("登录用途")
                     color: Theme.navy
                     font.pixelSize: 15
                     font.bold: true
@@ -168,7 +168,7 @@ Item {
                 FlatTextArea {
                     id: purposeField
                     width: parent.width
-                    placeholderText: "请输入登录用途"
+                    placeholderText: qsTr("请输入登录用途")
                     maximumLength: 50
                     hasError: root.purposeIsError
                     onTextChanged: purposeErrorText = ""
@@ -189,14 +189,14 @@ Item {
                     layoutDirection: Qt.RightToLeft
 
                     PrimaryButton {
-                        text: "确定"
+                        text: qsTr("确定")
                         implicitWidth: 80
                         enabled: !vpnFlow.loading
                         onClicked: root.confirmPurpose()
                     }
 
                     GhostButton {
-                        text: "取消"
+                        text: qsTr("取消")
                         implicitWidth: 64
                         enabled: !vpnFlow.loading
                         onClicked: root.closePurposeDialog()

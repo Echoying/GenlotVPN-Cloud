@@ -26,7 +26,7 @@ Item {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width
-                    text: vpnFlow.selectedLine.appName || vpnFlow.pendingLine.appName || "当前线路"
+                    text: vpnFlow.selectedLine.appName || vpnFlow.pendingLine.appName || qsTr("当前线路")
                     color: Theme.navy
                     font.pixelSize: 17
                     font.bold: true
@@ -37,7 +37,7 @@ Item {
             GhostButton {
                 id: proxyLogBtn
                 visible: vpnFlow.hasSyncProxyRole && vpnFlow.lineSyncProxyEnabled
-                text: "同步代理日志"
+                text: qsTr("同步代理日志")
                 onClicked: vpnFlow.goToProxyLogs()
             }
         }
@@ -49,7 +49,7 @@ Item {
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "同步代理服务"
+                text: qsTr("同步代理服务")
                 color: Theme.navy
                 font.pixelSize: 13
             }
@@ -71,13 +71,13 @@ Item {
 
         Text {
             visible: vpnFlow.lineSyncProxyEnabled && vpnFlow.syncProxyRunning
-            text: "同步代理: " + (vpnFlow.syncProxyEndpoint || "未启动")
+            text: qsTr("同步代理: %1").arg(vpnFlow.syncProxyEndpoint || qsTr("未启动"))
             font.pixelSize: 11
             color: Theme.textSecondary
         }
 
         Text {
-            text: "应用网关"
+            text: qsTr("应用网关")
             font.bold: true
             font.pixelSize: 15
             color: Theme.navy
@@ -108,7 +108,7 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             width: parent.width
-                            text: "名称"
+                            text: qsTr("名称")
                             font.pixelSize: 12
                             font.bold: true
                             color: Theme.textSecondary
@@ -121,7 +121,7 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             width: parent.width
-                            text: "网关 IP"
+                            text: qsTr("网关 IP")
                             font.pixelSize: 12
                             font.bold: true
                             color: Theme.textSecondary
@@ -134,7 +134,7 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             width: parent.width
-                            text: "状态"
+                            text: qsTr("状态")
                             font.pixelSize: 12
                             font.bold: true
                             color: Theme.textSecondary
@@ -147,7 +147,7 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             width: parent.width
-                            text: "操作"
+                            text: qsTr("操作")
                             font.pixelSize: 12
                             font.bold: true
                             color: Theme.textSecondary
@@ -225,8 +225,8 @@ Item {
                             Text {
                                 anchors.centerIn: parent
                                 text: gatewayRow.isSwitching
-                                      ? "切换中"
-                                      : (modelData.connected ? "已连接" : "未连接")
+                                      ? qsTr("切换中")
+                                      : (modelData.connected ? qsTr("已连接") : qsTr("未连接"))
                                 font.pixelSize: 12
                                 font.bold: true
                                 color: gatewayRow.isSwitching
@@ -245,7 +245,7 @@ Item {
                                 implicitHeight: 26
                                 visible: !gatewayRow.isSelected
                                 enabled: vpnFlow.switchingGatewayId === ""
-                                text: "切换"
+                                text: qsTr("切换")
                                 onClicked: vpnFlow.switchGateway(String(modelData.id))
 
                                 contentItem: Text {
@@ -261,7 +261,7 @@ Item {
                             Text {
                                 anchors.centerIn: parent
                                 visible: gatewayRow.isSelected
-                                text: gatewayRow.isSwitching ? "切换中" : "当前"
+                                text: gatewayRow.isSwitching ? qsTr("切换中") : qsTr("当前")
                                 font.pixelSize: 12
                                 font.bold: true
                                 color: gatewayRow.isSwitching ? Theme.accent : Theme.navySoft
@@ -281,7 +281,7 @@ Item {
         }
 
         Text {
-            text: "应用列表"
+            text: qsTr("应用列表")
             font.bold: true
             font.pixelSize: 15
             color: Theme.navy
@@ -306,7 +306,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         width: parent.width
-                        text: "应用名称"
+                        text: qsTr("应用名称")
                         font.pixelSize: 12
                         font.bold: true
                         color: Theme.textSecondary
@@ -332,7 +332,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         width: parent.width
-                        text: "操作"
+                        text: qsTr("操作")
                         font.pixelSize: 12
                         font.bold: true
                         color: Theme.textSecondary
@@ -428,7 +428,7 @@ Item {
 
                         GhostButton {
                             anchors.centerIn: parent
-                            text: "复制"
+                            text: qsTr("复制")
                             visible: vpnFlow.isHttpUrl(modelData.url || "")
                             onClicked: vpnFlow.copyToClipboard(modelData.url || "")
                         }
@@ -448,7 +448,7 @@ Item {
         Text {
             anchors.centerIn: parent
             visible: vpnFlow.apps.length === 0
-            text: "暂无可用应用"
+            text: qsTr("暂无可用应用")
             color: Theme.textSecondary
             font.pixelSize: 13
         }

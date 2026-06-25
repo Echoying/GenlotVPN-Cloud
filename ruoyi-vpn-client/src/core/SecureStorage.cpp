@@ -27,7 +27,8 @@ QByteArray embeddedDefaultConfigJson()
         "  \"certPinSha256Backup\": \"\",\n"
         "  \"tcpReconnectMaxRetries\": 3,\n"
         "  \"tcpReconnectDelayMs\": 1500,\n"
-        "  \"controllerAesEnabled\": true\n"
+        "  \"controllerAesEnabled\": true,\n"
+        "  \"locale\": \"zh_CN\"\n"
         "}\n");
 }
 
@@ -103,6 +104,7 @@ QVariantMap SecureStorage::loadConfigFile() const
     } else {
         result[QStringLiteral("controllerAesEnabled")] = true;
     }
+    result[QStringLiteral("locale")] = cfg.value(QStringLiteral("locale")).toString(QStringLiteral("zh_CN"));
     return result;
 }
 
@@ -162,6 +164,14 @@ bool SecureStorage::saveConfigReconnect(int maxRetries, int delayMs)
     readConfigObject(&cfg);
     cfg[QStringLiteral("tcpReconnectMaxRetries")] = maxRetries;
     cfg[QStringLiteral("tcpReconnectDelayMs")] = delayMs;
+    return writeConfigObject(cfg);
+}
+
+bool SecureStorage::saveConfigLocale(const QString &locale)
+{
+    QJsonObject cfg;
+    readConfigObject(&cfg);
+    cfg[QStringLiteral("locale")] = locale.trimmed();
     return writeConfigObject(cfg);
 }
 

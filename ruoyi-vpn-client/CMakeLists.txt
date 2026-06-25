@@ -20,7 +20,7 @@ if(WIN32 AND NOT DEFINED Protobuf_ROOT AND EXISTS "D:/anaconda3/Library/include/
     set(Protobuf_ROOT "D:/anaconda3/Library" CACHE PATH "Protobuf 安装目录（Anaconda）")
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Network Linguist)
 find_package(Protobuf REQUIRED)
 if(NOT Protobuf_LIBRARIES AND NOT TARGET protobuf::libprotobuf)
     message(FATAL_ERROR
@@ -57,6 +57,7 @@ set(SOURCES
     src/core/PacketLogUtil.cpp
     src/core/AppInfo.cpp
     src/core/VpnFlowController.cpp
+    src/core/LocaleManager.cpp
     src/core/OpenApiProxyService.cpp
     src/core/ProxyLogModel.cpp
     src/platform/SingleInstance.cpp
@@ -120,6 +121,15 @@ qt_add_qml_module(GenlotVPN
         assets/images/genlot-logo-official.png
         assets/images/genlot-app-icon-official.png
         assets/images/genlot-bg-light.png
+)
+
+set(GENLOT_TS_FILES
+    i18n/genlotvpn_zh_CN.ts
+    i18n/genlotvpn_en.ts
+)
+qt_add_translations(GenlotVPN
+    TS_FILES ${GENLOT_TS_FILES}
+    QM_FILES_OUTPUT_VARIABLE GENLOT_QM_FILES
 )
 
 target_link_libraries(GenlotVPN PRIVATE
@@ -204,3 +214,12 @@ add_custom_command(TARGET GenlotVPN POST_BUILD
         $<TARGET_FILE_DIR:GenlotVPN>/GenlotVPN
     COMMENT "Copy GenlotVPN QML module next to executable"
 )
+if(GENLOT_QM_FILES)
+    add_custom_command(TARGET GenlotVPN POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:GenlotVPN>/i18n
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${GENLOT_QM_FILES}
+            $<TARGET_FILE_DIR:GenlotVPN>/i18n/
+        COMMENT "Copy translation QM files"
+    )
+endif()

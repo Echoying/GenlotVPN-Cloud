@@ -124,7 +124,7 @@ ApplicationWindow {
             anchors.right: parent.right
             anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
-            text: "退出登录"
+            text: qsTr("退出登录")
             danger: true
             onClicked: vpnFlow.doLogout()
         }

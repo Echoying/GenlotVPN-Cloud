@@ -33,8 +33,8 @@ ComboBox {
             return name
         }
         if (lines.length === 0)
-            return control.loading ? "正在加载线路..." : "点击选择线路"
-        return "请选择线路"
+            return control.loading ? qsTr("正在加载线路...") : qsTr("点击选择线路")
+        return qsTr("请选择线路")
     }
 
     onPressedChanged: {

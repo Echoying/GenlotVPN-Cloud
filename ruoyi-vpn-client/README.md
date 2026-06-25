@@ -120,6 +120,22 @@ cmake --build build-msvc2022 --config Release
 - **报错专用**：`<exe目录>/logs/genlot-vpn-error-YYYY-MM-DD.log`（ERROR 级别双写并立即刷盘）
 - 云端 TCP/RPC、本地控制器 HTTP 请求失败均会写入报错日志
 
+## 国际化
+
+- 语言文件：`i18n/genlotvpn_zh_CN.ts`、`i18n/genlotvpn_en.ts`
+- 构建时 CMake `qt_add_translations` 自动 `lupdate` / `lrelease`，`.qm` 输出到 exe 同目录 `i18n/`
+- **设置 → 语言** 可切换简体中文 / English，立即生效
+- `config.json` 字段 `locale`：`zh_CN`（默认）或 `en`
+- 新增 UI 文案请使用 QML `qsTr()` / C++ `tr()`，改完后重新构建以更新 `.ts`
+
+手动更新翻译源（可选）：
+
+```bat
+cd ruoyi-vpn-client
+lupdate . -ts i18n/genlotvpn_zh_CN.ts i18n/genlotvpn_en.ts
+lrelease i18n -qm build-msvc2022/i18n
+```
+
 ## 协议
 
 见 [`../proto/README.md`](../proto/README.md)

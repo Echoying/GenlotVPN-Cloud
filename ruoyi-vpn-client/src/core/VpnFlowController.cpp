@@ -14,12 +14,51 @@ namespace {
 
 int parseSendCooldownSeconds(const QString &msg)
 {
-    static const QRegularExpression re(QStringLiteral("请(\\d+)秒后再发送"));
-    const QRegularExpressionMatch match = re.match(msg);
-    if (match.hasMatch()) {
-        return match.captured(1).toInt();
+    static const QRegularExpression reZh(QStringLiteral("请(\\d+)秒后再发送"));
+    const QRegularExpressionMatch matchZh = reZh.match(msg);
+    if (matchZh.hasMatch()) {
+        return matchZh.captured(1).toInt();
+    }
+    static const QRegularExpression reEn(QStringLiteral("(\\d+)\\s*seconds?"),
+                                       QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpressionMatch matchEn = reEn.match(msg);
+    if (matchEn.hasMatch()) {
+        return matchEn.captured(1).toInt();
     }
     return 0;
+}
+
+bool containsCaptchaHint(const QString &text)
+{
+    return text.contains(QStringLiteral("验证码"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("captcha"), Qt::CaseInsensitive);
+}
+
+bool containsSendCooldownHint(const QString &text)
+{
+    return text.contains(QStringLiteral("秒后再发送"))
+           || text.contains(QStringLiteral("seconds"), Qt::CaseInsensitive);
+}
+
+int classifyLoginErrorKind(const QString &msg)
+{
+    const QString text = msg.trimmed();
+    if (text.isEmpty()) {
+        return 0;
+    }
+    if (containsCaptchaHint(text)) {
+        return 3;
+    }
+    if (text.contains(QStringLiteral("账号"), Qt::CaseInsensitive)
+        || text.contains(QStringLiteral("用户"), Qt::CaseInsensitive)
+        || text.contains(QStringLiteral("username"), Qt::CaseInsensitive)) {
+        return 1;
+    }
+    if (text.contains(QStringLiteral("密码"), Qt::CaseInsensitive)
+        || text.contains(QStringLiteral("password"), Qt::CaseInsensitive)) {
+        return 2;
+    }
+    return 4;
 }
 
 bool isSessionExpiredMessage(const QString &msg)
@@ -28,21 +67,25 @@ bool isSessionExpiredMessage(const QString &msg)
     if (text.isEmpty()) {
         return false;
     }
-    // 钉钉验证码相关错误不算会话过期
-    if (text.contains(QStringLiteral("验证码"))) {
+    if (containsCaptchaHint(text)) {
         return false;
     }
-    if (text.contains(QStringLiteral("秒后再发送"))) {
+    if (containsSendCooldownHint(text)) {
         return false;
     }
-    return text.contains(QStringLiteral("登录状态已过期"))
-           || text.contains(QStringLiteral("登录已过期"))
-           || text.contains(QStringLiteral("凭证已过期"))
-           || text.contains(QStringLiteral("未登录或会话已失效"))
-           || text.contains(QStringLiteral("会话已失效"))
-           || text.contains(QStringLiteral("会话已过期"))
-           || text.contains(QStringLiteral("请先登录"))
-           || text.contains(QStringLiteral("消息完整性校验失败"));
+    return text.contains(QStringLiteral("登录状态已过期"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("登录已过期"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("凭证已过期"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("未登录或会话已失效"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("会话已失效"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("会话已过期"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("请先登录"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("消息完整性校验失败"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("session expired"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("session invalid"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("not logged in"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("login expired"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("integrity check failed"), Qt::CaseInsensitive);
 }
 
 QString extractGatewayIp(const QVariantMap &item)
@@ -157,10 +200,10 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         m_publicLines = lines;
         setLoading(false);
         if (lines.isEmpty()) {
-            setStatusMessage(QStringLiteral("服务器未返回可用线路，请确认 yianlian 模块线路已启用"));
+            setStatusMessage(tr("服务器未返回可用线路，请确认 yianlian 模块线路已启用"));
             addLog(QStringLiteral("warn"), QStringLiteral("未获取到可用线路"));
         } else {
-            setStatusMessage(QStringLiteral("共 %1 条线路").arg(lines.size()));
+            setStatusMessage(tr("共 %1 条线路").arg(lines.size()));
             addLog(QStringLiteral("info"), QStringLiteral("加载线路成功，共 %1 条").arg(lines.size()));
         }
         emit publicLinesChanged();
@@ -190,10 +233,10 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
             emit authorizedLinesChanged();
             setLoading(false);
             if (lines.isEmpty()) {
-                setStatusMessage(QStringLiteral("暂无授权线路，请联系管理员同步"));
+                setStatusMessage(tr("暂无授权线路，请联系管理员同步"));
                 addLog(QStringLiteral("warn"), QStringLiteral("未获取到授权线路"));
             } else {
-                setStatusMessage(QStringLiteral("共 %1 条授权线路").arg(lines.size()));
+                setStatusMessage(tr("共 %1 条授权线路").arg(lines.size()));
                 addLog(QStringLiteral("info"), QStringLiteral("加载授权线路成功，共 %1 条").arg(lines.size()));
             }
             return;
@@ -214,21 +257,21 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         if (shouldReportConnectFailure()) {
             reportClientLoginAudit(false, QStringLiteral("line_verify"), QStringLiteral("您无权访问所选线路"));
         }
-        emit toast(QStringLiteral("您无权访问所选线路"), true);
+        emit toast(tr("您无权访问所选线路"), true);
     });
     connect(m_cloud, &VpnCloudService::lineVerifySent, this, [this](const QString &expireAt) {
         m_sendLineVerifyPending = false;
         setLoading(false);
         addLog(QStringLiteral("info"), QStringLiteral("验证码已发送，有效至: %1").arg(expireAt));
         startCountdown(60);
-        emit toast(QStringLiteral("验证码已发送到 VPN 群"), false);
+        emit toast(tr("验证码已发送到 VPN 群"), false);
     });
     connect(m_cloud, &VpnCloudService::lineVerifyConfirmed, this, [this]() {
         m_lineVerifyPending = false;
         setVerifyError(QString());
         setVerifyDialogVisible(false);
         addLog(QStringLiteral("info"), QStringLiteral("钉钉验证通过，开始连接控制器"));
-        emit toast(QStringLiteral("验证通过"), false);
+        emit toast(tr("验证通过"), false);
         onConnectChainAfterVerify();
     });
     connect(m_cloud, &VpnCloudService::userCredentialsReady, this, [this](const QString &user, const QString &pwd) {
@@ -239,7 +282,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     connect(m_cloud, &VpnCloudService::changePasswordSucceeded, this, [this]() {
         m_changePasswordPending = false;
         setLoading(false);
-        emit toast(QStringLiteral("密码修改成功，请使用新密码登录"), false);
+        emit toast(tr("密码修改成功，请使用新密码登录"), false);
         emit changePasswordFinished();
     });
     connect(m_cloud, &VpnCloudService::syncProxyConfigReady, this,
@@ -279,7 +322,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
             m_loginPending = false;
             m_autoConnectPending = false;
             const QString displayMsg = msg.trimmed().isEmpty()
-                                           ? QStringLiteral("登录失败，请重试")
+                                           ? tr("登录失败，请重试")
                                            : msg.trimmed();
             setLoginError(displayMsg);
             m_cloud->fetchCaptcha();
@@ -298,7 +341,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         if (m_sendLineVerifyPending) {
             m_sendLineVerifyPending = false;
             const QString displayMsg = msg.trimmed().isEmpty()
-                                           ? QStringLiteral("发送验证码失败，请重试")
+                                           ? tr("发送验证码失败，请重试")
                                            : msg.trimmed();
             setVerifyError(displayMsg);
             if (shouldReportConnectFailure()) {
@@ -313,7 +356,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         if (m_lineVerifyPending) {
             m_lineVerifyPending = false;
             const QString displayMsg = msg.trimmed().isEmpty()
-                                           ? QStringLiteral("验证码校验失败，请重试")
+                                           ? tr("验证码校验失败，请重试")
                                            : msg.trimmed();
             setVerifyError(displayMsg);
             if (shouldReportConnectFailure()) {
@@ -323,7 +366,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         }
         if (m_verifyDialogVisible) {
             const QString displayMsg = msg.trimmed().isEmpty()
-                                           ? QStringLiteral("验证失败，请重试")
+                                           ? tr("验证失败，请重试")
                                            : msg.trimmed();
             setVerifyError(displayMsg);
             if (shouldReportConnectFailure()) {
@@ -333,7 +376,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         }
         if (!m_loggedIn) {
             const QString displayMsg = msg.trimmed().isEmpty()
-                                           ? QStringLiteral("请求失败，请重试")
+                                           ? tr("请求失败，请重试")
                                            : msg.trimmed();
             setStatusMessage(displayMsg);
             emit toast(displayMsg, true);
@@ -466,10 +509,10 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         }
         if (!m_switchingGatewayId.isEmpty() && !m_gatewayPolling) {
             const QString name = gatewayNameById(m_gateways, m_switchingGatewayId);
-            const QString errorMsg = msg.trimmed().isEmpty() ? QStringLiteral("切换网关失败") : msg.trimmed();
+            const QString errorMsg = msg.trimmed().isEmpty() ? tr("切换网关失败") : msg.trimmed();
             addLog(QStringLiteral("error"), QStringLiteral("切换网关失败 [%1]: %2").arg(name, errorMsg));
             clearGatewaySwitchingState();
-            emit toast(QStringLiteral("切换网关失败：%1").arg(errorMsg), true);
+            emit toast(tr("切换网关失败：%1").arg(errorMsg), true);
             return;
         }
         const QString errorMsg = msg.trimmed().isEmpty() ? QStringLiteral("控制器请求失败") : msg.trimmed();
@@ -502,7 +545,7 @@ void VpnFlowController::loadPublicLines()
     }
     addLog(QStringLiteral("info"), QStringLiteral("正在加载公开线路..."));
     setLoading(true);
-    setStatusMessage(QStringLiteral("正在连接 %1 ...").arg(m_serverEndpoint));
+    setStatusMessage(tr("正在连接 %1 ...").arg(m_serverEndpoint));
     m_cloud->fetchPublicLines();
 }
 
@@ -514,7 +557,7 @@ void VpnFlowController::loadAuthorizedLines()
     addLog(QStringLiteral("info"), QStringLiteral("正在加载授权线路..."));
     setLoading(true);
     m_chooseLineLoading = true;
-    setStatusMessage(QStringLiteral("正在加载授权线路..."));
+    setStatusMessage(tr("正在加载授权线路..."));
     m_cloud->fetchAuthorizedLines();
 }
 
@@ -522,7 +565,7 @@ void VpnFlowController::selectAuthorizedLine(const QVariantMap &line, const QStr
 {
     const QString appId = line.value(QStringLiteral("appId")).toString();
     if (appId.isEmpty()) {
-        emit toast(QStringLiteral("请选择有效线路"), true);
+        emit toast(tr("请选择有效线路"), true);
         return;
     }
     const QString purposeErr = validateLoginPurpose(loginPurpose);
@@ -574,13 +617,13 @@ QString VpnFlowController::validateLoginPurpose(const QString &loginPurpose) con
 {
     const QString purpose = loginPurpose.trimmed();
     if (purpose.isEmpty()) {
-        return QStringLiteral("请填写登录用途");
+        return tr("请填写登录用途");
     }
     if (purpose.length() < 5) {
-        return QStringLiteral("登录用途至少填写5个字");
+        return tr("登录用途至少填写5个字");
     }
     if (purpose.length() > 50) {
-        return QStringLiteral("登录用途不能超过50个字");
+        return tr("登录用途不能超过50个字");
     }
     return QString();
 }
@@ -590,7 +633,7 @@ void VpnFlowController::doLogin(const QString &username, const QString &password
 {
     // 仅公开线路「先选线填用途再登录」需要此时校验用途
     if (m_awaitingPublicLineLogin && m_loginPurpose.trimmed().isEmpty()) {
-        setLoginError(QStringLiteral("请先在选线页填写登录用途"));
+        setLoginError(tr("请先在选线页填写登录用途"));
         return;
     }
     setLoginError(QString());
@@ -647,7 +690,7 @@ void VpnFlowController::confirmVerifyCode(const QString &code)
     const QString trimmed = code.trimmed();
     static const QRegularExpression sixDigits(QStringLiteral("^\\d{6}$"));
     if (!sixDigits.match(trimmed).hasMatch()) {
-        setVerifyError(QStringLiteral("请输入6位数字验证码"));
+        setVerifyError(tr("请输入6位数字验证码"));
         return;
     }
 
@@ -835,7 +878,7 @@ void VpnFlowController::finishGatewayPolling(bool success)
                    QStringLiteral("网关切换完成: %1%2")
                        .arg(switchingName,
                             ip.isEmpty() ? QString() : QStringLiteral("，IP: %1").arg(ip)));
-            emit toast(QStringLiteral("已切换到 %1").arg(switchingName), false);
+            emit toast(tr("已切换到 %1").arg(switchingName), false);
         } else {
             addLog(QStringLiteral("info"),
                    QStringLiteral("网关已就绪%1").arg(ip.isEmpty() ? QString() : QStringLiteral("，IP: %1").arg(ip)));
@@ -843,10 +886,10 @@ void VpnFlowController::finishGatewayPolling(bool success)
     } else if (afterSwitch) {
         addLog(QStringLiteral("error"),
                QStringLiteral("切换网关后连接超时 [%1]，请检查 Agent 或稍后重试").arg(switchingName));
-        emit toast(QStringLiteral("切换网关后连接超时"), true);
+        emit toast(tr("切换网关后连接超时"), true);
     } else {
         addLog(QStringLiteral("error"), QStringLiteral("网关连接超时，请检查 Agent 或稍后重试"));
-        emit toast(QStringLiteral("网关连接超时"), true);
+        emit toast(tr("网关连接超时"), true);
     }
 
     if (afterSwitch) {
@@ -955,7 +998,7 @@ void VpnFlowController::handleSessionExpired(const QString &serverMsg)
     m_handlingSessionExpiry = true;
 
     const QString reason = serverMsg.trimmed().isEmpty()
-                               ? QStringLiteral("登录已过期，请重新登录")
+                               ? tr("登录已过期，请重新登录")
                                : serverMsg.trimmed();
     addLog(QStringLiteral("error"), QStringLiteral("会话已失效: %1").arg(reason));
 
@@ -1050,19 +1093,19 @@ void VpnFlowController::changePassword(const QString &username, const QString &o
 {
     const QString user = username.trimmed();
     if (user.isEmpty() || oldPwd.isEmpty() || newPwd.isEmpty() || confirmPwd.isEmpty()) {
-        emit toast(QStringLiteral("请填写完整信息"), true);
+        emit toast(tr("请填写完整信息"), true);
         return;
     }
     if (newPwd != confirmPwd) {
-        emit toast(QStringLiteral("两次输入的密码不一致"), true);
+        emit toast(tr("两次输入的密码不一致"), true);
         return;
     }
     if (oldPwd == newPwd) {
-        emit toast(QStringLiteral("新密码不能与旧密码相同"), true);
+        emit toast(tr("新密码不能与旧密码相同"), true);
         return;
     }
     if (newPwd.length() < 5 || newPwd.length() > 20) {
-        emit toast(QStringLiteral("密码长度在 5 到 20 个字符"), true);
+        emit toast(tr("密码长度在 5 到 20 个字符"), true);
         return;
     }
     m_changePasswordPending = true;
@@ -1130,10 +1173,10 @@ void VpnFlowController::setSyncProxyEnabled(bool on)
                                m_syncProxyListenPort, m_syncProxyAllowedIps)) {
             addLog(QStringLiteral("info"),
                    QStringLiteral("同步代理监听: %1").arg(m_syncProxy->listenEndpoint()));
-            setStatusMessage(QStringLiteral("同步代理已启动 %1").arg(m_syncProxy->listenEndpoint()));
+            setStatusMessage(tr("同步代理已启动 %1").arg(m_syncProxy->listenEndpoint()));
         } else {
             addLog(QStringLiteral("error"), QStringLiteral("同步代理启动失败"));
-            emit toast(QStringLiteral("同步代理启动失败"), true);
+            emit toast(tr("同步代理启动失败"), true);
         }
     } else {
         m_syncProxy->stop();
@@ -1154,7 +1197,7 @@ void VpnFlowController::copyToClipboard(const QString &text)
         return;
     }
     QGuiApplication::clipboard()->setText(trimmed);
-    emit toast(QStringLiteral("链接已复制"), false);
+    emit toast(tr("链接已复制"), false);
 }
 
 bool VpnFlowController::isHttpUrl(const QString &url) const
@@ -1219,8 +1262,10 @@ void VpnFlowController::setStatusMessage(const QString &msg)
 
 void VpnFlowController::setLoginError(const QString &msg)
 {
-    if (m_loginError != msg) {
+    const int kind = classifyLoginErrorKind(msg);
+    if (m_loginError != msg || m_loginErrorKind != kind) {
         m_loginError = msg;
+        m_loginErrorKind = kind;
         emit loginErrorChanged();
     }
 }
@@ -1245,10 +1290,10 @@ QString VpnFlowController::connectionModeLabel() const
 {
     if (m_serverUseTls) {
         return m_certPinSha256.isEmpty()
-                   ? QStringLiteral("TLS（未配置指纹）")
+                   ? tr("TLS（未配置指纹）")
                    : QStringLiteral("TLS + Pin");
     }
-    return QStringLiteral("明文 TCP");
+    return tr("明文 TCP");
 }
 
 void VpnFlowController::reloadServerSettings()
@@ -1358,22 +1403,22 @@ bool VpnFlowController::applyServerConfig(const QString &host, int port, bool us
 {
     const QString trimmedHost = host.trimmed();
     if (trimmedHost.isEmpty()) {
-        emit toast(QStringLiteral("请输入服务器地址"), true);
+        emit toast(tr("请输入服务器地址"), true);
         return false;
     }
     if (port <= 0 || port > 65535) {
-        emit toast(QStringLiteral("请输入有效端口号（1-65535）"), true);
+        emit toast(tr("请输入有效端口号（1-65535）"), true);
         return false;
     }
 
     const QString trimmedPin = certPin.trimmed();
     const QString trimmedBackupPin = certPinBackup.trimmed();
     if (useTls && trimmedPin.isEmpty()) {
-        emit toast(QStringLiteral("启用 TLS 时必须填写证书指纹"), true);
+        emit toast(tr("启用 TLS 时必须填写证书指纹"), true);
         return false;
     }
     if (!isValidCertPin(trimmedPin) || !isValidCertPin(trimmedBackupPin)) {
-        emit toast(QStringLiteral("证书指纹须为 64 位十六进制"), true);
+        emit toast(tr("证书指纹须为 64 位十六进制"), true);
         return false;
     }
 
@@ -1387,7 +1432,7 @@ bool VpnFlowController::applyServerConfig(const QString &host, int port, bool us
     if (!m_storage->saveConfigServer(m_serverHost, port, m_serverUseTls,
                                      m_certPinSha256, m_certPinSha256Backup)) {
         AppLogger::instance()->error(QStringLiteral("[设置] 写入 config.json 失败: %1").arg(m_storage->configFilePath()));
-        emit toast(QStringLiteral("保存 config.json 失败"), true);
+        emit toast(tr("保存 config.json 失败"), true);
         return false;
     }
 
@@ -1399,7 +1444,7 @@ bool VpnFlowController::applyServerConfig(const QString &host, int port, bool us
     m_publicLines.clear();
     emit publicLinesChanged();
     const QString mode = connectionModeLabel();
-    setStatusMessage(QStringLiteral("服务器 %1:%2（%3）").arg(m_serverHost).arg(m_serverPort).arg(mode));
+    setStatusMessage(tr("服务器 %1:%2（%3）").arg(m_serverHost).arg(m_serverPort).arg(mode));
     addLog(QStringLiteral("info"),
            QStringLiteral("服务器已更新: %1:%2（%3）").arg(m_serverHost).arg(m_serverPort).arg(mode));
     loadPublicLines();
@@ -1409,11 +1454,11 @@ bool VpnFlowController::applyServerConfig(const QString &host, int port, bool us
 bool VpnFlowController::applyTcpReconnectConfig(int maxRetries, int delayMs)
 {
     if (maxRetries < 0 || maxRetries > 10) {
-        emit toast(QStringLiteral("重试次数须在 0-10 之间"), true);
+        emit toast(tr("重试次数须在 0-10 之间"), true);
         return false;
     }
     if (delayMs < 500 || delayMs > 60000) {
-        emit toast(QStringLiteral("重试间隔须在 0.5-60 秒之间"), true);
+        emit toast(tr("重试间隔须在 0.5-60 秒之间"), true);
         return false;
     }
 
@@ -1422,7 +1467,7 @@ bool VpnFlowController::applyTcpReconnectConfig(int maxRetries, int delayMs)
 
     if (!m_storage->saveConfigReconnect(m_tcpReconnectMaxRetries, m_tcpReconnectDelayMs)) {
         AppLogger::instance()->error(QStringLiteral("[设置] 写入重连配置失败: %1").arg(m_storage->configFilePath()));
-        emit toast(QStringLiteral("保存 config.json 失败"), true);
+        emit toast(tr("保存 config.json 失败"), true);
         return false;
     }
 
@@ -1432,7 +1477,7 @@ bool VpnFlowController::applyTcpReconnectConfig(int maxRetries, int delayMs)
            QStringLiteral("TCP 自动重连已更新: 最多 %1 次，间隔 %2ms")
                .arg(m_tcpReconnectMaxRetries)
                .arg(m_tcpReconnectDelayMs));
-    emit toast(QStringLiteral("连接设置已保存"), false);
+    emit toast(tr("连接设置已保存"), false);
     return true;
 }
 
@@ -1443,7 +1488,7 @@ void VpnFlowController::resetTcpReconnectToDefault()
 
     if (!m_storage->saveConfigReconnect(m_tcpReconnectMaxRetries, m_tcpReconnectDelayMs)) {
         AppLogger::instance()->error(QStringLiteral("[设置] 重置重连配置失败: %1").arg(m_storage->configFilePath()));
-        emit toast(QStringLiteral("保存 config.json 失败"), true);
+        emit toast(tr("保存 config.json 失败"), true);
         return;
     }
 
@@ -1453,7 +1498,7 @@ void VpnFlowController::resetTcpReconnectToDefault()
            QStringLiteral("TCP 自动重连已恢复默认: 最多 %1 次，间隔 %2ms")
                .arg(m_tcpReconnectMaxRetries)
                .arg(m_tcpReconnectDelayMs));
-    emit toast(QStringLiteral("已恢复默认重连设置"), false);
+    emit toast(tr("已恢复默认重连设置"), false);
 }
 
 void VpnFlowController::setLoggedIn(bool v)

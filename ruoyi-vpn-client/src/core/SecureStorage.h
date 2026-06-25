@@ -27,6 +27,7 @@ public:
                                       const QString &certPinSha256,
                                       const QString &certPinSha256Backup = QString());
     Q_INVOKABLE bool saveConfigReconnect(int maxRetries, int delayMs);
+    Q_INVOKABLE bool saveConfigLocale(const QString &locale);
 
     Q_INVOKABLE void saveRememberedUser(const QString &username, const QString &password, bool remember);
     Q_INVOKABLE QVariantMap loadRememberedUser() const;

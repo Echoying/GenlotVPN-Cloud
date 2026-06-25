@@ -6,5 +6,6 @@
   "certPinSha256Backup": "",
   "tcpReconnectMaxRetries": 3,
   "tcpReconnectDelayMs": 1500,
-  "controllerAesEnabled": true
+  "controllerAesEnabled": true,
+  "locale": "zh_CN"
 }

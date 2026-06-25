@@ -5,8 +5,15 @@ import GenlotVPN 1.0
 ComboBox {
     id: control
     implicitHeight: Theme.actionRowHeight
-    leftPadding: 14
     font.pixelSize: 13
+
+    function itemText(data) {
+        if (textRole.length > 0 && data && data[textRole] !== undefined)
+            return String(data[textRole])
+        if (typeof data === "string")
+            return data
+        return ""
+    }
 
     background: Rectangle {
         radius: Theme.buttonRadius
@@ -17,10 +24,10 @@ ComboBox {
 
     contentItem: Text {
         leftPadding: 14
-        rightPadding: control.indicator.width + 8
-        text: control.displayText
+        rightPadding: control.indicator.width + 10
+        text: control.displayText.length > 0 ? control.displayText : control.currentText
         font: control.font
-        color: control.enabled ? Theme.textPrimary : Theme.textSecondary
+        color: Theme.textPrimary
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
     }
@@ -30,7 +37,7 @@ ComboBox {
         y: (control.height - height) / 2
         text: "▾"
         font.pixelSize: 12
-        color: Theme.textSecondary
+        color: Theme.navySoft
     }
 
     popup: Popup {
@@ -55,17 +62,33 @@ ComboBox {
     }
 
     delegate: ItemDelegate {
+        id: delegateItem
+        required property int index
+        required property var model
+
         width: control.width - 8
+        height: Theme.actionRowHeight - 4
+        leftPadding: 12
+        rightPadding: 12
+        highlighted: control.highlightedIndex === index
+
         contentItem: Text {
-            text: modelData
+            width: delegateItem.width - delegateItem.leftPadding - delegateItem.rightPadding
+            text: {
+                let label = control.itemText(delegateItem.model)
+                if (!label && Array.isArray(control.model) && delegateItem.index >= 0
+                        && delegateItem.index < control.model.length)
+                    label = control.itemText(control.model[delegateItem.index])
+                return label
+            }
             color: Theme.textPrimary
             font.pixelSize: 13
             elide: Text.ElideRight
             verticalAlignment: Text.AlignVCenter
         }
-        highlighted: control.highlightedIndex === index
+
         background: Rectangle {
-            color: highlighted ? Theme.listHover : "transparent"
+            color: delegateItem.highlighted ? Theme.listHover : "transparent"
             radius: 2
         }
     }

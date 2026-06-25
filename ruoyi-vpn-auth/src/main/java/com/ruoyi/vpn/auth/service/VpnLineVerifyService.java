@@ -46,7 +46,8 @@ public class VpnLineVerifyService
     /**
      * 发送验证码到钉钉群
      */
-    public Map<String, String> sendCode(Long userId, String username, String appId, String lineName)
+    public Map<String, String> sendCode(Long userId, String username, String appId, String lineName,
+            String loginPurpose)
     {
         validateAppId(appId);
         validateLineName(lineName);
@@ -73,9 +74,10 @@ public class VpnLineVerifyService
         Date expireAt = new Date(System.currentTimeMillis() + (long) validSeconds * 1000L);
         String expireAtStr = DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD_HH_MM_SS, expireAt);
 
-        String markdown = buildMarkdown(lineName, username, code, expireAtStr);
+        String markdown = buildMarkdown(lineName, username, loginPurpose, code, expireAtStr);
         dingTalkRobotClient.sendMarkdown("VPN线路验证码", markdown);
-        log.info("选线验证码已发送 userId={} appId={} lineName={} expireAt={}", userId, appId, lineName, expireAtStr);
+        log.info("选线验证码已发送 userId={} appId={} lineName={} loginPurpose={} expireAt={}",
+                userId, appId, lineName, loginPurpose, expireAtStr);
 
         Map<String, String> result = new HashMap<>();
         result.put("expireAt", expireAtStr);
@@ -168,13 +170,20 @@ public class VpnLineVerifyService
         }
     }
 
-    private String buildMarkdown(String lineName, String username, String code, String expireAt)
+    private String buildMarkdown(String lineName, String username, String loginPurpose, String code,
+            String expireAt)
     {
         return "### VPN 验证码\n\n"
             + "- **线路名称**：" + lineName + "\n\n"
             + "- **VPN 用户**：" + username + "\n\n"
+            + "- **登录用途**：" + safe(loginPurpose) + "\n\n"
             + "- **验证码**：" + code + "\n\n"
             + "- **有效时间截止**：" + expireAt;
+    }
+
+    private String safe(String value)
+    {
+        return StringUtils.isEmpty(value) ? "-" : value;
     }
 
     private String generateCode()

@@ -32,7 +32,7 @@ public class VpnLineVerifyController
         Long userId = Long.parseLong(JwtUtils.getUserId(token));
         String username = JwtUtils.getUserName(token);
         Map<String, String> result = vpnLineVerifyService.sendCode(
-            userId, username, body.getAppId(), body.getLineName());
+            userId, username, body.getAppId(), body.getLineName(), body.getLoginPurpose());
         return R.ok(result);
     }
 

@@ -50,6 +50,7 @@ class VpnFlowController : public QObject {
     Q_PROPERTY(int tcpReconnectDelayMs READ tcpReconnectDelayMs NOTIFY reconnectConfigChanged)
     Q_PROPERTY(bool loggedIn READ loggedIn NOTIFY loggedInChanged)
     Q_PROPERTY(QString loginError READ loginError NOTIFY loginErrorChanged)
+    Q_PROPERTY(int loginErrorKind READ loginErrorKind NOTIFY loginErrorChanged)
     Q_PROPERTY(QString verifyError READ verifyError NOTIFY verifyErrorChanged)
     Q_PROPERTY(QString selectedGatewayId READ selectedGatewayId NOTIFY selectedGatewayIdChanged)
     Q_PROPERTY(QString switchingGatewayId READ switchingGatewayId NOTIFY switchingGatewayIdChanged)
@@ -88,6 +89,7 @@ public:
     int tcpReconnectDelayMs() const { return m_tcpReconnectDelayMs; }
     bool loggedIn() const { return m_loggedIn; }
     QString loginError() const { return m_loginError; }
+    int loginErrorKind() const { return m_loginErrorKind; }
     QString verifyError() const { return m_verifyError; }
     QString selectedGatewayId() const { return m_selectedGatewayId; }
     QString switchingGatewayId() const { return m_switchingGatewayId; }
@@ -231,6 +233,7 @@ private:
     bool m_lineVerifyPending = false;
     bool m_sendLineVerifyPending = false;
     QString m_loginError;
+    int m_loginErrorKind = 0;
     QString m_loginPurpose;
     bool m_awaitingPublicLineLogin = false;
     QString m_verifyError;

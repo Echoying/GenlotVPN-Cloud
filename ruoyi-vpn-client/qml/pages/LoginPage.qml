@@ -35,19 +35,18 @@ Item {
         FlatField {
             id: usernameField
             width: parent.width
-            placeholderText: "账号"
-            hasError: vpnFlow.loginError.length > 0
-                      && (vpnFlow.loginError.indexOf("账号") >= 0
-                          || vpnFlow.loginError.indexOf("用户") >= 0)
+            placeholderText: qsTr("账号")
+            hasError: vpnFlow.loginError.length > 0 && vpnFlow.loginErrorKind === 1
         }
 
         FlatField {
             id: passwordField
             width: parent.width
-            placeholderText: "密码"
+            placeholderText: qsTr("密码")
             echoMode: TextInput.Password
             hasError: vpnFlow.loginError.length > 0
-                      && vpnFlow.loginError.indexOf("验证码") < 0
+                      && vpnFlow.loginErrorKind !== 1
+                      && vpnFlow.loginErrorKind !== 3
         }
 
         Row {
@@ -58,8 +57,8 @@ Item {
             FlatField {
                 id: codeField
                 width: parent.width - 116
-                placeholderText: "计算结果"
-                hasError: vpnFlow.loginError.indexOf("验证码") >= 0
+                placeholderText: qsTr("计算结果")
+                hasError: vpnFlow.loginErrorKind === 3
             }
 
             Rectangle {
@@ -87,7 +86,7 @@ Item {
 
         CheckBox {
             id: rememberBox
-            text: "记住密码"
+            text: qsTr("记住密码")
             checked: false
             font.pixelSize: 13
             spacing: 8
@@ -122,7 +121,7 @@ Item {
         }
 
         PrimaryButton {
-            text: "登 录"
+            text: qsTr("登 录")
             width: parent.width
             enabled: !vpnFlow.loading
             onClicked: {
@@ -177,7 +176,7 @@ Item {
         GhostButton {
             id: changePwdBtn
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "修改密码"
+            text: qsTr("修改密码")
             emphasized: true
             onClicked: root.openChangePwdDialog()
         }
@@ -190,7 +189,7 @@ Item {
         anchors.right: parent.right
         anchors.topMargin: 10
         anchors.rightMargin: 12
-        text: "设置"
+        text: qsTr("设置")
         emphasized: true
         onClicked: root.openSettings()
     }
@@ -226,7 +225,7 @@ Item {
 
                 Text {
                     width: parent.width
-                    text: "修改密码"
+                    text: qsTr("修改密码")
                     color: Theme.navy
                     font.pixelSize: 15
                     font.bold: true
@@ -235,27 +234,27 @@ Item {
                 FlatField {
                     id: changePwdUsernameField
                     width: parent.width
-                    placeholderText: "用户名"
+                    placeholderText: qsTr("用户名")
                 }
 
                 FlatField {
                     id: changePwdOldField
                     width: parent.width
-                    placeholderText: "旧密码"
+                    placeholderText: qsTr("旧密码")
                     echoMode: TextInput.Password
                 }
 
                 FlatField {
                     id: changePwdNewField
                     width: parent.width
-                    placeholderText: "新密码（5-20 位）"
+                    placeholderText: qsTr("新密码（5-20 位）")
                     echoMode: TextInput.Password
                 }
 
                 FlatField {
                     id: changePwdConfirmField
                     width: parent.width
-                    placeholderText: "确认新密码"
+                    placeholderText: qsTr("确认新密码")
                     echoMode: TextInput.Password
                 }
 
@@ -265,7 +264,7 @@ Item {
                     layoutDirection: Qt.RightToLeft
 
                     PrimaryButton {
-                        text: "确定"
+                        text: qsTr("确定")
                         implicitWidth: 80
                         enabled: !vpnFlow.loading
                         onClicked: vpnFlow.changePassword(
@@ -276,7 +275,7 @@ Item {
                     }
 
                     GhostButton {
-                        text: "取消"
+                        text: qsTr("取消")
                         implicitWidth: 64
                         enabled: !vpnFlow.loading
                         onClicked: root.closeChangePwdDialog()

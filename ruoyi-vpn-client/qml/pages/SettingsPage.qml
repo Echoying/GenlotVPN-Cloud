@@ -9,9 +9,10 @@ Item {
     property int currentSection: 0
 
     readonly property var sections: [
-        { key: "server", title: "服务器" },
-        { key: "security", title: "安全连接" },
-        { key: "about", title: "关于" }
+        { key: "server", title: qsTr("服务器") },
+        { key: "language", title: qsTr("语言") },
+        { key: "security", title: qsTr("安全连接") },
+        { key: "about", title: qsTr("关于") }
     ]
 
     readonly property int serverPortFieldWidth: 96
@@ -103,14 +104,14 @@ Item {
                 anchors.left: parent.left
                 anchors.leftMargin: 4
                 anchors.verticalCenter: parent.verticalCenter
-                text: "‹ 返回"
+                text: qsTr("‹ 返回")
                 emphasized: true
                 onClicked: root.goBack()
             }
 
             Text {
                 anchors.centerIn: parent
-                text: "设置"
+                text: qsTr("设置")
                 color: Theme.textPrimary
                 font.pixelSize: 17
                 font.bold: true
@@ -224,7 +225,7 @@ Item {
                                     spacing: 6
 
                                     Text {
-                                        text: "服务器地址"
+                                        text: qsTr("服务器地址")
                                         color: Theme.textSecondary
                                         font.pixelSize: 12
                                     }
@@ -232,7 +233,7 @@ Item {
                                     FlatField {
                                         id: serverHostField
                                         width: parent.width
-                                        placeholderText: "请输入服务器地址"
+                                        placeholderText: qsTr("请输入服务器地址")
                                     }
                                 }
 
@@ -241,7 +242,7 @@ Item {
                                     spacing: 6
 
                                     Text {
-                                        text: "端口"
+                                        text: qsTr("端口")
                                         color: Theme.textSecondary
                                         font.pixelSize: 12
                                     }
@@ -265,7 +266,7 @@ Item {
                                     spacing: 6
 
                                     Text {
-                                        text: "重试次数"
+                                        text: qsTr("重试次数")
                                         color: Theme.textSecondary
                                         font.pixelSize: 12
                                     }
@@ -284,7 +285,7 @@ Item {
                                     spacing: 6
 
                                     Text {
-                                        text: "重试间隔（秒）"
+                                        text: qsTr("重试间隔（秒）")
                                         color: Theme.textSecondary
                                         font.pixelSize: 12
                                     }
@@ -305,14 +306,14 @@ Item {
 
                             Text {
                                 width: parent.width
-                                text: "当前模式: " + vpnFlow.connectionModeLabel
+                                text: qsTr("当前模式: %1").arg(vpnFlow.connectionModeLabel)
                                 color: Theme.textPrimary
                                 font.pixelSize: 12
                             }
 
                             Text {
                                 width: parent.width
-                                text: "云端 TCP 请求失败时自动重连，默认最多 3 次、间隔 1.5 秒。"
+                                text: qsTr("云端 TCP 请求失败时自动重连，默认最多 3 次、间隔 1.5 秒。")
                                 color: Theme.textSecondary
                                 font.pixelSize: 11
                                 wrapMode: Text.Wrap
@@ -325,14 +326,14 @@ Item {
                                 GhostButton {
                                     anchors.left: parent.left
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: "恢复默认"
+                                    text: qsTr("恢复默认")
                                     onClicked: root.resetReconnectSettings()
                                 }
 
                                 PrimaryButton {
                                     anchors.right: parent.right
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: "保存"
+                                    text: qsTr("保存")
                                     soft: true
                                     width: 88
                                     enabled: !vpnFlow.loading
@@ -341,11 +342,32 @@ Item {
                             }
                         }
 
-                        // —— 安全连接 ——
+                        // —— 语言 ——
                         Column {
                             width: parent.width
                             spacing: 16
                             visible: root.currentSection === 1
+
+                            FlatCombo {
+                                id: localeCombo
+                                width: parent.width
+                                model: localeManager.availableLocales
+                                textRole: "name"
+                                currentIndex: localeManager.localeIndex(localeManager.currentLocale)
+
+                                onActivated: {
+                                    const locales = localeManager.availableLocales
+                                    if (currentIndex >= 0 && currentIndex < locales.length)
+                                        localeManager.setLocale(locales[currentIndex].id)
+                                }
+                            }
+                        }
+
+                        // —— 安全连接 ——
+                        Column {
+                            width: parent.width
+                            spacing: 16
+                            visible: root.currentSection === 2
 
                             Row {
                                 width: parent.width
@@ -353,7 +375,7 @@ Item {
 
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: "启用 TLS"
+                                    text: qsTr("启用 TLS")
                                     color: Theme.textPrimary
                                     font.pixelSize: 13
                                 }
@@ -369,7 +391,7 @@ Item {
                                 spacing: 6
 
                                 Text {
-                                    text: "证书指纹（主）"
+                                    text: qsTr("证书指纹（主）")
                                     color: Theme.textSecondary
                                     font.pixelSize: 12
                                 }
@@ -377,7 +399,7 @@ Item {
                                 FlatField {
                                     id: pinField
                                     width: parent.width
-                                    placeholderText: "64 位十六进制 SPKI SHA-256"
+                                    placeholderText: qsTr("64 位十六进制 SPKI SHA-256")
                                     enabled: tlsSwitch.checked
                                 }
                             }
@@ -387,7 +409,7 @@ Item {
                                 spacing: 6
 
                                 Text {
-                                    text: "证书指纹（备用，可选）"
+                                    text: qsTr("证书指纹（备用，可选）")
                                     color: Theme.textSecondary
                                     font.pixelSize: 12
                                 }
@@ -395,14 +417,14 @@ Item {
                                 FlatField {
                                     id: pinBackupField
                                     width: parent.width
-                                    placeholderText: "证书轮换时使用"
+                                    placeholderText: qsTr("证书轮换时使用")
                                     enabled: tlsSwitch.checked
                                 }
                             }
 
                             Text {
                                 width: parent.width
-                                text: "启用 TLS 后必须填写主指纹。导出方式见文档 TLS_PINNING.md"
+                                text: qsTr("启用 TLS 后必须填写主指纹。导出方式见文档 TLS_PINNING.md")
                                 color: Theme.textSecondary
                                 font.pixelSize: 11
                                 wrapMode: Text.Wrap
@@ -415,7 +437,7 @@ Item {
                                 PrimaryButton {
                                     anchors.right: parent.right
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: "保存"
+                                    text: qsTr("保存")
                                     soft: true
                                     width: 88
                                     enabled: !vpnFlow.loading
@@ -428,7 +450,7 @@ Item {
                         Column {
                             width: parent.width
                             spacing: 12
-                            visible: root.currentSection === 2
+                            visible: root.currentSection === 3
 
                             Text {
                                 text: "Genlot VPN"
@@ -438,14 +460,14 @@ Item {
                             }
 
                             Text {
-                                text: "版本 " + vpnApp.versionLabel
+                                text: qsTr("版本 %1").arg(vpnApp.versionLabel)
                                 color: Theme.textPrimary
                                 font.pixelSize: 13
                             }
 
                             Text {
                                 width: parent.width
-                                text: "桌面客户端 · TLS/TCP 云端 + 易安联本地控制器"
+                                text: qsTr("桌面客户端 · TLS/TCP 云端 + 易安联本地控制器")
                                 color: Theme.textSecondary
                                 font.pixelSize: 12
                                 wrapMode: Text.Wrap
@@ -461,6 +483,13 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    Connections {
+        target: localeManager
+        function onLocaleChanged() {
+            localeCombo.currentIndex = localeManager.localeIndex(localeManager.currentLocale)
         }
     }
 

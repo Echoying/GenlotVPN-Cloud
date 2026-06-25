@@ -5,7 +5,9 @@
 #include <QSGRendererInterface>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQmlError>
 #include <QCoreApplication>
+#include <QTranslator>
 #include <QUrl>
 #include <QWindow>
 #include <QtQml/qqml.h>
@@ -17,6 +19,7 @@
 #include "core/ControllerService.h"
 #include "core/SessionManager.h"
 #include "core/SecureStorage.h"
+#include "core/LocaleManager.h"
 #include "core/VpnFlowController.h"
 #include "core/AppInfo.h"
 #include "core/ProxyLogModel.h"
@@ -51,7 +54,7 @@ void showStartupError(const QString &message)
 #ifdef Q_OS_WIN
     MessageBoxW(nullptr,
                 reinterpret_cast<LPCWSTR>(message.utf16()),
-                L"Genlot VPN",
+                reinterpret_cast<LPCWSTR>(QCoreApplication::translate("Main", "Genlot VPN").utf16()),
                 MB_OK | MB_ICONERROR);
 #else
     Q_UNUSED(message)
@@ -63,7 +66,7 @@ void showAlreadyRunningNotice(const QString &message)
 #ifdef Q_OS_WIN
     MessageBoxW(nullptr,
                 reinterpret_cast<LPCWSTR>(message.utf16()),
-                L"Genlot VPN",
+                reinterpret_cast<LPCWSTR>(QCoreApplication::translate("Main", "Genlot VPN").utf16()),
                 MB_OK | MB_ICONINFORMATION);
 #else
     Q_UNUSED(message)
@@ -114,7 +117,7 @@ int main(int argc, char *argv[])
 
     vpn::SingleInstance singleInstance(QStringLiteral("GenlotVPN_SingleInstance"));
     if (!singleInstance.tryRun()) {
-        showAlreadyRunningNotice(QStringLiteral("Genlot VPN 已在运行中。"));
+        showAlreadyRunningNotice(QCoreApplication::translate("Main", "Genlot VPN 已在运行中。"));
         return 0;
     }
     const QIcon appIcon(QStringLiteral(":/GenlotVPN/assets/images/genlot-app-icon-official.png"));
@@ -128,23 +131,36 @@ int main(int argc, char *argv[])
     vpn::SecureStorage secureStorage;
 
     vpn::VpnFlowController flow(&cloudService, &controllerService, &sessionManager, &secureStorage);
+    vpn::LocaleManager localeManager(&secureStorage);
     appLogger->info(QStringLiteral("云端地址: %1").arg(flow.serverEndpoint()));
 
     QQmlApplicationEngine engine;
+    if (!localeManager.installTranslator(&app, &engine)) {
+        appLogger->warn(QStringLiteral("[i18n] 未能加载翻译文件，使用界面源语言"));
+    }
     qmlRegisterUncreatableType<vpn::ProxyLogModel>(
         "GenlotVPN", 1, 0, "ProxyLogModel",
-        QStringLiteral("通过 vpnFlow.proxyLogs 访问"));
+        QCoreApplication::translate("Main", "通过 vpnFlow.proxyLogs 访问"));
     vpn::TrayIcon trayIcon(appIcon);
     // 与 Qt Creator 一致：从 exe 同目录加载 GenlotVPN/qmldir（打包脚本会复制该目录）
     engine.addImportPath(QCoreApplication::applicationDirPath());
     engine.rootContext()->setContextProperty(QStringLiteral("vpnFlow"), &flow);
     engine.rootContext()->setContextProperty(QStringLiteral("vpnStorage"), &secureStorage);
+    engine.rootContext()->setContextProperty(QStringLiteral("localeManager"), &localeManager);
     engine.rootContext()->setContextProperty(QStringLiteral("vpnTray"), &trayIcon);
     engine.rootContext()->setContextProperty(QStringLiteral("vpnApp"), &appInfo);
+    QObject::connect(&engine, &QQmlApplicationEngine::warnings,
+                     [](const QList<QQmlError> &warnings) {
+        for (const QQmlError &warning : warnings) {
+            vpn::AppLogger::instance()->warn(
+                QStringLiteral("[QML] %1").arg(warning.toString()));
+        }
+    });
     engine.load(QUrl(QStringLiteral("qrc:/GenlotVPN/qml/main.qml")));
     if (engine.rootObjects().isEmpty()) {
-        const QString err = QStringLiteral("界面加载失败，请确认安装目录下存在 GenlotVPN 文件夹。\n"
-                                           "详细日志见 logs 目录。");
+        const QString err = QCoreApplication::translate(
+            "Main",
+            "界面加载失败，请查看 logs 目录中的 [QML] 日志。");
         appLogger->error(QStringLiteral("[启动] %1").arg(err));
         showStartupError(err);
         return -1;

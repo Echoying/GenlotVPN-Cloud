@@ -56,13 +56,13 @@ Item {
                 anchors.left: parent.left
                 anchors.leftMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                text: "返回"
+                text: qsTr("返回")
                 onClicked: root.goBack()
             }
 
             Text {
                 anchors.centerIn: parent
-                text: "同步代理日志"
+                text: qsTr("同步代理日志")
                 font.pixelSize: 15
                 font.bold: true
                 color: Theme.navy
@@ -72,7 +72,7 @@ Item {
                 anchors.right: parent.right
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
-                text: "清空"
+                text: qsTr("清空")
                 onClicked: vpnFlow.clearProxyLogs()
             }
         }
@@ -87,7 +87,7 @@ Item {
                 anchors.left: parent.left
                 anchors.leftMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
-                text: "监听地址: " + (vpnFlow.syncProxyEndpoint || "-")
+                text: qsTr("监听地址: %1").arg(vpnFlow.syncProxyEndpoint || "-")
                 font.pixelSize: 11
                 color: Theme.textSecondary
             }
@@ -111,7 +111,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         width: parent.width
-                        text: "时间"
+                        text: qsTr("时间")
                         font.pixelSize: 11
                         font.bold: true
                         color: Theme.textSecondary
@@ -123,7 +123,7 @@ Item {
                     height: parent.height
                     Text {
                         anchors.centerIn: parent
-                        text: "方法"
+                        text: qsTr("方法")
                         font.pixelSize: 11
                         font.bold: true
                         color: Theme.textSecondary
@@ -135,7 +135,7 @@ Item {
                     height: parent.height
                     Text {
                         anchors.centerIn: parent
-                        text: "路径"
+                        text: qsTr("路径")
                         font.pixelSize: 11
                         font.bold: true
                         color: Theme.textSecondary
@@ -147,7 +147,7 @@ Item {
                     height: parent.height
                     Text {
                         anchors.centerIn: parent
-                        text: "状态"
+                        text: qsTr("状态")
                         font.pixelSize: 11
                         font.bold: true
                         color: Theme.textSecondary
@@ -159,7 +159,7 @@ Item {
                     height: parent.height
                     Text {
                         anchors.centerIn: parent
-                        text: "来源 IP"
+                        text: qsTr("来源 IP")
                         font.pixelSize: 11
                         font.bold: true
                         color: Theme.textSecondary
@@ -285,7 +285,7 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         visible: !vpnFlow.proxyLogs || vpnFlow.proxyLogs.count === 0
-                        text: "暂无代理请求记录"
+                        text: qsTr("暂无代理请求记录")
                         color: Theme.textSecondary
                         font.pixelSize: 13
                     }
@@ -302,7 +302,7 @@ Item {
                         spacing: 6
 
                         Text {
-                            text: "请求日志"
+                            text: qsTr("请求日志")
                             font.pixelSize: 12
                             font.bold: true
                             color: Theme.navy
@@ -321,7 +321,7 @@ Item {
                                 color: Theme.logText
                                 text: root.selectedIndex >= 0 && vpnFlow.proxyLogs
                                       ? vpnFlow.proxyLogs.entryAt(root.selectedIndex).requestLog
-                                      : "选中上方记录查看请求详情"
+                                      : qsTr("选中上方记录查看请求详情")
                                 background: Rectangle {
                                     radius: Theme.buttonRadius
                                     color: Theme.logBg
@@ -338,7 +338,7 @@ Item {
                         spacing: 6
 
                         Text {
-                            text: "响应日志"
+                            text: qsTr("响应日志")
                             font.pixelSize: 12
                             font.bold: true
                             color: Theme.navy
@@ -357,7 +357,7 @@ Item {
                                 color: Theme.logText
                                 text: root.selectedIndex >= 0 && vpnFlow.proxyLogs
                                       ? vpnFlow.proxyLogs.entryAt(root.selectedIndex).responseLog
-                                      : "选中上方记录查看响应详情"
+                                      : qsTr("选中上方记录查看响应详情")
                                 background: Rectangle {
                                     radius: Theme.buttonRadius
                                     color: Theme.logBg

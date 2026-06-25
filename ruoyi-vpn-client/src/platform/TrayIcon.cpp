@@ -40,8 +40,8 @@ void TrayIcon::setupTray(const QIcon &icon)
     m_tray->setToolTip(QStringLiteral("Genlot VPN"));
 
     m_menu = new QMenu();
-    QAction *showAction = m_menu->addAction(QStringLiteral("打开主窗口"));
-    QAction *quitAction = m_menu->addAction(QStringLiteral("退出"));
+    QAction *showAction = m_menu->addAction(tr("打开主窗口"));
+    QAction *quitAction = m_menu->addAction(tr("退出"));
     connect(showAction, &QAction::triggered, this, &TrayIcon::showMainWindow);
     connect(quitAction, &QAction::triggered, this, &TrayIcon::quitFromTray);
     m_tray->setContextMenu(m_menu);

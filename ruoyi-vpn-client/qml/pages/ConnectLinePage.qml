@@ -10,7 +10,7 @@ Item {
         showProgress: vpnFlow.loading && !vpnFlow.verifyDialogVisible
         progress: 0.4
         statusText: vpnFlow.loading && !vpnFlow.verifyDialogVisible
-                    ? "正在连接 " + (vpnFlow.pendingLine.appName || "")
+                    ? qsTr("正在连接 %1").arg(vpnFlow.pendingLine.appName || "")
                     : vpnFlow.statusMessage
 
         ActionRow {
@@ -28,7 +28,7 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: vpnFlow.pendingLine.appName || "连接中..."
+                    text: vpnFlow.pendingLine.appName || qsTr("连接中...")
                     color: Theme.textSecondary
                     font.pixelSize: 13
                     elide: Text.ElideRight
@@ -70,7 +70,7 @@ Item {
 
                 Text {
                     width: parent.width
-                    text: "选线安全验证"
+                    text: qsTr("选线安全验证")
                     color: Theme.navy
                     font.pixelSize: 15
                     font.bold: true
@@ -78,7 +78,7 @@ Item {
 
                 Text {
                     width: parent.width
-                    text: "请输入钉钉群收到的 6 位验证码"
+                    text: qsTr("请输入钉钉群收到的 6 位验证码")
                     color: Theme.textSecondary
                     font.pixelSize: 12
                     wrapMode: Text.Wrap
@@ -87,7 +87,7 @@ Item {
                 FlatField {
                     id: verifyCodeField
                     width: parent.width
-                    placeholderText: "6位数字验证码"
+                    placeholderText: qsTr("6位数字验证码")
                     maximumLength: 6
                     digitsOnly: true
                     horizontalAlignment: Text.AlignHCenter
@@ -140,8 +140,8 @@ Item {
 
                 GhostButton {
                     text: vpnFlow.sendCountdown > 0
-                          ? ("重新发送 (" + vpnFlow.sendCountdown + "s)")
-                          : "发送验证码"
+                          ? qsTr("重新发送 (%1s)").arg(vpnFlow.sendCountdown)
+                          : qsTr("发送验证码")
                     enabled: vpnFlow.sendCountdown <= 0
                     anchors.horizontalCenter: parent.horizontalCenter
                     onClicked: vpnFlow.sendVerifyCode()
@@ -153,13 +153,13 @@ Item {
                     layoutDirection: Qt.RightToLeft
 
                     PrimaryButton {
-                        text: "确定"
+                        text: qsTr("确定")
                         implicitWidth: 80
                         enabled: !vpnFlow.loading
                         onClicked: vpnFlow.confirmVerifyCode(verifyCodeField.text)
                     }
                     GhostButton {
-                        text: "取消"
+                        text: qsTr("取消")
                         implicitWidth: 64
                         onClicked: {
                             vpnFlow.verifyDialogVisible = false

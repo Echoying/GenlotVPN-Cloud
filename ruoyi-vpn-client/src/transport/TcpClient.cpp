@@ -1,5 +1,6 @@
 #include "TcpClient.h"
 #include "core/AppLogger.h"
+#include <QCoreApplication>
 #include <QSslConfiguration>
 #include <QTimer>
 #include <QStringList>
@@ -12,8 +13,8 @@ QString humanizeConnectError(const QString &raw, bool useTls)
 {
     const QString err = raw.trimmed();
     if (err.isEmpty()) {
-        return useTls ? QStringLiteral("TLS 连接失败，请检查证书指纹与服务端 TLS 配置")
-                      : QStringLiteral("网络连接失败");
+        return useTls ? QCoreApplication::translate("TcpClient", "TLS 连接失败，请检查证书指纹与服务端 TLS 配置")
+                      : QCoreApplication::translate("TcpClient", "网络连接失败");
     }
 
     const QString lower = err.toLower();
@@ -23,15 +24,17 @@ QString humanizeConnectError(const QString &raw, bool useTls)
                                  || err.contains(QStringLiteral("协议"));
     if (err.contains(QStringLiteral("不支持的功能"))
         || lower.contains(QStringLiteral("unsupported function"))) {
-        return QStringLiteral(
+        return QCoreApplication::translate(
+            "TcpClient",
             "TLS 握手失败（Windows 与服务器 TLS 特性不兼容）。请重启 ruoyi-vpn-auth 使服务端支持 TLS 1.2+1.3，"
             "并确认 config.json 中 useTls 为 true。");
     }
     if (protocolRelated) {
         if (useTls) {
-            return QStringLiteral("TLS 握手失败（%1）").arg(err);
+            return QCoreApplication::translate("TcpClient", "TLS 握手失败（%1）").arg(err);
         }
-        return QStringLiteral(
+        return QCoreApplication::translate(
+            "TcpClient",
             "连接失败：服务端已启用 TLS，请在 config.json 设 useTls 为 true 并填写 certPinSha256。");
     }
     return err;
