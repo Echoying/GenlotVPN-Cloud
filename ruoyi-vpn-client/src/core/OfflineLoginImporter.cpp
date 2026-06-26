@@ -1,10 +1,13 @@
 #include "OfflineLoginImporter.h"
 
 #include "AppLogger.h"
-#include "crypto/AgentAesCrypto.h"
+#include "TrustedTimeProvider.h"
+#include "crypto/BcryptVerifier.h"
+#include "crypto/OfflineLoginIntegrity.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
@@ -59,7 +62,9 @@ bool OfflineLoginImporter::ensureDirectoryExists(QString *errorOut)
     return true;
 }
 
-QVariantList OfflineLoginImporter::scanDirectory(const QString &dir, QString *errorOut)
+QVariantList OfflineLoginImporter::scanDirectory(const QString &dir, QString *errorOut,
+                                                 const TrustedTimeProvider *timeProvider,
+                                                 const QString &hmacKey)
 {
     QVariantList result;
     QDir directory(dir);
@@ -74,26 +79,42 @@ QVariantList OfflineLoginImporter::scanDirectory(const QString &dir, QString *er
         QStringList{QStringLiteral("*.dat")},
         QDir::Files | QDir::Readable,
         QDir::Name);
+    QStringList tamperedMessages;
     for (const QString &fileName : files) {
         const QString filePath = directory.absoluteFilePath(fileName);
         OfflineLoginPayload payload;
         QString parseError;
-        if (!parseFromFile(filePath, &payload, &parseError)) {
+        bool tampered = false;
+        if (!parseFromFile(filePath, &payload, &parseError, timeProvider, &tampered, hmacKey)) {
             AppLogger::instance()->debug(
                 QStringLiteral("[离线登录] 跳过文件 %1: %2").arg(fileName, parseError));
+            if (tampered) {
+                tamperedMessages.append(parseError);
+            }
             continue;
         }
 
         QVariantMap line = payload.line;
         line.insert(QStringLiteral("offlineFilePath"), filePath);
+        line.insert(QStringLiteral("localUserName"), payload.localUserName);
         result.append(line);
+    }
+    if (!tamperedMessages.isEmpty() && errorOut) {
+        *errorOut = tamperedMessages.join(QStringLiteral("\n"));
     }
     return result;
 }
 
 bool OfflineLoginImporter::parseFromFile(const QString &filePath, OfflineLoginPayload *out,
-                                         QString *errorOut)
+                                         QString *errorOut, const TrustedTimeProvider *timeProvider,
+                                         bool *tamperedOut, const QString &hmacKey)
 {
+    if (tamperedOut) {
+        *tamperedOut = false;
+    }
+
+    const QString effectiveHmacKey =
+        hmacKey.isEmpty() ? OfflineLoginIntegrity::defaultHmacKey() : hmacKey;
     auto fail = [errorOut](const QString &msg) {
         if (errorOut) {
             *errorOut = msg;
@@ -102,7 +123,7 @@ bool OfflineLoginImporter::parseFromFile(const QString &filePath, OfflineLoginPa
     };
 
     if (!out) {
-        return fail(QStringLiteral("内部错误"));
+        return fail(QObject::tr("内部错误"));
     }
 
     QFile file(filePath);
@@ -118,6 +139,27 @@ bool OfflineLoginImporter::parseFromFile(const QString &filePath, OfflineLoginPa
 
     const QJsonObject root = doc.object();
 
+    const QString payloadHmac = readString(root, "payload_hmac", "payloadHmac");
+    if (payloadHmac.isEmpty()) {
+        return fail(QObject::tr("离线登录文件缺少完整性校验信息"));
+    }
+    if (!OfflineLoginIntegrity::verifyPayload(root, effectiveHmacKey)) {
+        if (tamperedOut) {
+            *tamperedOut = true;
+        }
+        AppLogger::instance()->warn(
+            QStringLiteral("[离线登录] HMAC 校验失败：%1（若未修改文件，请检查 config.json 的 offlineHmacKey "
+                           "是否与服务端 vpn.offline.hmac.key 一致，或重新导出）")
+                .arg(QFileInfo(filePath).fileName()));
+        return fail(QObject::tr("请勿篡改文件：%1").arg(QFileInfo(filePath).fileName()));
+    }
+
+    const QString localPasswordHash =
+        readString(root, "local_password_hash", "localPasswordHash");
+    if (localPasswordHash.isEmpty()) {
+        return fail(QObject::tr("离线登录文件缺少本地用户密码哈希"));
+    }
+
     const QString appId = readString(root, "app_id", "appId");
     const QString appName = readString(root, "app_name", "appName");
     const QString host = readString(root, "host");
@@ -127,7 +169,6 @@ bool OfflineLoginImporter::parseFromFile(const QString &filePath, OfflineLoginPa
     const QString userName = readString(root, "user_name", "userName");
     const QString password = readString(root, "password");
     const QString localUserName = readString(root, "local_user_name", "localUserName");
-    const QString localPassword = readString(root, "local_password", "localPassword");
     const QString expireAtText = readString(root, "expire_at", "expireAt");
 
     if (appId.isEmpty() || appName.isEmpty() || host.isEmpty()) {
@@ -142,22 +183,33 @@ bool OfflineLoginImporter::parseFromFile(const QString &filePath, OfflineLoginPa
     if (userName.isEmpty() || password.isEmpty()) {
         return fail(QObject::tr("离线登录文件缺少账号或密码"));
     }
-    if (localUserName.isEmpty() || localPassword.isEmpty()) {
+    if (localUserName.isEmpty()) {
         return fail(QObject::tr("离线登录文件缺少本地用户信息"));
     }
     if (expireAtText.isEmpty()) {
         return fail(QObject::tr("离线登录文件缺少有效时间"));
     }
 
-    QDateTime expireAt = QDateTime::fromString(expireAtText, Qt::ISODate);
-    if (!expireAt.isValid()) {
-        expireAt = QDateTime::fromString(expireAtText, QStringLiteral("yyyy-MM-ddTHH:mm:ss"));
-    }
-    if (!expireAt.isValid()) {
-        return fail(QObject::tr("离线登录文件有效时间格式无效"));
-    }
-    if (expireAt <= QDateTime::currentDateTime()) {
-        return fail(QObject::tr("离线凭证已过期，请重新导出"));
+    QDateTime expireAt;
+    if (timeProvider) {
+        expireAt = timeProvider->parseExpireAtUtc(expireAtText);
+        if (!expireAt.isValid()) {
+            return fail(QObject::tr("离线登录文件有效时间格式无效"));
+        }
+        if (timeProvider->isExpired(expireAtText)) {
+            return fail(QObject::tr("离线凭证已过期，请重新导出"));
+        }
+    } else {
+        expireAt = QDateTime::fromString(expireAtText, Qt::ISODate);
+        if (!expireAt.isValid()) {
+            expireAt = QDateTime::fromString(expireAtText, QStringLiteral("yyyy-MM-ddTHH:mm:ss"));
+        }
+        if (!expireAt.isValid()) {
+            return fail(QObject::tr("离线登录文件有效时间格式无效"));
+        }
+        if (expireAt <= QDateTime::currentDateTime()) {
+            return fail(QObject::tr("离线凭证已过期，请重新导出"));
+        }
     }
 
     QVariantMap line;
@@ -172,7 +224,7 @@ bool OfflineLoginImporter::parseFromFile(const QString &filePath, OfflineLoginPa
     out->userName = userName;
     out->encryptedPassword = password;
     out->localUserName = localUserName;
-    out->localEncryptedPassword = localPassword;
+    out->localPasswordHash = localPasswordHash;
     out->expireAt = expireAt;
     return true;
 }
@@ -192,13 +244,7 @@ bool OfflineLoginImporter::verifyLocalCredentials(const OfflineLoginPayload &pay
     if (payload.localUserName.trimmed() != inputUser.trimmed()) {
         return fail(QObject::tr("本地账号或密码不正确"));
     }
-
-    const QByteArray plain =
-        AgentAesCrypto::decryptFromBase64(payload.localEncryptedPassword.toUtf8());
-    if (plain.isEmpty() && !payload.localEncryptedPassword.isEmpty()) {
-        return fail(QObject::tr("本地账号或密码不正确"));
-    }
-    if (QString::fromUtf8(plain) != inputPassword) {
+    if (!BcryptVerifier::matches(inputPassword, payload.localPasswordHash)) {
         return fail(QObject::tr("本地账号或密码不正确"));
     }
     return true;

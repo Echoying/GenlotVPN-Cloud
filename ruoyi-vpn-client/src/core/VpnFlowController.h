@@ -12,6 +12,7 @@
 #include "OpenApiProxyService.h"
 #include "ProxyLogModel.h"
 #include "OfflineLoginImporter.h"
+#include "TrustedTimeProvider.h"
 
 namespace vpn {
 
@@ -194,6 +195,9 @@ private:
     void setLoggedIn(bool v);
     void proceedControllerConnect(const QVariantMap &line);
     void startOfflineConnect(const OfflineLoginPayload &payload);
+    void scanOfflineLoginDir(bool showTimeFallbackToast);
+    void connectOfflineLineInternal(int index, const QString &localUsername,
+                                    const QString &localPassword);
     void reloadServerSettings();
     void applyReconnectPolicyToCloud();
     void finishLogout(bool clearUsername);
@@ -219,6 +223,7 @@ private:
     ControllerService *m_controller;
     SessionManager *m_session;
     SecureStorage *m_storage;
+    TrustedTimeProvider *m_timeProvider = nullptr;
     OpenApiProxyService *m_syncProxy = nullptr;
 
     QVariantList m_publicLines;
@@ -247,6 +252,7 @@ private:
     bool m_loggedIn = false;
     bool m_offlineMode = false;
     QString m_offlineEncryptedPassword;
+    QString m_offlineHmacKey;
     QVariantList m_offlineLoginLines;
     QString m_offlineLoginDir;
     bool m_loginPending = false;

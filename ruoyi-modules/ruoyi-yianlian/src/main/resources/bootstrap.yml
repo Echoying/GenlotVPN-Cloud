@@ -7,6 +7,9 @@ vpn:
   aes:
     key: EnSwordAgent@123
     iv: 321@tnegAdrowSnE
+  offline:
+    hmac:
+      key: "1^z4UGNHULekb*_msnrJZUpIJC.H_*.Npw22NJ9Vtv2_Yqro"
 
 # Spring
 spring:

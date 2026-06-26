@@ -12,6 +12,9 @@ Item {
         }
         localUsernameField.text = ""
         localPasswordField.text = ""
+        if (root.selectedLine && root.selectedLine.localUserName) {
+            localUsernameField.text = root.selectedLine.localUserName
+        }
         credentialOverlay.visible = true
     }
 
@@ -133,6 +136,17 @@ Item {
                     color: Theme.navy
                     font.pixelSize: 15
                     font.bold: true
+                    wrapMode: Text.Wrap
+                }
+
+                Text {
+                    width: parent.width
+                    text: root.selectedLine && root.selectedLine.localUserName
+                          ? qsTr("本地账号：%1").arg(root.selectedLine.localUserName)
+                          : ""
+                    visible: text.length > 0
+                    color: Theme.textSecondary
+                    font.pixelSize: 13
                     wrapMode: Text.Wrap
                 }
 

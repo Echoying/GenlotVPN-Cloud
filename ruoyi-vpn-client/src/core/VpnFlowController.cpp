@@ -1,6 +1,7 @@
 #include "VpnFlowController.h"
 #include "AppLogger.h"
 #include "OpenApiProxyService.h"
+#include "crypto/OfflineLoginIntegrity.h"
 #include "../transport/TcpClient.h"
 #include <QCoreApplication>
 #include <QGuiApplication>
@@ -168,6 +169,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     , m_storage(storage)
     , m_offlineLoginDir(OfflineLoginImporter::defaultDirectory())
 {
+    m_timeProvider = new TrustedTimeProvider(this);
     m_syncProxy = new OpenApiProxyService(this);
     connect(m_syncProxy, &OpenApiProxyService::started, this, [this]() { emit syncProxyRunningChanged(); });
     connect(m_syncProxy, &OpenApiProxyService::stopped, this, [this]() { emit syncProxyRunningChanged(); });
@@ -687,13 +689,40 @@ void VpnFlowController::loadOfflineLoginFiles()
         return;
     }
 
+    if (m_timeProvider->isSyncing()) {
+        setLoading(true);
+        connect(m_timeProvider, &TrustedTimeProvider::syncFinished, this,
+                [this](bool, bool usedLocalFallback) { scanOfflineLoginDir(usedLocalFallback); },
+                Qt::SingleShotConnection);
+        return;
+    }
+
+    if (m_timeProvider->isSynced() && !m_timeProvider->isStale()) {
+        setLoading(true);
+        scanOfflineLoginDir(false);
+        return;
+    }
+
     setLoading(true);
+    connect(m_timeProvider, &TrustedTimeProvider::syncFinished, this,
+            [this](bool, bool usedLocalFallback) { scanOfflineLoginDir(usedLocalFallback); },
+            Qt::SingleShotConnection);
+    m_timeProvider->sync();
+}
+
+void VpnFlowController::scanOfflineLoginDir(bool showTimeFallbackToast)
+{
+    const QString dirPath = OfflineLoginImporter::defaultDirectory();
     QString scanError;
-    const QVariantList lines = OfflineLoginImporter::scanDirectory(dirPath, &scanError);
+    const QVariantList lines =
+        OfflineLoginImporter::scanDirectory(dirPath, &scanError, m_timeProvider, m_offlineHmacKey);
     m_offlineLoginLines = lines;
     emit offlineLoginLinesChanged();
     setLoading(false);
 
+    if (showTimeFallbackToast) {
+        emit toast(tr("无法获取网络时间，已使用本机时间校验（可能被篡改）"), true);
+    }
     if (!scanError.isEmpty()) {
         emit toast(scanError, true);
     } else if (lines.isEmpty()) {
@@ -714,6 +743,32 @@ void VpnFlowController::connectOfflineLine(int index, const QString &localUserna
         return;
     }
 
+    if (m_timeProvider->isStale()) {
+        setLoading(true);
+        connect(m_timeProvider, &TrustedTimeProvider::syncFinished, this,
+                [this, index, localUsername, localPassword](bool, bool usedLocalFallback) {
+                    if (usedLocalFallback) {
+                        emit toast(tr("无法获取网络时间，已使用本机时间校验（可能被篡改）"), true);
+                    }
+                    connectOfflineLineInternal(index, localUsername, localPassword);
+                },
+                Qt::SingleShotConnection);
+        m_timeProvider->sync();
+        return;
+    }
+
+    connectOfflineLineInternal(index, localUsername, localPassword);
+}
+
+void VpnFlowController::connectOfflineLineInternal(int index, const QString &localUsername,
+                                                   const QString &localPassword)
+{
+    if (index < 0 || index >= m_offlineLoginLines.size()) {
+        emit toast(tr("请选择离线登录线路"), true);
+        setLoading(false);
+        return;
+    }
+
     const QVariantMap line = m_offlineLoginLines.at(index).toMap();
     const QString filePath = line.value(QStringLiteral("offlineFilePath")).toString();
     if (filePath.isEmpty()) {
@@ -723,13 +778,16 @@ void VpnFlowController::connectOfflineLine(int index, const QString &localUserna
 
     OfflineLoginPayload payload;
     QString error;
-    if (!OfflineLoginImporter::parseFromFile(filePath, &payload, &error)) {
+    if (!OfflineLoginImporter::parseFromFile(filePath, &payload, &error, m_timeProvider, nullptr,
+                                             m_offlineHmacKey)) {
         emit toast(error.isEmpty() ? tr("离线登录文件无效") : error, true);
         loadOfflineLoginFiles();
+        setLoading(false);
         return;
     }
     if (!OfflineLoginImporter::verifyLocalCredentials(payload, localUsername, localPassword, &error)) {
         emit toast(error.isEmpty() ? tr("本地账号或密码不正确") : error, true);
+        setLoading(false);
         return;
     }
     startOfflineConnect(payload);
@@ -1476,6 +1534,11 @@ void VpnFlowController::reloadServerSettings()
     const bool controllerAesEnabled = !cfg.contains(QStringLiteral("controllerAesEnabled"))
                                           || cfg.value(QStringLiteral("controllerAesEnabled")).toBool();
     m_controller->setControllerAesEnabled(controllerAesEnabled);
+    m_offlineHmacKey = cfg.value(QStringLiteral("offlineHmacKey")).toString().trimmed();
+    if (m_offlineHmacKey.isEmpty()) {
+        m_offlineHmacKey = OfflineLoginIntegrity::defaultHmacKey();
+    }
+    m_timeProvider->applyConfig(cfg);
 }
 
 void VpnFlowController::applyReconnectPolicyToCloud()

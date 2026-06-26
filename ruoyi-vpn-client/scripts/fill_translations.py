@@ -190,10 +190,15 @@ EN_MAP = {
     "无法创建离线登录目录": "Cannot create offline login directory",
     "离线登录目录不存在": "Offline login directory does not exist",
     "本地账号验证": "Local Account Verification",
+    "本地账号：%1": "Local account: %1",
     "请输入本地账号": "Enter local username",
     "请输入本地密码": "Enter local password",
     "本地账号或密码不正确": "Incorrect local username or password",
     "离线登录文件缺少本地用户信息": "Offline login file is missing local user information",
+    "离线登录文件已被篡改或无效": "Offline login file has been tampered with or is invalid",
+    "请勿篡改文件：%1": "Do not tamper with the file: %1",
+    "离线登录文件缺少完整性校验信息": "Offline login file is missing integrity check data",
+    "离线登录文件缺少本地用户密码哈希": "Offline login file is missing local user password hash",
     "界面加载失败，请查看 logs 目录中的 [QML] 日志。": "Failed to load UI. Check [QML] entries in the logs folder.",
 }
 

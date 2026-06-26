@@ -35,8 +35,11 @@ public class VpnOfflineLoginDatPayload
     @JsonProperty("local_user_name")
     private String localUserName;
 
-    @JsonProperty("local_password")
-    private String localPassword;
+    @JsonProperty("local_password_hash")
+    private String localPasswordHash;
+
+    @JsonProperty("payload_hmac")
+    private String payloadHmac;
 
     public String getAppId()
     {
@@ -138,13 +141,23 @@ public class VpnOfflineLoginDatPayload
         this.localUserName = localUserName;
     }
 
-    public String getLocalPassword()
+    public String getLocalPasswordHash()
     {
-        return localPassword;
+        return localPasswordHash;
     }
 
-    public void setLocalPassword(String localPassword)
+    public void setLocalPasswordHash(String localPasswordHash)
     {
-        this.localPassword = localPassword;
+        this.localPasswordHash = localPasswordHash;
+    }
+
+    public String getPayloadHmac()
+    {
+        return payloadHmac;
+    }
+
+    public void setPayloadHmac(String payloadHmac)
+    {
+        this.payloadHmac = payloadHmac;
     }
 }

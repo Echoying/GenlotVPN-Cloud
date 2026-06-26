@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QVariantMap>
 
 namespace vpn {
@@ -28,7 +29,12 @@ QByteArray embeddedDefaultConfigJson()
         "  \"tcpReconnectMaxRetries\": 3,\n"
         "  \"tcpReconnectDelayMs\": 1500,\n"
         "  \"controllerAesEnabled\": true,\n"
-        "  \"locale\": \"zh_CN\"\n"
+        "  \"locale\": \"zh_CN\",\n"
+        "  \"timeCheckEnabled\": true,\n"
+        "  \"timeCheckMinSources\": 2,\n"
+        "  \"timeCheckTimeoutMs\": 3000,\n"
+        "  \"expireAtTimeZone\": \"Asia/Shanghai\",\n"
+        "  \"offlineHmacKey\": \"1^z4UGNHULekb*_msnrJZUpIJC.H_*.Npw22NJ9Vtv2_Yqro\"\n"
         "}\n");
 }
 
@@ -105,6 +111,34 @@ QVariantMap SecureStorage::loadConfigFile() const
         result[QStringLiteral("controllerAesEnabled")] = true;
     }
     result[QStringLiteral("locale")] = cfg.value(QStringLiteral("locale")).toString(QStringLiteral("zh_CN"));
+    result[QStringLiteral("timeCheckEnabled")] =
+        cfg.contains(QStringLiteral("timeCheckEnabled"))
+            ? cfg.value(QStringLiteral("timeCheckEnabled")).toBool()
+            : true;
+    result[QStringLiteral("timeCheckMinSources")] =
+        cfg.contains(QStringLiteral("timeCheckMinSources"))
+            ? cfg.value(QStringLiteral("timeCheckMinSources")).toInt(2)
+            : 2;
+    result[QStringLiteral("timeCheckTimeoutMs")] =
+        cfg.contains(QStringLiteral("timeCheckTimeoutMs"))
+            ? cfg.value(QStringLiteral("timeCheckTimeoutMs")).toInt(3000)
+            : 3000;
+    result[QStringLiteral("expireAtTimeZone")] =
+        cfg.value(QStringLiteral("expireAtTimeZone")).toString(QStringLiteral("Asia/Shanghai"));
+    result[QStringLiteral("offlineHmacKey")] = cfg.value(QStringLiteral("offlineHmacKey")).toString();
+    if (cfg.contains(QStringLiteral("timeCheckUrls"))) {
+        const QJsonValue urlsValue = cfg.value(QStringLiteral("timeCheckUrls"));
+        if (urlsValue.isArray()) {
+            QStringList urls;
+            for (const QJsonValue &item : urlsValue.toArray()) {
+                const QString url = item.toString().trimmed();
+                if (!url.isEmpty()) {
+                    urls.append(url);
+                }
+            }
+            result[QStringLiteral("timeCheckUrls")] = urls;
+        }
+    }
     return result;
 }
 

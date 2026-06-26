@@ -7,5 +7,10 @@
   "tcpReconnectMaxRetries": 3,
   "tcpReconnectDelayMs": 1500,
   "controllerAesEnabled": true,
-  "locale": "zh_CN"
+  "locale": "zh_CN",
+  "timeCheckEnabled": true,
+  "timeCheckMinSources": 2,
+  "timeCheckTimeoutMs": 3000,
+  "expireAtTimeZone": "Asia/Shanghai",
+  "offlineHmacKey": "1^z4UGNHULekb*_msnrJZUpIJC.H_*.Npw22NJ9Vtv2_Yqro"
 }

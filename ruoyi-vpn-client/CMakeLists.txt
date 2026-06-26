@@ -46,6 +46,9 @@ set(SOURCES
     src/transport/FrameCodec.cpp
     src/transport/CertificatePinner.cpp
     src/core/TcpHmacUtils.cpp
+    src/crypto/HmacSha256.cpp
+    src/crypto/OfflineLoginIntegrity.cpp
+    src/crypto/BcryptVerifier.cpp
     src/crypto/AgentAesCrypto.cpp
     src/core/VpnCloudService.cpp
     src/core/ControllerService.cpp
@@ -58,6 +61,7 @@ set(SOURCES
     src/core/AppInfo.cpp
     src/core/VpnFlowController.cpp
     src/core/OfflineLoginImporter.cpp
+    src/core/TrustedTimeProvider.cpp
     src/core/LocaleManager.cpp
     src/core/OpenApiProxyService.cpp
     src/core/ProxyLogModel.cpp

@@ -16,7 +16,9 @@ import com.ruoyi.yianlian.service.vpn.IVpnLineAuthService;
 import com.ruoyi.yianlian.service.vpn.IVpnLocalUserService;
 import com.ruoyi.yianlian.service.vpn.IVpnOfflineLoginExportService;
 import com.ruoyi.yianlian.utils.AesUtils;
+import com.ruoyi.yianlian.utils.OfflineLoginIntegrity;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletResponse;
@@ -61,6 +63,9 @@ public class VpnOfflineLoginExportServiceImpl implements IVpnOfflineLoginExportS
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Value("${vpn.offline.hmac.key}")
+    private String offlineHmacKey;
 
     @Override
     public List<Map<String, Object>> listSelectableLines(Long localUserId)
@@ -208,10 +213,9 @@ public class VpnOfflineLoginExportServiceImpl implements IVpnOfflineLoginExportS
         {
             throw new ServiceException("线路「" + line.getAppName() + "」无法获取用户密码，请在线路用户管理中重置密码");
         }
-        String plainLocalPassword = decryptPassword(localUser.getEncryptedPwd());
-        if (StringUtils.isEmpty(plainLocalPassword))
+        if (StringUtils.isEmpty(localUser.getPassword()))
         {
-            throw new ServiceException("本地用户「" + localUser.getUserName() + "」无法获取密码，请在本地用户管理中重置密码");
+            throw new ServiceException("本地用户「" + localUser.getUserName() + "」无法获取密码哈希，请在本地用户管理中重置密码");
         }
         VpnOfflineLoginDatPayload payload = new VpnOfflineLoginDatPayload();
         payload.setAppId(line.getAppId());
@@ -228,8 +232,10 @@ public class VpnOfflineLoginExportServiceImpl implements IVpnOfflineLoginExportS
         payload.setUserName(lineUser.getUserName());
         payload.setPassword(aesUtils.encrypt(plainPassword));
         payload.setLocalUserName(localUser.getUserName());
-        payload.setLocalPassword(aesUtils.encrypt(plainLocalPassword));
+        payload.setLocalPasswordHash(localUser.getPassword());
         payload.setExpireAt(expireAt);
+        String canonical = OfflineLoginIntegrity.buildCanonical(payload);
+        payload.setPayloadHmac(OfflineLoginIntegrity.sign(canonical, offlineHmacKey));
         return payload;
     }
 
