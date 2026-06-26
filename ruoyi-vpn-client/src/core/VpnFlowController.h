@@ -218,6 +218,9 @@ private:
     void refreshGatewayAndTunnelStatus();
     void reportClientLoginAudit(bool success, const QString &stage, const QString &msg);
     bool shouldReportConnectFailure() const;
+    void startOfflineExpireWatch();
+    void stopOfflineExpireWatch();
+    void checkOfflineCredentialExpiry();
 
     VpnCloudService *m_cloud;
     ControllerService *m_controller;
@@ -252,6 +255,7 @@ private:
     bool m_loggedIn = false;
     bool m_offlineMode = false;
     QString m_offlineEncryptedPassword;
+    QString m_offlineExpireAtText;
     QString m_offlineHmacKey;
     QVariantList m_offlineLoginLines;
     QString m_offlineLoginDir;
@@ -272,8 +276,10 @@ private:
     QString m_switchingGatewayId;
     bool m_autoGatewayInitPending = false;
     bool m_handlingSessionExpiry = false;
+    bool m_handlingOfflineExpiry = false;
     bool m_connectChainActive = false;
 
+    QTimer *m_offlineExpireTimer = nullptr;
     QTimer *m_tunnelStatusTimer = nullptr;
     bool m_gatewayPolling = false;
     GatewayPollTrigger m_gatewayPollTrigger = GatewayPollTrigger::None;
@@ -290,6 +296,7 @@ private:
     static constexpr int GatewayPollIntervalMs = 3000;
     static constexpr int GatewayPollMaxAttempts = 20;
     static constexpr int TunnelStatusPollIntervalMs = 10000;
+    static constexpr int kOfflineExpireCheckIntervalMs = 5 * 60 * 1000;
 };
 
 } // namespace vpn

@@ -16,6 +16,7 @@ struct OfflineLoginPayload {
     QString encryptedPassword;
     QString localUserName;
     QString localPasswordHash;
+    QString expireAtText;
     QDateTime expireAt;
 };
 

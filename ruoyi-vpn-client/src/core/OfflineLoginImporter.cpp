@@ -225,6 +225,7 @@ bool OfflineLoginImporter::parseFromFile(const QString &filePath, OfflineLoginPa
     out->encryptedPassword = password;
     out->localUserName = localUserName;
     out->localPasswordHash = localPasswordHash;
+    out->expireAtText = expireAtText;
     out->expireAt = expireAt;
     return true;
 }

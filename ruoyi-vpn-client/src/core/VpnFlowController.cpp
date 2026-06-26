@@ -189,6 +189,12 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         refreshGatewayAndTunnelStatus();
     });
 
+    m_offlineExpireTimer = new QTimer(this);
+    m_offlineExpireTimer->setInterval(kOfflineExpireCheckIntervalMs);
+    connect(m_offlineExpireTimer, &QTimer::timeout, this, [this]() {
+        checkOfflineCredentialExpiry();
+    });
+
     connect(m_countdownTimer, &QTimer::timeout, this, [this]() {
         if (m_sendCountdown <= 1) {
             m_countdownTimer->stop();
@@ -445,6 +451,9 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         if (!m_offlineMode && m_cloud->hasSyncProxyRole()) {
             const QString appId = line.value(QStringLiteral("appId")).toString();
             m_cloud->fetchSyncProxyConfig(appId);
+        }
+        if (m_offlineMode) {
+            startOfflineExpireWatch();
         }
     });
     connect(m_controller, &ControllerService::userInfoReady, this, [this](const QString &name) {
@@ -809,6 +818,7 @@ void VpnFlowController::startOfflineConnect(const OfflineLoginPayload &payload)
     m_offlineMode = true;
     emit offlineModeChanged();
     m_offlineEncryptedPassword = payload.encryptedPassword;
+    m_offlineExpireAtText = payload.expireAtText;
     m_pendingLine = payload.line;
     m_session->setPendingLine(m_pendingLine);
     emit pendingLineChanged();
@@ -821,8 +831,55 @@ void VpnFlowController::startOfflineConnect(const OfflineLoginPayload &payload)
     addLog(QStringLiteral("info"),
            QStringLiteral("[离线登录] 线路: %1，有效至: %2")
                .arg(payload.line.value(QStringLiteral("appName")).toString(),
-                    payload.expireAt.toString(Qt::ISODate)));
+                    payload.expireAtText.isEmpty()
+                        ? payload.expireAt.toString(Qt::ISODate)
+                        : payload.expireAtText));
     proceedControllerConnect(m_pendingLine);
+}
+
+void VpnFlowController::startOfflineExpireWatch()
+{
+    if (m_offlineExpireAtText.isEmpty()) {
+        return;
+    }
+    if (!m_offlineExpireTimer) {
+        return;
+    }
+    m_offlineExpireTimer->start();
+    addLog(QStringLiteral("info"),
+           QStringLiteral("[离线登录] 已启动凭证过期检查（每 %1 分钟）")
+               .arg(kOfflineExpireCheckIntervalMs / 60000));
+}
+
+void VpnFlowController::stopOfflineExpireWatch()
+{
+    if (m_offlineExpireTimer) {
+        m_offlineExpireTimer->stop();
+    }
+    m_offlineExpireAtText.clear();
+}
+
+void VpnFlowController::checkOfflineCredentialExpiry()
+{
+    if (!m_offlineMode || m_offlineExpireAtText.isEmpty()) {
+        return;
+    }
+    if (m_handlingOfflineExpiry || m_handlingSessionExpiry) {
+        return;
+    }
+    if (!m_timeProvider->isExpired(m_offlineExpireAtText)) {
+        AppLogger::instance()->debug(
+            QStringLiteral("[离线登录] 凭证过期检查：未过期（有效至 %1）").arg(m_offlineExpireAtText));
+        return;
+    }
+
+    m_handlingOfflineExpiry = true;
+    stopOfflineExpireWatch();
+    addLog(QStringLiteral("warn"), QStringLiteral("[离线登录] 凭证已过期，自动退出"));
+    emit toast(tr("离线凭证已过期，请重新导出"), true);
+    m_controller->controllerLogout();
+    finishLogout(false);
+    m_handlingOfflineExpiry = false;
 }
 
 void VpnFlowController::startAutoConnect()
@@ -1229,6 +1286,7 @@ void VpnFlowController::finishLogout(bool clearUsername)
     m_awaitingPublicLineLogin = false;
     const bool wasOffline = m_offlineMode;
     if (m_offlineMode) {
+        stopOfflineExpireWatch();
         m_offlineMode = false;
         m_offlineEncryptedPassword.clear();
         emit offlineModeChanged();
