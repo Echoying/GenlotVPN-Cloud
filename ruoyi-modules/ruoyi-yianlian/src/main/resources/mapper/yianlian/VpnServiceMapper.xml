@@ -74,9 +74,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="yianlianKey != null and yianlianKey != ''">yianlian_key,</if>
             <if test="name != null and name != ''">name,</if>
             <if test="type != null and type != ''">type,</if>
-            <if test="url != null and url != ''">url,</if>
+            <if test="url != null">url,</if>
             <if test="browserType != null and browserType != ''">browser_type,</if>
-         <if test="webPort != null and webPort != ''">web_port,</if>
+         <if test="webPort != null">web_port,</if>
          <if test="creditLevelId != null and creditLevelId != ''">credit_level_id,</if>
          <if test="icon != null and icon != ''">icon,</if>
           <if test="ifShow != null">if_show,</if>
@@ -97,9 +97,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="yianlianKey != null and yianlianKey != ''">#{yianlianKey},</if>
          <if test="name != null and name != ''">#{name},</if>
             <if test="type != null and type != ''">#{type},</if>
-            <if test="url != null and url != ''">#{url},</if>
+            <if test="url != null">#{url},</if>
        <if test="browserType != null and browserType != ''">#{browserType},</if>
-            <if test="webPort != null and webPort != ''">#{webPort},</if>
+            <if test="webPort != null">#{webPort},</if>
           <if test="creditLevelId != null and creditLevelId != ''">#{creditLevelId},</if>
             <if test="icon != null and icon != ''">#{icon},</if>
             <if test="ifShow != null">#{ifShow},</if>
@@ -125,9 +125,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="yianlianKey != null and yianlianKey != ''">yianlian_key = #{yianlianKey},</if>
             <if test="name != null and name != ''">name = #{name},</if>
         <if test="type != null and type != ''">type = #{type},</if>
-            <if test="url != null and url != ''">url = #{url},</if>
+            <if test="url != null">url = #{url},</if>
             <if test="browserType != null and browserType != ''">browser_type = #{browserType},</if>
-            <if test="webPort != null and webPort != ''">web_port = #{webPort},</if>
+            <if test="webPort != null">web_port = #{webPort},</if>
             <if test="creditLevelId != null and creditLevelId != ''">credit_level_id = #{creditLevelId},</if>
             <if test="icon != null and icon != ''">icon = #{icon},</if>
             <if test="ifShow != null">if_show = #{ifShow},</if>

@@ -36,13 +36,13 @@ public class VpnService extends BaseEntity
     @NotBlank(message = "应用类型不能为空")
     private String type;
 
-    @NotBlank(message = "应用地址不能为空")
+    /** 应用地址（Web应用必填，隧道应用不需要，校验见Controller） */
     private String url;
 
     @NotBlank(message = "浏览器类型不能为空")
     private String browserType;
 
-    @NotBlank(message = "端口不能为空")
+    /** 端口（Web应用必填，隧道应用不需要，校验见Controller） */
     private String webPort;
     private String creditLevelId;
     private String icon;

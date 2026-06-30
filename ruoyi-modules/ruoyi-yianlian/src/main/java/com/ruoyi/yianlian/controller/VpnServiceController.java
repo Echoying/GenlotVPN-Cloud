@@ -9,6 +9,7 @@ import com.ruoyi.common.log.enums.BusinessType;
 import com.ruoyi.common.security.annotation.RequiresPermissions;
 import com.ruoyi.common.security.utils.SecurityUtils;
 import com.ruoyi.yianlian.client.dto.YiAnLianServiceListRequest;
+import com.ruoyi.yianlian.client.dto.vo.ReqCsServerVO;
 import com.ruoyi.yianlian.client.dto.vo.YiAnLianServiceVO;
 import com.ruoyi.yianlian.domain.VpnService;
 import com.ruoyi.yianlian.domain.VpnServiceGroup;
@@ -59,6 +60,11 @@ public class VpnServiceController extends BaseController
     @PostMapping
     public AjaxResult add(@Validated @RequestBody VpnService service)
     {
+        String validateMsg = validateByType(service);
+        if (validateMsg != null)
+        {
+            return error(validateMsg);
+        }
         service.setCreateBy(SecurityUtils.getUsername());
         // 先同步创建到易安联，成功后再插入本地数据库
         YiAnLianServiceVO vo = buildYiAnLianVO(service);
@@ -91,6 +97,11 @@ public class VpnServiceController extends BaseController
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody VpnService service)
     {
+        String validateMsg = validateByType(service);
+        if (validateMsg != null)
+        {
+            return error(validateMsg);
+        }
         VpnService old = vpnServiceService.selectServiceById(service.getId());
         if (old == null)
         {
@@ -150,6 +161,68 @@ public class VpnServiceController extends BaseController
 
         // 易安联删除成功后，再删除本地数据库
         return toAjax(vpnServiceService.deleteServiceByIds(ids));
+    }
+
+    /**
+     * 按应用类型校验并规整字段。
+     * Web应用：应用地址、端口必填，且不携带CS服务器配置；
+     * 隧道应用：至少配置一组CS服务器且每组字段完整，地址、端口置空。
+     *
+     * @return 校验失败时返回错误信息，校验通过返回null
+     */
+    private String validateByType(VpnService service)
+    {
+        String type = service.getType();
+        if ("web".equals(type))
+        {
+            if (StringUtils.isEmpty(service.getUrl()))
+            {
+                return "应用地址不能为空";
+            }
+            if (StringUtils.isEmpty(service.getWebPort()))
+            {
+                return "端口不能为空";
+            }
+            if (!service.getWebPort().matches("^\\d{1,6}$"))
+            {
+                return "端口必须是1-6位数字";
+            }
+            // Web应用不需要CS服务器配置
+            service.setReqCsServerVos(null);
+        }
+        else if ("cs".equals(type))
+        {
+            List<ReqCsServerVO> servers = service.getReqCsServerVos();
+            if (servers == null || servers.isEmpty())
+            {
+                return "隧道应用至少需要配置一组CS服务器";
+            }
+            for (int i = 0; i < servers.size(); i++)
+            {
+                ReqCsServerVO server = servers.get(i);
+                String prefix = "第" + (i + 1) + "组CS服务器";
+                if (StringUtils.isEmpty(server.getProtocolType()))
+                {
+                    return prefix + "协议类型不能为空";
+                }
+                if (StringUtils.isEmpty(server.getProtocol()))
+                {
+                    return prefix + "协议不能为空";
+                }
+                if (StringUtils.isEmpty(server.getIp()))
+                {
+                    return prefix + "IP地址不能为空";
+                }
+                if (StringUtils.isEmpty(server.getPort()))
+                {
+                    return prefix + "端口不能为空";
+                }
+            }
+            // 隧道应用不需要地址、端口，置空串以便清除数据库中的旧值
+            service.setUrl("");
+            service.setWebPort("");
+        }
+        return null;
     }
 
     /**

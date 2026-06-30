@@ -68,6 +68,11 @@ public class VpnServiceServiceImpl implements IVpnServiceService
         {
             service.setReqCsServerVosJson(JSON.toJSONString(service.getReqCsServerVos()));
         }
+        else
+        {
+            // 无CS服务器配置时置空，避免隧道应用改为Web应用后残留旧的CS配置
+            service.setReqCsServerVosJson("");
+        }
     }
 
     private void deserializeCsServerVos(VpnService service)

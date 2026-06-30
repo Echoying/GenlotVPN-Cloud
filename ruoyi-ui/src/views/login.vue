@@ -75,8 +75,8 @@ export default {
       footerContent: defaultSettings.footerContent,
       codeUrl: "",
       loginForm: {
-        username: "admin",
-        password: "admin123",
+        username: "",
+        password: "",
         rememberMe: false,
         code: "",
         uuid: ""
@@ -123,11 +123,15 @@ export default {
     getCookie() {
       const username = Cookies.get("username")
       const password = Cookies.get("password")
-      const rememberMe = Cookies.get('rememberMe')
-      this.loginForm = {
-        username: username === undefined ? this.loginForm.username : username,
-        password: password === undefined ? this.loginForm.password : decrypt(password),
-        rememberMe: rememberMe === undefined ? false : Boolean(rememberMe)
+      const rememberMe = Cookies.get("rememberMe")
+      if (username) {
+        this.loginForm.username = username
+      }
+      if (password) {
+        this.loginForm.password = decrypt(password)
+      }
+      if (rememberMe !== undefined) {
+        this.loginForm.rememberMe = Boolean(rememberMe)
       }
     },
     handleLogin() {

@@ -2,7 +2,7 @@
   <div class="app-container">
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="80px">
     <el-form-item label="线路" prop="appId">
-        <el-select v-model="queryParams.appId" placeholder="请选择线路" clearable style="width: 180px">
+        <el-select v-model="queryParams.appId" placeholder="请选择线路" clearable style="width: 180px" @change="handleQueryLineChange">
       <el-option v-for="item in lineAppList" :key="item.appId" :label="item.appName" :value="item.appId" />
      </el-select>
       </el-form-item>
@@ -32,12 +32,18 @@
 
     <el-table v-loading="loading" :data="serviceList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="50" align="center" />
-      <el-table-column label="应用名称" prop="name" :show-overflow-tooltip="true" />
+      <el-table-column label="应用名称" prop="name" width="180" :show-overflow-tooltip="true" />
       <el-table-column label="线路" prop="appName" width="120" />
       <el-table-column label="应用组" prop="serviceGroupName" width="120" />
-      <el-table-column label="类型" prop="type" width="80" />
-      <el-table-column label="地址" prop="url" :show-overflow-tooltip="true" />
-      <el-table-column label="端口" prop="webPort" width="80" />
+      <el-table-column label="类型" width="80">
+        <template slot-scope="scope">{{ typeName(scope.row.type) }}</template>
+      </el-table-column>
+      <el-table-column label="地址" :show-overflow-tooltip="true">
+        <template slot-scope="scope">{{ formatAddress(scope.row) }}</template>
+      </el-table-column>
+      <el-table-column label="端口" width="80">
+        <template slot-scope="scope">{{ scope.row.type === 'cs' ? '-' : scope.row.webPort }}</template>
+      </el-table-column>
       <el-table-column label="创建时间" prop="createTime" width="160">
         <template slot-scope="scope"><span>{{ parseTime(scope.row.createTime) }}</span></template>
       </el-table-column>
@@ -52,13 +58,11 @@
 
     <!-- 添加或修改对话框 -->
     <el-dialog :title="title" :visible.sync="open" width="800px" append-to-body>
-      <el-form ref="form" :model="form" :rules="rules" label-width="120px">
+      <el-form ref="form" :model="form" :rules="formRules" label-width="120px">
         <el-row>
      <el-col :span="12">
      <el-form-item label="线路" prop="appId">
-              <el-select v-model="form.appId" placeholder="请选择线路" @change="handleLineChange" :disabled="form.id != undefined">
-            <el-option v-for="item in lineAppList" :key="item.appId" :label="item.appName" :value="item.appId" />
-              </el-select>
+              <el-input :value="formLineName" disabled />
             </el-form-item>
         </el-col>
       <el-col :span="12">
@@ -82,21 +86,21 @@
           </el-form-item>
           </el-col>
     </el-row>
-        <el-row>
+        <el-row v-if="form.type === 'web'" key="row-web-addr">
       <el-col :span="12">
-          <el-form-item label="应用地址" prop="url">
+          <el-form-item label="应用地址" prop="url" key="url">
        <el-input v-model="form.url" placeholder="请输入应用地址" />
        </el-form-item>
           </el-col>
      <el-col :span="12">
-     <el-form-item label="端口" prop="webPort">
+     <el-form-item label="端口" prop="webPort" key="webPort">
           <el-input v-model="form.webPort" placeholder="请输入端口" maxlength="6" oninput="value=value.replace(/[^\d]/g,'')" />
        </el-form-item>
           </el-col>
     </el-row>
-    <el-row>
+    <el-row key="row-browser">
           <el-col :span="12">
-            <el-form-item label="浏览器类型" prop="browserType">
+            <el-form-item label="浏览器类型" prop="browserType" key="browserType">
               <el-select v-model="form.browserType" placeholder="请选择">
                 <el-option label="默认浏览器" value="0" />
         <el-option label="IE浏览器" value="1" />
@@ -213,21 +217,34 @@ export default {
       title: "", open: false,
     queryParams: { pageNum: 1, pageSize: 10, appId: undefined, serviceGroupId: undefined, name: undefined },
       form: {},
-      rules: {
+    }
+  },
+  computed: {
+    /** 表单中展示的线路名称（来自列表当前选中线路，不可修改） */
+    formLineName() {
+      const appId = this.form.appId
+      if (!appId) return ""
+      const line = this.lineAppList.find(item => item.appId === appId)
+      return line ? line.appName : appId
+    },
+    /** 根据应用类型动态校验：Web 必填地址/端口，隧道应用不要求 */
+    formRules() {
+      const rules = {
         appId: [{ required: true, message: "请选择线路", trigger: "change" }],
         serviceGroupId: [{ required: true, message: "请选择应用组", trigger: "change" }],
         name: [{ required: true, message: "应用名称不能为空", trigger: "blur" }],
         type: [{ required: true, message: "请选择应用类型", trigger: "change" }],
-        url: [{ required: true, message: "应用地址不能为空", trigger: "blur" }],
-        webPort: [
+        browserType: [{ required: true, message: "请选择浏览器类型", trigger: "change" }]
+      }
+      if (this.form.type === "web") {
+        rules.url = [{ required: true, message: "应用地址不能为空", trigger: "blur" }]
+        rules.webPort = [
           { required: true, message: "端口不能为空", trigger: "blur" },
           { pattern: /^\d{1,6}$/, message: "端口必须是1-6位数字", trigger: "blur" }
-        ],
-      browserType: [{ required: true, message: "请选择浏览器类型", trigger: "change" }]
+        ]
       }
-    }
-  },
-  computed: {
+      return rules
+    },
     /** 根据选中线路过滤应用组树 */
     groupTreeOptions() {
       if (!this.form.appId) {
@@ -236,25 +253,80 @@ export default {
       return this.serviceGroupOptions.filter(opt => opt.appId === this.form.appId)
     }
   },
-  created() { this.getList(); this.getLineAppList(); this.getServiceGroupList() },
+  created() {
+    this.loadLineAppList()
+    this.getServiceGroupList()
+  },
   methods: {
+    /** 加载线路列表，默认选中第一条并查询 */
+    loadLineAppList() {
+      listLineApp({ pageSize: 1000, pageNum: 1 }).then(r => {
+        this.lineAppList = r.rows || []
+        if (this.lineAppList.length > 0) {
+          this.queryParams.appId = this.lineAppList[0].appId
+          this.getList()
+        } else {
+          this.serviceList = []
+          this.total = 0
+          this.loading = false
+        }
+      })
+    },
+    handleQueryLineChange() {
+      this.queryParams.pageNum = 1
+      this.getList()
+    },
     getList() {
+      if (!this.queryParams.appId) {
+        this.serviceList = []
+        this.total = 0
+        this.loading = false
+        return
+      }
       this.loading = true
       listService(this.queryParams).then(response => {
         this.serviceList = response.rows; this.total = response.total; this.loading = false
       })
     },
-    getLineAppList() { listLineApp({}).then(r => { this.lineAppList = r.rows }) },
     getServiceGroupList() { serviceGroupTreeselect({}).then(r => { this.serviceGroupOptions = r.data }) },
+    /** 应用类型名称 */
+    typeName(type) {
+      if (type === 'web') return 'Web应用'
+      if (type === 'cs') return '隧道应用'
+      return type
+    },
+    /** 列表地址显示：隧道应用显示各CS服务器的"地址:端口"，Web应用显示url */
+    formatAddress(row) {
+      if (row.type === 'cs') {
+        if (!row.reqCsServerVos || row.reqCsServerVos.length === 0) {
+          return ''
+        }
+        return row.reqCsServerVos
+          .map(s => `${s.ip || ''}:${s.port || ''}`)
+          .join('，')
+      }
+      return row.url
+    },
     normalizer(node) {
     return { id: node.id, label: node.label, children: node.children }
     },
-    handleLineChange() { this.form.serviceGroupId = undefined },
     handleTypeChange() {
-      // 切换应用类型时，清空CS服务器配置
       if (this.form.type === 'web') {
+        // Web应用：清空CS服务器配置
         this.form.reqCsServerVos = []
+      } else if (this.form.type === 'cs') {
+        // 隧道应用：清空地址/端口，至少保留一组CS服务器
+        this.form.url = undefined
+        this.form.webPort = undefined
+        if (!this.form.reqCsServerVos || this.form.reqCsServerVos.length === 0) {
+          this.handleAddCsServer()
+        }
       }
+      this.$nextTick(() => {
+        if (this.$refs.form) {
+          this.$refs.form.clearValidate()
+        }
+      })
     },
     handleAddCsServer() {
       if (!this.form.reqCsServerVos) {
@@ -268,6 +340,10 @@ export default {
       })
     },
     handleRemoveCsServer(index) {
+      if (this.form.type === 'cs' && this.form.reqCsServerVos.length <= 1) {
+        this.$modal.msgWarning("隧道应用至少需要保留一组CS服务器")
+        return
+      }
       this.form.reqCsServerVos.splice(index, 1)
     },
     handleProtocolTypeChange(server) {
@@ -298,32 +374,73 @@ export default {
       this.resetForm("form")
     },
     handleQuery() { this.queryParams.pageNum = 1; this.getList() },
-    resetQuery() { this.resetForm("queryForm"); this.handleQuery() },
+    resetQuery() {
+      const appId = this.queryParams.appId
+      this.resetForm("queryForm")
+      this.queryParams.appId = appId
+      this.handleQuery()
+    },
     handleSelectionChange(selection) { this.ids = selection.map(item => item.id); this.single = selection.length != 1; this.multiple = !selection.length },
-    handleAdd() { this.reset(); this.open = true; this.title = "新增应用" },
+    handleAdd() {
+      if (!this.queryParams.appId) {
+        this.$modal.msgWarning("请先选择线路")
+        return
+      }
+      this.reset()
+      this.form.appId = this.queryParams.appId
+      this.open = true
+      this.title = "新增应用"
+      this.$nextTick(() => {
+        if (this.$refs.form) {
+          this.$refs.form.clearValidate()
+        }
+      })
+    },
     handleUpdate(row) {
       this.reset()
    getService(row.id || this.ids[0]).then(r => {
         this.form = r.data
         if (!this.form.reqCsServerVos) {
           this.form.reqCsServerVos = []
-      }
+        }
+        if (this.form.type === 'cs') {
+          // 隧道应用：地址/端口不展示，至少保留一组CS服务器
+          this.form.url = undefined
+          this.form.webPort = undefined
+          if (this.form.reqCsServerVos.length === 0) {
+            this.handleAddCsServer()
+          }
+        }
         this.open = true
         this.title = "修改应用"
+        this.$nextTick(() => {
+          if (this.$refs.form) {
+            this.$refs.form.clearValidate()
+          }
+        })
       })
     },
     submitForm() {
       this.$refs["form"].validate(valid => {
-        if (valid) {
-      // 非CS应用时不需要传reqCsServerVos
-          if (this.form.type !== 'cs') {
-            this.form.reqCsServerVos = []
+        if (!valid) {
+          return
+        }
+        if (this.form.type === 'cs') {
+          // 隧道应用：至少一组CS服务器，地址/端口置空
+          if (!this.form.reqCsServerVos || this.form.reqCsServerVos.length === 0) {
+            this.$modal.msgWarning("隧道应用至少需要配置一组CS服务器")
+            return
           }
-          if (this.form.id != undefined) {
-            updateService(this.form).then(() => { this.$modal.msgSuccess("修改成功"); this.open = false; this.getList() })
-          } else {
-         addService(this.form).then(() => { this.$modal.msgSuccess("新增成功"); this.open = false; this.getList() })
-          }
+          this.form.url = undefined
+          this.form.webPort = undefined
+        } else {
+          // Web应用：不传CS服务器
+          this.form.reqCsServerVos = []
+        }
+        if (this.form.id != undefined) {
+          updateService(this.form).then(() => { this.$modal.msgSuccess("修改成功"); this.open = false; this.getList() })
+        } else {
+          addService(this.form).then(() => { this.$modal.msgSuccess("新增成功"); this.open = false; this.getList() })
         }
       })
     },

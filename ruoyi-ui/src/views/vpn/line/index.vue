@@ -152,7 +152,7 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="线路名称" prop="appName">
-              <el-input v-model="form.appName" placeholder="请输入线路名称" :disabled="isEdit" />
+              <el-input v-model="form.appName" placeholder="请输入线路名称" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
