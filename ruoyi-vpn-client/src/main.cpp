@@ -178,5 +178,8 @@ int main(int argc, char *argv[])
         trayIcon.showMainWindow();
     });
     QObject::connect(&trayIcon, &vpn::TrayIcon::quitRequested, &flow, &vpn::VpnFlowController::shutdownAndQuit);
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, [&flow]() {
+        flow.ensureLogoutBeforeProcessExit();
+    });
     return app.exec();
 }

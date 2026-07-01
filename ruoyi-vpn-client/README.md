@@ -70,6 +70,40 @@ cmake --build build-msvc2022 --config Release
 2. **构建类型** 选 **Release**（Anaconda 的 `libprotobuf.dll` 为 Release 版，Debug 会 `0xC0000005` 崩溃）
 3. CMake 初始配置建议包含：`-DProtobuf_ROOT=D:/anaconda3/Library`（路径按本机 Anaconda 调整）
 4. 若提示 “Project did not parse successfully”，多半是选错了 MinGW Kit；切换到 MSVC 后点 **构建 → 重新运行 CMake**
+5. **构建目录** 建议与脚本一致：`ruoyi-vpn-client/build-msvc2022`（**项目 → 构建目录**），避免默认 `build/Desktop_Qt_*` 与 `detached*` 多套目录并存
+
+### Qt Creator 13+ 编译卡死 / 长时间无输出
+
+现象：点构建后编译输出停在 `VpnFlowController.cpp`、Protobuf 头（`D:\anaconda3\Library\include\google\protobuf\...`）等处不动，或右下角 **Indexing … with clangd** 进度为 0；重启 IDE 后又能编过。多为 **clangd / 代码模型索引** 与 **MSVC 编译** 同时读写 `build` 目录、争抢 CPU/磁盘所致，并非业务代码错误。
+
+**推荐设置（按顺序）**：
+
+1. **编辑 → Preferences → C++ → Clangd**：取消 **Use clangd**
+2. **编辑 → Preferences → C++ → 代码模型**：
+   - 取消 **启用索引**（或编译期间临时关闭）
+   - **忽略文件** 增加（路径按本机调整）：
+     ```
+     D:/anaconda3/*
+     */build/*
+     */build-msvc2022/*
+     ```
+3. **项目 → 构建**：并行任务数改为 **1～2**
+4. 关闭 Qt Creator，删除 `ruoyi-vpn-client/build` 下旧的 `Desktop_Qt_*`、`detached*` 目录，**构建 → 清除 CMake 配置** 后 **Release** 全量重编
+5. **Windows Defender 排除项**（设置 → 隐私和安全性 → Windows 安全中心 → 病毒和威胁防护 → 管理设置 → 排除项 → 添加文件夹）：
+   - `D:\anaconda3\Library`
+   - `D:\cursor\genlot\GenlotVPN-Cloud\ruoyi-vpn-client\build-msvc2022`（及仍在使用的 `build` 目录）
+   - 可选：`D:\apps\Qt\6.11.1`
+
+  管理员 PowerShell 等价命令：
+   ```PowerShell
+    Add-MpPreference -ExclusionPath "D:\anaconda3\Library"
+    Add-MpPreference -ExclusionPath "D:\cursor\genlot\GenlotVPN-Cloud\ruoyi-vpn-client\build-msvc2022"
+    Add-MpPreference -ExclusionPath "D:\cursor\genlot\GenlotVPN-Cloud\ruoyi-vpn-client\build"
+   ```
+
+**区分「卡死」与「编译慢」**：任务管理器中若 `cl.exe` 持续占 CPU，可能只是在编译 Protobuf 相关单元，需多等几分钟；若 `cl.exe` 无 CPU 且 IDE 无响应，按上表调整。
+
+**绕过 IDE**：日常编译可只用 `bin\build-vpn-client.bat`，Qt Creator 仅用于编辑与调试。
 
 运行前将 `build/config.json` 放在 exe 同目录，或通过 `vpnStorage` 保存服务器地址。
 

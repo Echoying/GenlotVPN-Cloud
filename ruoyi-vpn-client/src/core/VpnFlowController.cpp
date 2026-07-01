@@ -6,6 +6,8 @@
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QClipboard>
+#include <QEventLoop>
+#include <QSharedPointer>
 #include <QTimer>
 #include <QRegularExpression>
 
@@ -878,6 +880,7 @@ void VpnFlowController::checkOfflineCredentialExpiry()
     addLog(QStringLiteral("warn"), QStringLiteral("[离线登录] 凭证已过期，自动退出"));
     emit toast(tr("离线凭证已过期，请重新导出"), true);
     m_controller->controllerLogout();
+    m_cloud->clearSession();
     finishLogout(false);
     m_handlingOfflineExpiry = false;
 }
@@ -1191,20 +1194,123 @@ void VpnFlowController::refreshAppList()
 void VpnFlowController::doLogout()
 {
     addLog(QStringLiteral("info"), QStringLiteral("用户退出登录"));
-    m_controller->controllerLogout();
-    m_cloud->logout();
-    finishLogout(true);
+    performLogoutCleanup(true, false);
 }
 
 void VpnFlowController::shutdownAndQuit()
 {
     addLog(QStringLiteral("info"), QStringLiteral("正在退出应用"));
+    performLogoutCleanup(false, true);
+}
+
+void VpnFlowController::performLogoutCleanup(bool clearUsername, bool quitApp)
+{
+    if (m_logoutCleanupInProgress) {
+        if (quitApp) {
+            QTimer::singleShot(100, qApp, []() { QCoreApplication::quit(); });
+        }
+        return;
+    }
+    m_logoutCleanupInProgress = true;
+
     stopGatewayPolling();
     stopTunnelStatusPolling();
-    m_controller->controllerLogout();
-    m_cloud->logout();
-    m_cloud->clearSession();
-    QTimer::singleShot(200, qApp, []() { QCoreApplication::quit(); });
+
+    const bool needsCloudLogout = hasActiveCloudSession();
+
+    if (m_loggedIn || needsCloudLogout) {
+        m_controller->controllerLogout();
+    }
+
+    auto done = QSharedPointer<bool>::create(false);
+    const auto finalize = [this, clearUsername, quitApp, done]() {
+        if (*done) {
+            return;
+        }
+        *done = true;
+        finishLogout(clearUsername);
+        m_logoutCleanupInProgress = false;
+        if (quitApp) {
+            QTimer::singleShot(100, qApp, []() { QCoreApplication::quit(); });
+        }
+    };
+
+    if (needsCloudLogout) {
+        QTimer::singleShot(3000, this, [this, finalize, done, quitApp]() {
+            if (*done) {
+                return;
+            }
+            addLog(QStringLiteral("warn"),
+                   quitApp ? QStringLiteral("云端退出超时，继续退出应用")
+                           : QStringLiteral("云端退出超时，已清理本地登录状态"));
+            if (m_cloud->hasSession()) {
+                m_cloud->clearSession();
+            }
+            finalize();
+        });
+        m_cloud->logout([finalize](bool ok) {
+            if (!ok) {
+                AppLogger::instance()->warn(QStringLiteral("[云端] 退出登录请求未成功，已清理本地会话"));
+            }
+            finalize();
+        });
+        return;
+    }
+
+    if (m_cloud->hasSession()) {
+        m_cloud->clearSession();
+    }
+    finalize();
+}
+
+void VpnFlowController::ensureLogoutBeforeProcessExit()
+{
+    if (m_logoutCleanupInProgress) {
+        return;
+    }
+    if (!hasActiveCloudSession() && !m_loggedIn) {
+        return;
+    }
+
+    stopGatewayPolling();
+    stopTunnelStatusPolling();
+
+    if (m_loggedIn || hasActiveCloudSession()) {
+        m_controller->controllerLogout();
+    }
+
+    if (!hasActiveCloudSession()) {
+        m_cloud->clearSession();
+        return;
+    }
+
+    QEventLoop loop;
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    timeout.setInterval(3000);
+    QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+    auto rpcDone = QSharedPointer<bool>::create(false);
+    m_cloud->logout([rpcDone, &loop, &timeout](bool ok) {
+        if (*rpcDone) {
+            return;
+        }
+        *rpcDone = true;
+        if (!ok) {
+            AppLogger::instance()->warn(QStringLiteral("[云端] 进程退出前退出登录未成功"));
+        }
+        timeout.stop();
+        loop.quit();
+    });
+    timeout.start();
+    loop.exec();
+
+    if (!*rpcDone) {
+        AppLogger::instance()->warn(QStringLiteral("[云端] 进程退出前云端登出超时"));
+        if (m_cloud->hasSession()) {
+            m_cloud->clearSession();
+        }
+    }
 }
 
 bool VpnFlowController::hasActiveCloudSession() const
@@ -1249,6 +1355,7 @@ void VpnFlowController::handleSessionExpired(const QString &serverMsg)
     stopGatewayPolling();
     stopTunnelStatusPolling();
     m_controller->controllerLogout();
+    m_cloud->clearSession();
     finishLogout(false);
 
     emit toast(reason, true);
@@ -1292,7 +1399,6 @@ void VpnFlowController::finishLogout(bool clearUsername)
         emit offlineModeChanged();
     }
     m_pendingLine.clear();
-    m_cloud->clearSession();
     m_session->clear();
 
     m_selectedLine.clear();

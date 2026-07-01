@@ -39,6 +39,7 @@ public:
     Q_INVOKABLE void changePassword(const QString &username, const QString &oldPassword,
                                     const QString &newPassword, const QString &appId);
     Q_INVOKABLE void logout();
+    void logout(std::function<void(bool ok)> onComplete);
     Q_INVOKABLE void fetchSyncProxyConfig(const QString &appId);
     void reportClientLogin(const QString &appId, const QString &lineName, bool success,
                            const QString &stage, const QString &msg);

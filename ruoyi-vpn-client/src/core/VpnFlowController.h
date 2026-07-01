@@ -131,6 +131,8 @@ public:
     Q_INVOKABLE void refreshAppList();
     Q_INVOKABLE void doLogout();
     Q_INVOKABLE void shutdownAndQuit();
+    /** 进程退出前兜底登出（托盘不可用关窗等场景），阻塞至多约 3 秒 */
+    void ensureLogoutBeforeProcessExit();
     Q_INVOKABLE void changePassword(const QString &username, const QString &oldPwd,
                                     const QString &newPwd, const QString &confirmPwd);
     Q_INVOKABLE void goChooseLine();
@@ -200,6 +202,7 @@ private:
                                     const QString &localPassword);
     void reloadServerSettings();
     void applyReconnectPolicyToCloud();
+    void performLogoutCleanup(bool clearUsername, bool quitApp);
     void finishLogout(bool clearUsername);
     bool maybeHandleSessionExpired(const QString &msg);
     void handleSessionExpired(const QString &serverMsg);
@@ -278,6 +281,7 @@ private:
     bool m_handlingSessionExpiry = false;
     bool m_handlingOfflineExpiry = false;
     bool m_connectChainActive = false;
+    bool m_logoutCleanupInProgress = false;
 
     QTimer *m_offlineExpireTimer = nullptr;
     QTimer *m_tunnelStatusTimer = nullptr;

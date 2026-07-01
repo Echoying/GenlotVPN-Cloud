@@ -412,25 +412,39 @@ void VpnCloudService::clearSession()
 
 void VpnCloudService::logout()
 {
+    logout(nullptr);
+}
+
+void VpnCloudService::logout(std::function<void(bool ok)> onComplete)
+{
 #ifdef VPN_HAS_PROTO
     if (!hasSession()) {
         clearSession();
         emit logoutSucceeded();
+        if (onComplete) {
+            onComplete(true);
+        }
         return;
     }
     vpn::LogoutRequest req;
     sendRpc(static_cast<int>(vpn::MessageType::LOGOUT), serializeProto(req),
-            [this](const RpcResult &r) {
+            [this, onComplete = std::move(onComplete)](const RpcResult &r) {
         clearSession();
         if (!r.ok) {
             const QString msg = r.msg.isEmpty() ? QStringLiteral("退出登录请求失败") : r.msg.trimmed();
             emitCloudError(msg);
         }
         emit logoutSucceeded();
+        if (onComplete) {
+            onComplete(r.ok);
+        }
     });
 #else
     clearSession();
     emit logoutSucceeded();
+    if (onComplete) {
+        onComplete(true);
+    }
 #endif
 }
 
