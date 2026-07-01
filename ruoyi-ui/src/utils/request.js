@@ -8,8 +8,41 @@ import cache from '@/plugins/cache'
 import { saveAs } from 'file-saver'
 
 let downloadLoadingInstance
+let submitLoadingCount = 0
+let submitLoadingInstance = null
 // 是否显示重新登录
 export let isRelogin = { show: false }
+
+function isMutatingMethod(method) {
+  const m = (method || 'get').toLowerCase()
+  return m === 'post' || m === 'put' || m === 'delete'
+}
+
+function startSubmitLoading(text) {
+  if (submitLoadingCount === 0) {
+    submitLoadingInstance = Loading.service({
+      lock: true,
+      text: text || '正在处理，请稍候...',
+      spinner: 'el-icon-loading',
+      background: 'rgba(0, 0, 0, 0.7)'
+    })
+  }
+  submitLoadingCount++
+}
+
+function endSubmitLoading() {
+  submitLoadingCount = Math.max(0, submitLoadingCount - 1)
+  if (submitLoadingCount === 0 && submitLoadingInstance) {
+    submitLoadingInstance.close()
+    submitLoadingInstance = null
+  }
+}
+
+function closeSubmitLoadingIfNeeded(config) {
+  if (config && config._submitLoading) {
+    endSubmitLoading()
+  }
+}
 
 axios.defaults.headers['Content-Type'] = 'application/json;charset=utf-8'
 // 创建axios实例
@@ -66,6 +99,11 @@ service.interceptors.request.use(config => {
       }
     }
   }
+  const headers = config.headers || {}
+  if (headers.showLoading !== false && isMutatingMethod(config.method)) {
+    startSubmitLoading(headers.loadingText)
+    config._submitLoading = true
+  }
   return config
 }, error => {
     console.log(error)
@@ -74,6 +112,7 @@ service.interceptors.request.use(config => {
 
 // 响应拦截器
 service.interceptors.response.use(res => {
+    closeSubmitLoadingIfNeeded(res.config)
     // 未设置状态码则默认成功状态
     const code = res.data.code || 200
     // 获取错误信息
@@ -109,6 +148,7 @@ service.interceptors.response.use(res => {
     }
   },
   error => {
+    closeSubmitLoadingIfNeeded(error.config)
     console.log('err' + error)
     let { message } = error
     if (message == "Network Error") {
@@ -128,9 +168,13 @@ export function download(url, params, filename, config) {
   downloadLoadingInstance = Loading.service({ text: "正在下载数据，请稍候", spinner: "el-icon-loading", background: "rgba(0, 0, 0, 0.7)", })
   return service.post(url, params, {
     transformRequest: [(params) => { return tansParams(params) }],
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     responseType: 'blob',
-    ...config
+    ...config,
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      ...(config && config.headers),
+      showLoading: false
+    }
   }).then(async (data) => {
     const isBlob = blobValidate(data)
     if (isBlob) {

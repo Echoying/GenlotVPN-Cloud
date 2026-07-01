@@ -85,6 +85,14 @@ QString truncateForDisplay(const QByteArray &data, int maxLen = 16384)
            + QStringLiteral("\n\n... [已截断，共 %1 字节]").arg(data.size());
 }
 
+QString formatRequestLogWithTarget(const QString &targetUrl, const QString &rawRequestLog)
+{
+    if (targetUrl.trimmed().isEmpty()) {
+        return rawRequestLog;
+    }
+    return QStringLiteral("URL: %1\n\n").arg(targetUrl.trimmed()) + rawRequestLog;
+}
+
 QString formatHttpResponseLog(int status, const QByteArray &body, const QString &errorText = QString())
 {
     if (!errorText.isEmpty()) {
@@ -301,25 +309,24 @@ bool OpenApiProxyService::isAllowedPeer(const QString &peerIp) const
 QString OpenApiProxyService::buildTargetUrl(const QString &upstreamUrl, const QString &requestPath,
                                             const QString &queryString) const
 {
-    QUrl upstream(upstreamUrl);
-    if (!upstream.isValid()) {
+    QString base = upstreamUrl.trimmed();
+    if (base.isEmpty()) {
         return QString();
     }
-    QString path = requestPath;
-    if (!path.startsWith(QLatin1Char('/'))) {
+    while (base.endsWith(QLatin1Char('/'))) {
+        base.chop(1);
+    }
+
+    QString path = requestPath.trimmed();
+    if (!path.isEmpty() && !path.startsWith(QLatin1Char('/'))) {
         path.prepend(QLatin1Char('/'));
     }
-    QUrl target;
-    target.setScheme(upstream.scheme().isEmpty() ? QStringLiteral("https") : upstream.scheme());
-    target.setHost(upstream.host());
-    if (upstream.port() > 0) {
-        target.setPort(upstream.port());
-    }
-    target.setPath(path);
+
+    QString target = path.isEmpty() ? base : (base + path);
     if (!queryString.isEmpty()) {
-        target.setQuery(queryString);
+        target += QLatin1Char('?') + queryString;
     }
-    return target.toString();
+    return target;
 }
 
 void OpenApiProxyService::onNewConnection()
@@ -398,6 +405,8 @@ void OpenApiProxyService::forwardRequest(QTcpSocket *client, const QByteArray &r
         return;
     }
 
+    const QString fullRequestLog = formatRequestLogWithTarget(targetUrl, requestLog);
+
     QNetworkAccessManager *nam = new QNetworkAccessManager(this);
     QNetworkRequest req{QUrl(targetUrl)};
     const QMap<QString, QString> headers = extractHeaders(rawRequest);
@@ -429,15 +438,14 @@ void OpenApiProxyService::forwardRequest(QTcpSocket *client, const QByteArray &r
         reply = nam->deleteResource(req);
     } else {
         const QString responseLog = QStringLiteral("HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n");
-        recordLog(method, pathAndQuery(path), 405, peer, requestLog, responseLog, false);
+        recordLog(method, targetUrl, 405, peer, fullRequestLog, responseLog, false);
         writeHttpResponseAndClose(client, "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
         nam->deleteLater();
         return;
     }
 
-    const QString requestPath = pathAndQuery(path);
     connect(reply, &QNetworkReply::finished, this,
-            [this, client, reply, nam, method, requestPath, requestLog, peer]() {
+            [this, client, reply, nam, method, targetUrl, fullRequestLog, peer]() {
         int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         const QByteArray body = reply->readAll();
         QString responseLog;
@@ -449,7 +457,7 @@ void OpenApiProxyService::forwardRequest(QTcpSocket *client, const QByteArray &r
             success = status >= 200 && status < 400;
             responseLog = formatHttpResponseLog(status, body);
         }
-        recordLog(method, requestPath, status > 0 ? status : 502, peer, requestLog, responseLog, success);
+        recordLog(method, targetUrl, status > 0 ? status : 502, peer, fullRequestLog, responseLog, success);
 
         const int httpStatus = status > 0 ? status : 502;
         QByteArray response = QByteArray("HTTP/1.1 ")
@@ -469,7 +477,7 @@ void OpenApiProxyService::forwardRequest(QTcpSocket *client, const QByteArray &r
         response.append(body);
         writeHttpResponseAndClose(client, response);
         emit logMessage(QStringLiteral("info"),
-                        QStringLiteral("代理 %1 %2 → %3").arg(method, requestPath).arg(status));
+                        QStringLiteral("代理 %1 %2 → %3").arg(method, targetUrl).arg(status));
         reply->deleteLater();
         nam->deleteLater();
     });

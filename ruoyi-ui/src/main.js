@@ -2,7 +2,7 @@ import Vue from 'vue'
 
 import Cookies from 'js-cookie'
 
-import Element from 'element-ui'
+import Element, { Dialog, MessageBox } from 'element-ui'
 import './assets/styles/element-variables.scss'
 
 import '@/assets/styles/index.scss' // global css
@@ -68,6 +68,10 @@ DictData.install()
  * Currently MockJs will be used in the production environment,
  * please remove it before going online! ! !
  */
+
+// 禁止点击遮罩关闭弹窗（保留 ESC 关闭）
+Dialog.props.closeOnClickModal.default = false
+MessageBox.setDefaults({ closeOnClickModal: false })
 
 Vue.use(Element, {
   size: Cookies.get('size') || 'medium' // set element-ui default size

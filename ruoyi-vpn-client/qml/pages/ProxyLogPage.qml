@@ -135,7 +135,7 @@ Item {
                     height: parent.height
                     Text {
                         anchors.centerIn: parent
-                        text: qsTr("路径")
+                        text: qsTr("URL")
                         font.pixelSize: 11
                         font.bold: true
                         color: Theme.textSecondary
