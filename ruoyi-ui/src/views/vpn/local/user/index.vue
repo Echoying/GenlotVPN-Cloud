@@ -158,16 +158,15 @@
     </el-dialog>
 
     <el-dialog :title="syncTitle" :visible.sync="syncOpen" width="520px" append-to-body>
-      <el-alert v-if="allLinesSynced" title="该用户已同步到所有线路" type="info" :closable="false" show-icon style="margin-bottom: 12px" />
+      <el-alert v-if="allLinesSynced" title="该用户已同步到所有线路，可选择线路更新部门与角色" type="info" :closable="false" show-icon style="margin-bottom: 12px" />
       <el-form ref="syncForm" :model="syncForm" :rules="syncRules" label-width="90px">
         <el-form-item label="目标线路" prop="appId">
           <el-select v-model="syncForm.appId" placeholder="请选择线路" style="width: 100%" @change="onSyncLineChange">
             <el-option
               v-for="line in lineOptions"
               :key="line.appId"
-              :label="line.appName + (isLineSynced(line.appId) ? '（已同步）' : '')"
+              :label="line.appName + (isLineSynced(line.appId) ? '（已同步，可更新）' : '')"
               :value="line.appId"
-              :disabled="isLineSynced(line.appId)"
             />
           </el-select>
         </el-form-item>
@@ -181,7 +180,7 @@
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
-        <el-button type="primary" :disabled="allLinesSynced" @click="submitSync">确 定</el-button>
+        <el-button type="primary" @click="submitSync">确 定</el-button>
         <el-button @click="syncOpen = false">取 消</el-button>
       </div>
     </el-dialog>
@@ -227,6 +226,7 @@ export default {
         { value: 'Y1', label: '一年' }
       ],
       syncedAppIds: [],
+      syncedLineUsers: [],
       lineOptions: [],
       deptOptions: [],
       roleOptions: [],
@@ -378,11 +378,16 @@ export default {
       this.syncForm = { localUserId: row.localUserId, appId: undefined, deptId: undefined, roleIds: [] }
       this.deptOptions = []
       this.roleOptions = []
+      this.syncedLineUsers = []
       listLineUsers(row.localUserId).then(res => {
         const users = res.data || []
+        this.syncedLineUsers = users
         this.syncedAppIds = users.map(u => u.appId).filter(Boolean)
         this.syncOpen = true
       })
+    },
+    findSyncedLineUser(appId) {
+      return this.syncedLineUsers.find(u => u.appId === appId)
     },
     onSyncLineChange(appId) {
       this.syncForm.deptId = undefined
@@ -396,17 +401,28 @@ export default {
       listRole({ appId, pageNum: 1, pageSize: 100 }).then(res => {
         this.roleOptions = res.rows || []
       })
+      const existing = this.findSyncedLineUser(appId)
+      if (existing) {
+        this.syncForm.deptId = existing.deptId
+        this.syncForm.roleIds = (existing.roles || []).map(r => r.roleId).filter(Boolean)
+      }
     },
     submitSync() {
       this.$refs['syncForm'].validate(valid => {
         if (!valid) return
+        const isUpdate = this.isLineSynced(this.syncForm.appId)
         syncLocalUserToLine(this.syncForm).then(() => {
           const line = this.lineOptions.find(l => l.appId === this.syncForm.appId)
-          this.$modal.msgSuccess('该用户已同步到线路「' + (line ? line.appName : this.syncForm.appId) + '」')
+          const lineName = line ? line.appName : this.syncForm.appId
+          this.$modal.msgSuccess(isUpdate ? '已更新线路「' + lineName + '」的同步信息' : '该用户已同步到线路「' + lineName + '」')
           this.syncOpen = false
           if (!this.syncedAppIds.includes(this.syncForm.appId)) {
             this.syncedAppIds.push(this.syncForm.appId)
           }
+          listLineUsers(this.syncForm.localUserId).then(res => {
+            this.syncedLineUsers = res.data || []
+            this.syncedAppIds = this.syncedLineUsers.map(u => u.appId).filter(Boolean)
+          })
         })
       })
     },

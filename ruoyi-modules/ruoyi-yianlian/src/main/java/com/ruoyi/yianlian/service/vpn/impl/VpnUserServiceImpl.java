@@ -217,11 +217,7 @@ public class VpnUserServiceImpl implements IVpnUserService
     @Transactional(rollbackFor = Exception.class)
     public int updateUser(VpnUser user)
     {
-        Long userId = user.getUserId();
-        // 删除用户与角色关联
-        userRoleMapper.deleteUserRoleByUserId(userId);
-        // 新增用户与角色管理
-        insertUserRole(user);
+        refreshUserRoleRelations(user);
         return userMapper.updateUser(user);
     }
 
@@ -327,8 +323,36 @@ public class VpnUserServiceImpl implements IVpnUserService
      */
     public void insertUserRole(VpnUser user)
     {
+        List<Long> roleIdList = user.getRoleIdList();
+        if (roleIdList == null || roleIdList.isEmpty())
+        {
+            return;
+        }
         validateUserRoleAppId(user);
-        this.insertUserRole(user.getUserId(), user.getRoleIds());
+        this.insertUserRole(user.getUserId(), roleIdList.toArray(new Long[0]));
+    }
+
+    /**
+     * 刷新用户角色关联：请求携带 roleIds 时先删后插；未携带时保留原有关联
+     */
+    private void refreshUserRoleRelations(VpnUser user)
+    {
+        Long userId = user.getUserId();
+        if (userId == null)
+        {
+            return;
+        }
+        List<Long> roleIdList = user.getRoleIdList();
+        if (roleIdList == null)
+        {
+            return;
+        }
+        validateUserRoleAppId(user);
+        userRoleMapper.deleteUserRoleByUserId(userId);
+        if (!roleIdList.isEmpty())
+        {
+            insertUserRole(userId, roleIdList.toArray(new Long[0]));
+        }
     }
 
     /**
@@ -490,7 +514,6 @@ public class VpnUserServiceImpl implements IVpnUserService
         {
             user.setAppId(dbUser.getAppId());
         }
-        validateUserRoleAppId(user);
         int ret = updateUser(user);
         if (ret > 0 && !userYiAnLianSyncService.syncOnEdit(user))
         {
@@ -610,7 +633,8 @@ public class VpnUserServiceImpl implements IVpnUserService
      */
     private void validateUserRoleAppId(VpnUser user)
     {
-        if (user == null || StringUtils.isEmpty(user.getRoleIds()))
+        List<Long> roleIdList = user != null ? user.getRoleIdList() : null;
+        if (roleIdList == null || roleIdList.isEmpty())
         {
             return;
         }
@@ -627,7 +651,7 @@ public class VpnUserServiceImpl implements IVpnUserService
         {
             return;
         }
-        for (Long roleId : user.getRoleIds())
+        for (Long roleId : roleIdList)
         {
             VpnRole role = roleService.selectRoleById(roleId);
             if (role == null)

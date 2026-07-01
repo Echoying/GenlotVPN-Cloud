@@ -5,7 +5,6 @@ import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.yianlian.config.SyncProxyProperties;
 import com.ruoyi.yianlian.constant.SyncProxyConstants;
 import com.ruoyi.yianlian.domain.LineApp;
-import com.ruoyi.yianlian.domain.VpnRole;
 import com.ruoyi.yianlian.domain.vo.SyncProxyConfigVO;
 import com.ruoyi.yianlian.service.sync.ISyncProxyService;
 import com.ruoyi.yianlian.service.sync.SyncProxyEndpointResolver;
@@ -46,7 +45,7 @@ public class SyncProxyServiceImpl implements ISyncProxyService
         {
             throw new ServiceException("线路不能为空");
         }
-        if (!hasSyncProxyRole(userId, appId))
+        if (!roleService.hasSyncProxyRoleForLocalUser(userId, appId))
         {
             SyncProxyConfigVO vo = new SyncProxyConfigVO();
             vo.setEnabled(false);
@@ -79,15 +78,5 @@ public class SyncProxyServiceImpl implements ISyncProxyService
             .map(String::trim)
             .collect(Collectors.toList()));
         return vo;
-    }
-
-    private boolean hasSyncProxyRole(Long userId, String appId)
-    {
-        List<VpnRole> roles = roleService.selectUserRolesByUserId(userId);
-        if (roles == null || roles.isEmpty())
-        {
-            return false;
-        }
-        return roles.stream().anyMatch(role -> SyncProxyConstants.matchesSyncProxyRole(role, appId));
     }
 }

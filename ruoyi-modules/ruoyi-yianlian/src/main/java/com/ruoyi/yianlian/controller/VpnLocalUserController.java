@@ -23,6 +23,7 @@ import com.ruoyi.yianlian.domain.vo.VpnOfflineLoginExportRequest;
 import com.ruoyi.yianlian.service.vpn.IVpnLocalUserService;
 import com.ruoyi.yianlian.service.vpn.IVpnLocalUserSyncService;
 import com.ruoyi.yianlian.service.vpn.IVpnOfflineLoginExportService;
+import com.ruoyi.yianlian.service.vpn.IVpnRoleService;
 import com.ruoyi.yianlian.service.vpn.IVpnUserService;
 import com.ruoyi.yianlian.utils.AesUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletResponse;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * VPN本地用户管理
@@ -52,6 +54,9 @@ public class VpnLocalUserController extends BaseController
 
     @Autowired
     private IVpnOfflineLoginExportService offlineLoginExportService;
+
+    @Autowired
+    private IVpnRoleService roleService;
 
     @Autowired
     private AesUtils aesUtils;
@@ -190,6 +195,11 @@ public class VpnLocalUserController extends BaseController
         vpnLoginUser.setVpnUser(apiUser);
         vpnLoginUser.setUserid(localUser.getLocalUserId());
         vpnLoginUser.setUsername(localUser.getUserName());
+        Set<String> roleKeys = roleService.resolveLoginRoleKeysForLocalUser(localUser.getLocalUserId());
+        if (!roleKeys.isEmpty())
+        {
+            vpnLoginUser.setRoles(roleKeys);
+        }
         return R.ok(vpnLoginUser);
     }
 

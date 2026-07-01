@@ -145,6 +145,12 @@ public class VpnUser extends BaseEntity
         }
     }
 
+    @JsonProperty("roleIds")
+    public List<Long> getRoleIdList()
+    {
+        return roleIds;
+    }
+
     public Long[] getRoleIds()
     {
         if (roleIds == null || roleIds.isEmpty())

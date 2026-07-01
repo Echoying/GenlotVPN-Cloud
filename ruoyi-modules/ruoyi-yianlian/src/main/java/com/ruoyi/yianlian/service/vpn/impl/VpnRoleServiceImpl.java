@@ -3,9 +3,12 @@ package com.ruoyi.yianlian.service.vpn.impl;
 import com.ruoyi.common.core.constant.UserConstants;
 import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.common.core.utils.StringUtils;
+import com.ruoyi.yianlian.constant.SyncProxyConstants;
 import com.ruoyi.yianlian.domain.VpnRole;
 import com.ruoyi.yianlian.domain.VpnRoleYianlianMapping;
+import com.ruoyi.yianlian.domain.VpnUser;
 import com.ruoyi.yianlian.mapper.VpnRoleMapper;
+import com.ruoyi.yianlian.mapper.VpnUserMapper;
 import com.ruoyi.yianlian.mapper.VpnUserRoleMapper;
 import com.ruoyi.yianlian.service.IVpnRoleYianlianMappingService;
 import com.ruoyi.yianlian.service.vpn.IVpnRoleService;
@@ -26,6 +29,9 @@ public class VpnRoleServiceImpl implements IVpnRoleService
 {
     @Autowired
     private VpnRoleMapper roleMapper;
+
+    @Autowired
+    private VpnUserMapper userMapper;
 
     @Autowired
     private VpnUserRoleMapper userRoleMapper;
@@ -314,5 +320,75 @@ public class VpnRoleServiceImpl implements IVpnRoleService
             }
         }
         return roleMapper.deleteRoleByIds(roleIds);
+    }
+
+    @Override
+    public boolean hasSyncProxyRoleForLocalUser(Long localUserId, String appId)
+    {
+        if (localUserId == null || StringUtils.isEmpty(appId))
+        {
+            return false;
+        }
+        VpnUser lineUser = userMapper.selectUserByLocalUserIdAndAppId(localUserId, appId);
+        if (lineUser == null)
+        {
+            return false;
+        }
+        List<VpnRole> roles = roleMapper.selectRolePermissionByUserId(lineUser.getUserId());
+        if (roles == null || roles.isEmpty())
+        {
+            return false;
+        }
+        return roles.stream().anyMatch(role -> SyncProxyConstants.matchesSyncProxyRole(role, appId));
+    }
+
+    @Override
+    public Set<String> resolveLoginRoleKeysForLocalUser(Long localUserId)
+    {
+        Set<String> roleKeys = new HashSet<>();
+        if (localUserId == null)
+        {
+            return roleKeys;
+        }
+        List<VpnUser> lineUsers = userMapper.selectUsersByLocalUserId(localUserId);
+        if (lineUsers == null || lineUsers.isEmpty())
+        {
+            return roleKeys;
+        }
+        for (VpnUser lineUser : lineUsers)
+        {
+            if (lineUser == null || StringUtils.isEmpty(lineUser.getAppId()))
+            {
+                continue;
+            }
+            List<VpnRole> roles = roleMapper.selectRolePermissionByUserId(lineUser.getUserId());
+            if (roles == null || roles.isEmpty())
+            {
+                continue;
+            }
+            String lineAppId = lineUser.getAppId();
+            for (VpnRole role : roles)
+            {
+                if (!includeRoleKeyForLogin(role, lineAppId))
+                {
+                    continue;
+                }
+                String roleKey = SyncProxyConstants.resolveRoleKey(role);
+                if (StringUtils.isNotEmpty(roleKey))
+                {
+                    roleKeys.add(roleKey);
+                }
+            }
+        }
+        return roleKeys;
+    }
+
+    private boolean includeRoleKeyForLogin(VpnRole role, String lineAppId)
+    {
+        if (SyncProxyConstants.ROLE_SYNC_PROXY.equals(SyncProxyConstants.resolveRoleKey(role)))
+        {
+            return SyncProxyConstants.matchesSyncProxyRole(role, lineAppId);
+        }
+        return true;
     }
 }

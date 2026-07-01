@@ -448,7 +448,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         startTunnelStatusPolling();
         m_lineSyncProxyEnabled = false;
         emit lineSyncProxyEnabledChanged();
-        if (!m_offlineMode && m_cloud->hasSyncProxyRole()) {
+        if (!m_offlineMode) {
             const QString appId = line.value(QStringLiteral("appId")).toString();
             m_cloud->fetchSyncProxyConfig(appId);
         }

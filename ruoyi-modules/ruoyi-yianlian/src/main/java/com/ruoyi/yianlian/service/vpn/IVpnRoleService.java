@@ -145,4 +145,14 @@ public interface IVpnRoleService
      * 批量删除角色并同步易安联（先删远程，同步失败则整体回滚）
      */
     int deleteRoleByIdsWithSync(Long[] roleIds);
+
+    /**
+     * 本地用户在某线路是否拥有 sync_proxy 角色（按 vpn_user 解析）
+     */
+    boolean hasSyncProxyRoleForLocalUser(Long localUserId, String appId);
+
+    /**
+     * 汇总本地用户在各授权线路上的登录 role_keys（供客户端下发）
+     */
+    Set<String> resolveLoginRoleKeysForLocalUser(Long localUserId);
 }
