@@ -43,6 +43,7 @@ public:
     Q_INVOKABLE void fetchSyncProxyConfig(const QString &appId);
     void reportClientLogin(const QString &appId, const QString &lineName, bool success,
                            const QString &stage, const QString &msg);
+    void sessionPing(std::function<void(bool ok, const QString &msg)> onComplete);
     void clearSession();
 
     QString accessToken() const { return m_accessToken; }
@@ -68,7 +69,11 @@ private:
     using RpcCallback = std::function<void(const RpcResult &)>;
 
     void sendRpc(int messageType, const QByteArray &payload, RpcCallback callback);
+    void sendRpc(int messageType, const QByteArray &payload, RpcCallback callback,
+                 std::function<void(const QString &)> onFailure);
     void sendRpcWithRetry(int messageType, const QByteArray &payload, RpcCallback callback, int retryCount);
+    void sendRpcWithRetry(int messageType, const QByteArray &payload, RpcCallback callback, int retryCount,
+                          std::function<void(const QString &)> onFailure);
     QByteArray buildEnvelope(int messageType, const QByteArray &payload);
     RpcResult parseEnvelopeResponse(const QByteArray &envelopeBytes);
 

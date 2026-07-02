@@ -180,11 +180,23 @@ QByteArray VpnCloudService::buildEnvelope(int messageType, const QByteArray &pay
 
 void VpnCloudService::sendRpc(int messageType, const QByteArray &payload, RpcCallback callback)
 {
-    sendRpcWithRetry(messageType, payload, std::move(callback), 0);
+    sendRpc(messageType, payload, std::move(callback), nullptr);
+}
+
+void VpnCloudService::sendRpc(int messageType, const QByteArray &payload, RpcCallback callback,
+                              std::function<void(const QString &)> onFailure)
+{
+    sendRpcWithRetry(messageType, payload, std::move(callback), 0, std::move(onFailure));
 }
 
 void VpnCloudService::sendRpcWithRetry(int messageType, const QByteArray &payload, RpcCallback callback,
                                        int retryCount)
+{
+    sendRpcWithRetry(messageType, payload, std::move(callback), retryCount, nullptr);
+}
+
+void VpnCloudService::sendRpcWithRetry(int messageType, const QByteArray &payload, RpcCallback callback,
+                                       int retryCount, std::function<void(const QString &)> onFailure)
 {
 #ifndef VPN_HAS_PROTO
     emitCloudError(QStringLiteral("Protobuf 代码未生成，请先编译项目"));
@@ -192,7 +204,8 @@ void VpnCloudService::sendRpcWithRetry(int messageType, const QByteArray &payloa
     return;
 #else
     const QByteArray envelope = buildEnvelope(messageType, payload);
-    m_tcp.sendEnvelope(envelope, [this, messageType, payload, callback = std::move(callback), retryCount](
+    m_tcp.sendEnvelope(envelope, [this, messageType, payload, callback = std::move(callback), retryCount,
+                                  onFailure = std::move(onFailure)](
                                    bool ok, const QByteArray &body, const QString &err) mutable {
         if (!ok) {
             const QString msg = err.isEmpty() ? QStringLiteral("TCP 连接失败") : err.trimmed();
@@ -205,8 +218,10 @@ void VpnCloudService::sendRpcWithRetry(int messageType, const QByteArray &payloa
                         .arg(msg));
                 m_tcp.resetConnection();
                 QTimer::singleShot(m_reconnectDelayMs, this,
-                                   [this, messageType, payload, callback = std::move(callback), retryCount]() mutable {
-                                       sendRpcWithRetry(messageType, payload, std::move(callback), retryCount + 1);
+                                   [this, messageType, payload, callback = std::move(callback), retryCount,
+                                    onFailure = std::move(onFailure)]() mutable {
+                                       sendRpcWithRetry(messageType, payload, std::move(callback), retryCount + 1,
+                                                        std::move(onFailure));
                                    });
                 return;
             }
@@ -216,7 +231,11 @@ void VpnCloudService::sendRpcWithRetry(int messageType, const QByteArray &payloa
             transportFail.msg = msg;
             PacketLogUtil::logCloudRpcComplete(messageType, payload, QByteArray(), transportFail);
             emitCloudError(msg);
-            emit requestFailed(msg);
+            if (onFailure) {
+                onFailure(msg);
+            } else {
+                emit requestFailed(msg);
+            }
             return;
         }
         if (retryCount > 0) {
@@ -228,7 +247,11 @@ void VpnCloudService::sendRpcWithRetry(int messageType, const QByteArray &payloa
         if (!result.ok) {
             const QString msg = result.msg.isEmpty() ? QStringLiteral("请求失败") : result.msg.trimmed();
             emitCloudError(msg);
-            emit requestFailed(msg);
+            if (onFailure) {
+                onFailure(msg);
+            } else {
+                emit requestFailed(msg);
+            }
             return;
         }
         callback(result);
@@ -399,6 +422,34 @@ void VpnCloudService::reportClientLogin(const QString &appId, const QString &lin
     Q_UNUSED(success);
     Q_UNUSED(stage);
     Q_UNUSED(msg);
+#endif
+}
+
+void VpnCloudService::sessionPing(std::function<void(bool ok, const QString &msg)> onComplete)
+{
+#ifdef VPN_HAS_PROTO
+    if (!hasSession()) {
+        if (onComplete) {
+            onComplete(false, QStringLiteral("未登录或会话已失效"));
+        }
+        return;
+    }
+    vpn::SessionPingRequest req;
+    sendRpc(static_cast<int>(vpn::MessageType::SESSION_PING), serializeProto(req),
+            [onComplete](const RpcResult &) {
+                if (onComplete) {
+                    onComplete(true, {});
+                }
+            },
+            [onComplete](const QString &msg) {
+                if (onComplete) {
+                    onComplete(false, msg);
+                }
+            });
+#else
+    if (onComplete) {
+        onComplete(false, QStringLiteral("Protobuf 未生成"));
+    }
 #endif
 }
 

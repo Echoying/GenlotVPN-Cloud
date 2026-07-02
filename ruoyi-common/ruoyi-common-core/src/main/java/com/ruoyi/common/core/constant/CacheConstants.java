@@ -33,6 +33,11 @@ public class CacheConstants
     public final static String LOGIN_TOKEN_KEY = "login_tokens:";
 
     /**
+     * VPN 用户在线会话（connect 成功后注册）
+     */
+    public static final String VPN_ONLINE_KEY = "vpn_online:";
+
+    /**
      * 验证码 redis key
      */
     public static final String CAPTCHA_CODE_KEY = "captcha_codes:";

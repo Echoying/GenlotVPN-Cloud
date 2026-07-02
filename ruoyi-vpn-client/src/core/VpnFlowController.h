@@ -218,6 +218,8 @@ private:
     void finishGatewayPolling(bool success);
     void startTunnelStatusPolling();
     void stopTunnelStatusPolling();
+    void startSessionPing();
+    void stopSessionPing();
     void refreshGatewayAndTunnelStatus();
     void reportClientLoginAudit(bool success, const QString &stage, const QString &msg);
     bool shouldReportConnectFailure() const;
@@ -285,6 +287,8 @@ private:
 
     QTimer *m_offlineExpireTimer = nullptr;
     QTimer *m_tunnelStatusTimer = nullptr;
+    QTimer *m_sessionPingTimer = nullptr;
+    bool m_sessionPingInFlight = false;
     bool m_gatewayPolling = false;
     GatewayPollTrigger m_gatewayPollTrigger = GatewayPollTrigger::None;
     int m_gatewayPollAttempts = 0;
@@ -300,6 +304,7 @@ private:
     static constexpr int GatewayPollIntervalMs = 3000;
     static constexpr int GatewayPollMaxAttempts = 20;
     static constexpr int TunnelStatusPollIntervalMs = 10000;
+    static constexpr int SessionPingIntervalMs = 90000;
     static constexpr int kOfflineExpireCheckIntervalMs = 5 * 60 * 1000;
 };
 

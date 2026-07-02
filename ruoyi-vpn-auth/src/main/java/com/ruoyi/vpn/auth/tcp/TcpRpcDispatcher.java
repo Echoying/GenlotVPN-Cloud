@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.ruoyi.common.core.constant.CacheConstants;
 import com.ruoyi.common.core.constant.Constants;
 import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.common.core.domain.R;
@@ -29,6 +30,7 @@ import com.ruoyi.vpn.auth.service.VpnLineVerifyService;
 import com.ruoyi.vpn.auth.service.VpnLoginNotifyService;
 import com.ruoyi.vpn.auth.service.VpnLoginService;
 import com.ruoyi.vpn.auth.service.VpnRecordLogService;
+import com.ruoyi.vpn.auth.service.VpnUserOnlineRegistryService;
 import com.ruoyi.vpn.auth.utils.AesUtils;
 import com.ruoyi.vpn.protocol.ChangePasswordRequest;
 import com.ruoyi.vpn.protocol.ChangePasswordResponse;
@@ -52,6 +54,8 @@ import com.ruoyi.vpn.protocol.LogoutResponse;
 import com.ruoyi.vpn.protocol.MessageType;
 import com.ruoyi.vpn.protocol.RefreshTokenRequest;
 import com.ruoyi.vpn.protocol.RefreshTokenResponse;
+import com.ruoyi.vpn.protocol.SessionPingRequest;
+import com.ruoyi.vpn.protocol.SessionPingResponse;
 import com.ruoyi.vpn.protocol.ReportClientLoginRequest;
 import com.ruoyi.vpn.protocol.ReportClientLoginResponse;
 import com.ruoyi.vpn.protocol.RpcResponse;
@@ -112,6 +116,9 @@ public class TcpRpcDispatcher
     @Autowired
     private RemoteSyncProxyService remoteSyncProxyService;
 
+    @Autowired
+    private VpnUserOnlineRegistryService vpnUserOnlineRegistryService;
+
     public RpcResult dispatch(Envelope envelope, TcpSessionContext session)
     {
         MessageType type = envelope.getType();
@@ -147,6 +154,8 @@ public class TcpRpcDispatcher
                     return handleReportClientLogin(envelope, session);
                 case GET_SYNC_PROXY_CONFIG:
                     return handleGetSyncProxyConfig(envelope, session);
+                case SESSION_PING:
+                    return handleSessionPing(envelope, session);
                 default:
                     return RpcResult.fail("不支持的消息类型");
             }
@@ -289,6 +298,7 @@ public class TcpRpcDispatcher
                 {
                     vpnLoginNotifyService.notifyConnectSuccess(
                             buildLoginNotifyContext(username, session, appId, appName, loginPurpose));
+                    vpnUserOnlineRegistryService.registerOnConnect(session, envelope, req);
                 }
             }
             else
@@ -454,6 +464,7 @@ public class TcpRpcDispatcher
                 }
                 String username = JwtUtils.getUserName(token);
                 AuthUtil.logoutByToken(token);
+                vpnUserOnlineRegistryService.unregisterByAccessToken(token);
                 vpnLoginService.logout(username);
             }
             if (userId != null)
@@ -468,6 +479,16 @@ public class TcpRpcDispatcher
         {
             clearClientAuditContext();
         }
+    }
+
+    private RpcResult handleSessionPing(Envelope envelope, TcpSessionContext session)
+            throws InvalidProtocolBufferException
+    {
+        requireAuth(session, envelope);
+        SessionPingRequest.parseFrom(envelope.getPayload());
+        String token = resolveToken(envelope, session);
+        vpnUserOnlineRegistryService.touchOnlineSession(token);
+        return RpcResult.ok(SessionPingResponse.newBuilder().build());
     }
 
     private RpcResult handleRefreshToken(Envelope envelope, TcpSessionContext session) throws InvalidProtocolBufferException
@@ -563,6 +584,7 @@ public class TcpRpcDispatcher
     {
         if (session.isAuthenticated())
         {
+            assertTokenExistsInRedis(envelope, session);
             return;
         }
         String token = resolveToken(envelope, session);
@@ -576,9 +598,33 @@ public class TcpRpcDispatcher
             session.setUserId(Long.parseLong(JwtUtils.getUserId(token)));
             session.setUsername(JwtUtils.getUserName(token));
             session.setAuthenticated(true);
+            assertTokenExistsInRedis(envelope, session);
+        }
+        catch (ServiceException e)
+        {
+            throw e;
         }
         catch (Exception e)
         {
+            throw new ServiceException("登录状态已过期");
+        }
+    }
+
+    private void assertTokenExistsInRedis(Envelope envelope, TcpSessionContext session)
+    {
+        String token = resolveToken(envelope, session);
+        if (StringUtils.isEmpty(token))
+        {
+            session.setAuthenticated(false);
+            session.clearSecrets();
+            throw new ServiceException("未登录或会话已失效");
+        }
+        String tokenId = JwtUtils.getUserKey(token);
+        if (StringUtils.isEmpty(tokenId) || !redisService.hasKey(CacheConstants.LOGIN_TOKEN_KEY + tokenId))
+        {
+            session.setAuthenticated(false);
+            session.clearSecrets();
+            vpnUserOnlineRegistryService.unregisterByTokenId(tokenId);
             throw new ServiceException("登录状态已过期");
         }
     }

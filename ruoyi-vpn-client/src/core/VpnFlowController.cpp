@@ -191,6 +191,26 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         refreshGatewayAndTunnelStatus();
     });
 
+    m_sessionPingTimer = new QTimer(this);
+    m_sessionPingTimer->setInterval(SessionPingIntervalMs);
+    connect(m_sessionPingTimer, &QTimer::timeout, this, [this]() {
+        if (m_offlineMode || !m_cloud->hasSession() || m_sessionPingInFlight) {
+            return;
+        }
+        m_sessionPingInFlight = true;
+        m_cloud->sessionPing([this](bool ok, const QString &msg) {
+            m_sessionPingInFlight = false;
+            if (!ok && hasActiveCloudSession()) {
+                if (isSessionExpiredMessage(msg)) {
+                    handleSessionExpired(msg);
+                } else {
+                    addLog(QStringLiteral("warn"),
+                           QStringLiteral("会话心跳失败: %1").arg(msg.trimmed()));
+                }
+            }
+        });
+    });
+
     m_offlineExpireTimer = new QTimer(this);
     m_offlineExpireTimer->setInterval(kOfflineExpireCheckIntervalMs);
     connect(m_offlineExpireTimer, &QTimer::timeout, this, [this]() {
@@ -453,6 +473,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         if (!m_offlineMode) {
             const QString appId = line.value(QStringLiteral("appId")).toString();
             m_cloud->fetchSyncProxyConfig(appId);
+            startSessionPing();
         }
         if (m_offlineMode) {
             startOfflineExpireWatch();
@@ -1148,6 +1169,26 @@ void VpnFlowController::stopTunnelStatusPolling()
     m_tunnelReConnect = false;
 }
 
+void VpnFlowController::startSessionPing()
+{
+    if (m_offlineMode || !m_cloud->hasSession()) {
+        return;
+    }
+    stopSessionPing();
+    m_sessionPingInFlight = false;
+    if (m_sessionPingTimer) {
+        m_sessionPingTimer->start();
+    }
+}
+
+void VpnFlowController::stopSessionPing()
+{
+    m_sessionPingInFlight = false;
+    if (m_sessionPingTimer && m_sessionPingTimer->isActive()) {
+        m_sessionPingTimer->stop();
+    }
+}
+
 void VpnFlowController::refreshGatewayAndTunnelStatus()
 {
     // 网关连接轮询进行中时，列表由 pollGatewayOnce 刷新，此处仅拉隧道状态
@@ -1215,6 +1256,7 @@ void VpnFlowController::performLogoutCleanup(bool clearUsername, bool quitApp)
 
     stopGatewayPolling();
     stopTunnelStatusPolling();
+    stopSessionPing();
 
     const bool needsCloudLogout = hasActiveCloudSession();
 
@@ -1274,6 +1316,7 @@ void VpnFlowController::ensureLogoutBeforeProcessExit()
 
     stopGatewayPolling();
     stopTunnelStatusPolling();
+    stopSessionPing();
 
     if (m_loggedIn || hasActiveCloudSession()) {
         m_controller->controllerLogout();
@@ -1354,6 +1397,7 @@ void VpnFlowController::handleSessionExpired(const QString &serverMsg)
     clearGatewaySwitchingState();
     stopGatewayPolling();
     stopTunnelStatusPolling();
+    stopSessionPing();
     m_controller->controllerLogout();
     m_cloud->clearSession();
     finishLogout(false);
@@ -1379,6 +1423,7 @@ void VpnFlowController::finishLogout(bool clearUsername)
     emit syncProxyRunningChanged();
     stopGatewayPolling();
     stopTunnelStatusPolling();
+    stopSessionPing();
     clearSendCountdown();
     setVerifyDialogVisible(false);
     setLoggedIn(false);

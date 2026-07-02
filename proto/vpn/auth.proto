@@ -52,6 +52,10 @@ message LogoutResponse {}
 message RefreshTokenRequest {}
 message RefreshTokenResponse {}
 
+// --- 会话心跳 ---
+message SessionPingRequest {}
+message SessionPingResponse {}
+
 // --- 客户端登录审计 ---
 message ReportClientLoginRequest {
   string app_id = 1;

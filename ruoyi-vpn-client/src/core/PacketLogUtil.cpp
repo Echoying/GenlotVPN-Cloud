@@ -52,6 +52,8 @@ QString messageTypeName(int messageType)
         return QStringLiteral("REPORT_CLIENT_LOGIN");
     case vpn::MessageType::GET_SYNC_PROXY_CONFIG:
         return QStringLiteral("GET_SYNC_PROXY_CONFIG");
+    case vpn::MessageType::SESSION_PING:
+        return QStringLiteral("SESSION_PING");
     default:
         return QStringLiteral("TYPE_%1").arg(messageType);
     }
@@ -162,6 +164,13 @@ QString formatCloudRequestPayload(int messageType, const QByteArray &payload)
         }
         return protoToLog(req);
     }
+    case vpn::MessageType::SESSION_PING: {
+        vpn::SessionPingRequest req;
+        if (!req.ParseFromArray(payload.constData(), payload.size())) {
+            return QStringLiteral("<解析失败>");
+        }
+        return protoToLog(req);
+    }
     default:
         return QStringLiteral("<未知类型 payload %1 字节>").arg(payload.size());
     }
@@ -267,6 +276,13 @@ QString formatCloudResponseData(int messageType, const QByteArray &data)
     }
     case vpn::MessageType::GET_SYNC_PROXY_CONFIG: {
         vpn::GetSyncProxyConfigResponse resp;
+        if (!resp.ParseFromArray(data.constData(), data.size())) {
+            return QStringLiteral("<解析失败>");
+        }
+        return protoToLog(resp);
+    }
+    case vpn::MessageType::SESSION_PING: {
+        vpn::SessionPingResponse resp;
         if (!resp.ParseFromArray(data.constData(), data.size())) {
             return QStringLiteral("<解析失败>");
         }

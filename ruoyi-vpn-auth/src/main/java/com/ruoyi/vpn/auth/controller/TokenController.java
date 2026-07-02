@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.vpn.auth.service.VpnLineVerifyService;
+import com.ruoyi.vpn.auth.service.VpnUserOnlineRegistryService;
 import com.ruoyi.common.core.domain.R;
 import com.ruoyi.common.core.utils.JwtUtils;
 import com.ruoyi.common.core.utils.StringUtils;
@@ -57,6 +58,9 @@ public class TokenController
     @Autowired
     private VpnLineVerifyService vpnLineVerifyService;
 
+    @Autowired
+    private VpnUserOnlineRegistryService vpnUserOnlineRegistryService;
+
     @PostMapping("login")
     public R<?> login(@RequestBody VpnLoginBody form)
     {
@@ -84,6 +88,7 @@ public class TokenController
             String username = JwtUtils.getUserName(token);
             // 删除用户缓存记录
             AuthUtil.logoutByToken(token);
+            vpnUserOnlineRegistryService.unregisterByAccessToken(token);
             // 记录用户退出日志
             vpnLoginService.logout(username);
             vpnLineVerifyService.clearSendCooldown(userId);

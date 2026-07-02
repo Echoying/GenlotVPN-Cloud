@@ -20,6 +20,7 @@ enum MessageType {
   GET_USER_CREDENTIALS = 10;
   REPORT_CLIENT_LOGIN = 16;
   GET_SYNC_PROXY_CONFIG = 17;
+  SESSION_PING = 18;
 }
 
 // 统一报文外壳

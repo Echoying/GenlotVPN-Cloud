@@ -28,9 +28,25 @@ mvn clean package -DskipTests
 # 构建单个模块及其依赖
 mvn clean package -pl ruoyi-modules/ruoyi-yianlian -am -DskipTests
 
+# 或使用脚本（强制 clean + JDK8，推荐在 Cursor 终端执行）
+bin\build-yianlian.bat
+
 # Maven profile：dev（默认）、test
 mvn clean package -P dev -DskipTests
 ```
+
+#### Cursor / VS Code 下 Maven 编译与 Java 8
+
+项目要求 **Java 8**（`pom.xml` 中 `java.version=1.8`）。在 Cursor 中用 Maven 构建 `ruoyi-modules-yianlian`（`-am` 会连带编译 `ruoyi-modules-system` 等依赖）时，若**省略 `clean`** 或 IDE Java 扩展用非 JDK8 做过增量编译，`system` 等模块的 `target/classes` 里可能残留 **class 主版本号 ≠ 52（非 Java 8）** 的字节码，运行时报 `UnsupportedClassVersionError` 或类似错误。
+
+**处理办法（已验证）**：
+
+1. **务必带 `clean`**：`mvn clean package -pl ruoyi-modules/ruoyi-yianlian -am -DskipTests`
+2. 仍异常时：删除有关模块的 `target` 目录后重新执行上述命令，或运行 `bin\build-yianlian.bat`
+3. 确认终端 `JAVA_HOME` 指向 JDK 8：`java -version` 应显示 1.8.x
+4. 仓库 `.vscode/settings.json` 已配置：Java 语言服务默认 JDK8、Maven 终端注入 `JAVA_HOME`、关闭 `java.autobuild` 以免与 Maven 争抢 `target/classes`
+
+**不要用** `mvn package`（无 clean）代替全量构建依赖模块，尤其在 IDE 刚索引/编译过之后。
 
 ### 前端（管理端）
 ```bash
