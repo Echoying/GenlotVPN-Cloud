@@ -27,7 +27,7 @@ public class VpnUserOnlineServiceImpl implements IVpnUserOnlineService
     @Override
     public List<VpnUserOnline> selectOnlineList(String ipaddr, String userName, String appIds)
     {
-        Collection<String> keys = redisService.keys(CacheConstants.VPN_ONLINE_KEY + "*");
+        Collection<String> keys = redisService.scanKeys(CacheConstants.VPN_ONLINE_KEY + "*");
         if (keys == null || keys.isEmpty())
         {
             return Collections.emptyList();

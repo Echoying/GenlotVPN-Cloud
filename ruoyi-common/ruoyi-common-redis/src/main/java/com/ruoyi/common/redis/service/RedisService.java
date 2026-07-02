@@ -1,6 +1,8 @@
 package com.ruoyi.common.redis.service;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -8,8 +10,10 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.BoundSetOperations;
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Component;
 
@@ -264,5 +268,25 @@ public class RedisService
     public Collection<String> keys(final String pattern)
     {
         return redisTemplate.keys(pattern);
+    }
+
+    /**
+     * 使用 SCAN 按模式匹配键（生产环境优于 KEYS）
+     *
+     * @param pattern 键模式，如 login_tokens:*
+     * @return 匹配的键集合
+     */
+    public Collection<String> scanKeys(final String pattern)
+    {
+        Set<String> keys = new HashSet<>();
+        ScanOptions options = ScanOptions.scanOptions().match(pattern).count(500).build();
+        try (Cursor<String> cursor = redisTemplate.scan(options))
+        {
+            while (cursor.hasNext())
+            {
+                keys.add(cursor.next());
+            }
+        }
+        return keys;
     }
 }

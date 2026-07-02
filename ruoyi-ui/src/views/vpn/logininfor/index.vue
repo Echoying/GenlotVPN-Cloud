@@ -172,15 +172,32 @@ export default {
         userName: undefined,
         loginPurpose: undefined,
         appIds: undefined,
-        status: undefined
+        status: undefined,
+        msg: undefined
       }
     }
   },
   created() {
+    this.applyRouteQuery()
     this.loadLineOptions()
     this.getList()
   },
   methods: {
+    applyRouteQuery() {
+      const query = this.$route.query || {}
+      if (query.userName) {
+        this.queryParams.userName = query.userName
+      }
+      if (query.status !== undefined && query.status !== null && query.status !== '') {
+        this.queryParams.status = query.status
+      }
+      if (query.msg) {
+        this.queryParams.msg = query.msg
+      }
+      if (query.beginTime && query.endTime) {
+        this.dateRange = [query.beginTime, query.endTime]
+      }
+    },
     loadLineOptions() {
       listLineApp({ pageNum: 1, pageSize: 1000 }).then(response => {
         this.lineOptions = response.rows || []

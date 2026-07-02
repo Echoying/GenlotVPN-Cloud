@@ -35,6 +35,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 			<if test="userName != null and userName != ''">
 				AND user_name like concat('%', #{userName}, '%')
 			</if>
+			<if test="msg != null and msg != ''">
+				AND msg like concat('%', #{msg}, '%')
+			</if>
 			<if test="loginPurpose != null and loginPurpose != ''">
 				AND login_purpose like concat('%', #{loginPurpose}, '%')
 			</if>

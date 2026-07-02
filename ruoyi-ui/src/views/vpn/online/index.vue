@@ -53,6 +53,11 @@
           <span>{{ (pageNum - 1) * pageSize + scope.$index + 1 }}</span>
         </template>
       </el-table-column>
+      <el-table-column label="状态" align="center" width="80">
+        <template slot-scope="_">
+          <el-tag type="success" size="mini">在线</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="会话编号" align="center" prop="tokenId" min-width="120" :show-overflow-tooltip="true" />
       <el-table-column label="登录账号" align="center" prop="userName" width="120" :show-overflow-tooltip="true" />
       <el-table-column label="昵称" align="center" prop="nickName" width="120" :show-overflow-tooltip="true" />
