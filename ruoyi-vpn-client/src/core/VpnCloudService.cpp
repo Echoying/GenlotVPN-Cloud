@@ -436,9 +436,9 @@ void VpnCloudService::sessionPing(std::function<void(bool ok, const QString &msg
     }
     vpn::SessionPingRequest req;
     sendRpc(static_cast<int>(vpn::MessageType::SESSION_PING), serializeProto(req),
-            [onComplete](const RpcResult &) {
+            [onComplete](const RpcResult &r) {
                 if (onComplete) {
-                    onComplete(true, {});
+                    onComplete(r.ok, r.msg);
                 }
             },
             [onComplete](const QString &msg) {

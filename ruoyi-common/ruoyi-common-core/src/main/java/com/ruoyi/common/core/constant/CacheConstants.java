@@ -38,6 +38,11 @@ public class CacheConstants
     public static final String VPN_ONLINE_KEY = "vpn_online:";
 
     /**
+     * VPN 本地用户当前有效 tokenId（全局单会话）
+     */
+    public static final String VPN_USER_TOKEN_KEY = "vpn_user_token:";
+
+    /**
      * 验证码 redis key
      */
     public static final String CAPTCHA_CODE_KEY = "captcha_codes:";

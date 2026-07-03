@@ -76,7 +76,8 @@ bool isSessionExpiredMessage(const QString &msg)
     if (containsSendCooldownHint(text)) {
         return false;
     }
-    return text.contains(QStringLiteral("登录状态已过期"), Qt::CaseInsensitive)
+    return text.contains(QStringLiteral("账号已在其他设备登录"), Qt::CaseInsensitive)
+           || text.contains(QStringLiteral("登录状态已过期"), Qt::CaseInsensitive)
            || text.contains(QStringLiteral("登录已过期"), Qt::CaseInsensitive)
            || text.contains(QStringLiteral("凭证已过期"), Qt::CaseInsensitive)
            || text.contains(QStringLiteral("未登录或会话已失效"), Qt::CaseInsensitive)
@@ -194,21 +195,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     m_sessionPingTimer = new QTimer(this);
     m_sessionPingTimer->setInterval(SessionPingIntervalMs);
     connect(m_sessionPingTimer, &QTimer::timeout, this, [this]() {
-        if (m_offlineMode || !m_cloud->hasSession() || m_sessionPingInFlight) {
-            return;
-        }
-        m_sessionPingInFlight = true;
-        m_cloud->sessionPing([this](bool ok, const QString &msg) {
-            m_sessionPingInFlight = false;
-            if (!ok && hasActiveCloudSession()) {
-                if (isSessionExpiredMessage(msg)) {
-                    handleSessionExpired(msg);
-                } else {
-                    addLog(QStringLiteral("warn"),
-                           QStringLiteral("会话心跳失败: %1").arg(msg.trimmed()));
-                }
-            }
-        });
+        runSessionPingOnce();
     });
 
     m_offlineExpireTimer = new QTimer(this);
@@ -254,6 +241,9 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         emit hasSyncProxyRoleChanged();
         m_connectChainActive = true;
         addLog(QStringLiteral("info"), QStringLiteral("云端登录成功"));
+        if (!m_offlineMode) {
+            startSessionPing();
+        }
         const QString pendingId = m_pendingLine.value(QStringLiteral("appId")).toString();
         if (!pendingId.isEmpty()) {
             emit navigateTo(QStringLiteral("connect"));
@@ -354,6 +344,9 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         addLog(QStringLiteral("info"), QStringLiteral("当前线路未启用同步代理，管理系统将直连"));
     });
     connect(m_cloud, &VpnCloudService::requestFailed, this, [this](const QString &msg) {
+        if (m_handlingSessionExpiry || m_logoutCleanupInProgress) {
+            return;
+        }
         setLoading(false);
         m_autoConnectStarted = false;
 
@@ -1179,9 +1172,29 @@ void VpnFlowController::startSessionPing()
     }
     stopSessionPing();
     m_sessionPingInFlight = false;
+    runSessionPingOnce();
     if (m_sessionPingTimer) {
         m_sessionPingTimer->start();
     }
+}
+
+void VpnFlowController::runSessionPingOnce()
+{
+    if (m_offlineMode || !m_cloud->hasSession() || m_sessionPingInFlight) {
+        return;
+    }
+    m_sessionPingInFlight = true;
+    m_cloud->sessionPing([this](bool ok, const QString &msg) {
+        m_sessionPingInFlight = false;
+        if (!ok && hasActiveCloudSession()) {
+            if (isSessionExpiredMessage(msg)) {
+                handleSessionExpired(msg);
+            } else {
+                addLog(QStringLiteral("warn"),
+                       QStringLiteral("会话心跳失败: %1").arg(msg.trimmed()));
+            }
+        }
+    });
 }
 
 void VpnFlowController::stopSessionPing()
@@ -1366,6 +1379,9 @@ bool VpnFlowController::hasActiveCloudSession() const
 
 bool VpnFlowController::maybeHandleSessionExpired(const QString &msg)
 {
+    if (m_handlingSessionExpiry || m_logoutCleanupInProgress) {
+        return false;
+    }
     if (!isSessionExpiredMessage(msg) || !hasActiveCloudSession()) {
         return false;
     }
@@ -1375,39 +1391,52 @@ bool VpnFlowController::maybeHandleSessionExpired(const QString &msg)
 
 void VpnFlowController::handleSessionExpired(const QString &serverMsg)
 {
-    if (m_handlingSessionExpiry) {
+    if (m_handlingSessionExpiry || m_logoutCleanupInProgress) {
         return;
     }
     m_handlingSessionExpiry = true;
+    stopSessionPing();
 
     const QString reason = serverMsg.trimmed().isEmpty()
                                ? tr("登录已过期，请重新登录")
                                : serverMsg.trimmed();
-    addLog(QStringLiteral("error"), QStringLiteral("会话已失效: %1").arg(reason));
 
-    m_changePasswordPending = false;
-    m_loginPending = false;
-    m_lineVerifyPending = false;
-    m_sendLineVerifyPending = false;
-    m_autoConnectPending = false;
-    m_autoConnectStarted = false;
-    m_connectChainActive = false;
-    setLoading(false);
+    // 推迟到事件循环下一轮，避免 TCP 回调栈内重入导致重复清理崩溃
+    QTimer::singleShot(0, this, [this, reason]() {
+        if (!m_handlingSessionExpiry) {
+            return;
+        }
 
-    if (m_gatewayPolling) {
-        finishGatewayPolling(false);
-    }
-    clearGatewaySwitchingState();
-    stopGatewayPolling();
-    stopTunnelStatusPolling();
-    stopSessionPing();
-    m_controller->controllerLogout();
-    m_cloud->clearSession();
-    finishLogout(false);
+        addLog(QStringLiteral("error"), QStringLiteral("会话已失效: %1").arg(reason));
 
-    emit toast(reason, true);
+        m_changePasswordPending = false;
+        m_loginPending = false;
+        m_lineVerifyPending = false;
+        m_sendLineVerifyPending = false;
+        m_autoConnectPending = false;
+        m_autoConnectStarted = false;
+        m_connectChainActive = false;
+        setLoading(false);
 
-    m_handlingSessionExpiry = false;
+        if (m_gatewayPolling) {
+            finishGatewayPolling(false);
+        }
+        clearGatewaySwitchingState();
+        stopGatewayPolling();
+        stopTunnelStatusPolling();
+        stopSessionPing();
+
+        if (m_controller) {
+            m_controller->controllerLogout();
+        }
+        if (m_cloud && m_cloud->hasSession()) {
+            m_cloud->clearSession();
+        }
+        finishLogout(false);
+
+        emit toast(reason, true);
+        m_handlingSessionExpiry = false;
+    });
 }
 
 void VpnFlowController::finishLogout(bool clearUsername)

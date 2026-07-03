@@ -16,7 +16,10 @@ import com.ruoyi.common.log.annotation.Log;
 import com.ruoyi.common.log.enums.BusinessType;
 import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.common.security.annotation.RequiresPermissions;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.ruoyi.yianlian.api.domain.VpnUserOnline;
+import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import com.ruoyi.yianlian.service.IVpnUserOnlineService;
 
 /**
@@ -52,8 +55,77 @@ public class VpnUserOnlineController extends BaseController
         {
             return error("会话编号不能为空");
         }
+        VpnUserOnline online = redisService.getCacheObject(CacheConstants.VPN_ONLINE_KEY + tokenId);
+        VpnLoginUser loginUser = redisService.getCacheObject(CacheConstants.LOGIN_TOKEN_KEY + tokenId);
+        Long userId = resolveForceLogoutUserId(online, loginUser);
         redisService.deleteObject(CacheConstants.LOGIN_TOKEN_KEY + tokenId);
         redisService.deleteObject(CacheConstants.VPN_ONLINE_KEY + tokenId);
+        clearUserTokenIndexIfMatch(userId, tokenId);
         return success();
+    }
+
+    private Long resolveForceLogoutUserId(VpnUserOnline online, VpnLoginUser loginUser)
+    {
+        if (online != null && online.getUserId() != null)
+        {
+            return online.getUserId();
+        }
+        if (loginUser == null)
+        {
+            return null;
+        }
+        if (loginUser.getUserid() != null)
+        {
+            return loginUser.getUserid();
+        }
+        if (loginUser.getVpnUser() != null && loginUser.getVpnUser().getUserId() != null)
+        {
+            return loginUser.getVpnUser().getUserId();
+        }
+        return null;
+    }
+
+    private void clearUserTokenIndexIfMatch(Long userId, String tokenId)
+    {
+        if (userId == null || StringUtils.isEmpty(tokenId))
+        {
+            return;
+        }
+        String indexKey = CacheConstants.VPN_USER_TOKEN_KEY + userId;
+        String currentTokenId = readActiveTokenId(indexKey);
+        if (tokenId.equals(currentTokenId))
+        {
+            redisService.deleteObject(indexKey);
+        }
+    }
+
+    private String readActiveTokenId(String indexKey)
+    {
+        Object value = redisService.getCacheObject(indexKey);
+        if (value == null)
+        {
+            return null;
+        }
+        if (value instanceof String)
+        {
+            return ((String) value).trim();
+        }
+        try
+        {
+            JSONObject json = JSON.parseObject(JSON.toJSONString(value));
+            if (json != null)
+            {
+                String activeTokenId = json.getString("tokenId");
+                if (StringUtils.isNotEmpty(activeTokenId))
+                {
+                    return activeTokenId.trim();
+                }
+            }
+        }
+        catch (Exception ignored)
+        {
+            // 兼容历史索引格式
+        }
+        return null;
     }
 }

@@ -219,6 +219,7 @@ private:
     void startTunnelStatusPolling();
     void stopTunnelStatusPolling();
     void startSessionPing();
+    void runSessionPingOnce();
     void stopSessionPing();
     void refreshGatewayAndTunnelStatus();
     void reportClientLoginAudit(bool success, const QString &stage, const QString &msg);
@@ -304,7 +305,7 @@ private:
     static constexpr int GatewayPollIntervalMs = 3000;
     static constexpr int GatewayPollMaxAttempts = 20;
     static constexpr int TunnelStatusPollIntervalMs = 10000;
-    static constexpr int SessionPingIntervalMs = 90000;
+    static constexpr int SessionPingIntervalMs = 30000;
     static constexpr int kOfflineExpireCheckIntervalMs = 5 * 60 * 1000;
 };
 

@@ -30,6 +30,7 @@ import com.ruoyi.vpn.auth.service.VpnLineVerifyService;
 import com.ruoyi.vpn.auth.service.VpnLoginNotifyService;
 import com.ruoyi.vpn.auth.service.VpnLoginService;
 import com.ruoyi.vpn.auth.service.VpnRecordLogService;
+import com.ruoyi.vpn.auth.service.VpnSessionKickService;
 import com.ruoyi.vpn.auth.service.VpnUserOnlineRegistryService;
 import com.ruoyi.vpn.auth.utils.AesUtils;
 import com.ruoyi.vpn.protocol.ChangePasswordRequest;
@@ -118,6 +119,9 @@ public class TcpRpcDispatcher
 
     @Autowired
     private VpnUserOnlineRegistryService vpnUserOnlineRegistryService;
+
+    @Autowired
+    private VpnSessionKickService vpnSessionKickService;
 
     public RpcResult dispatch(Envelope envelope, TcpSessionContext session)
     {
@@ -243,7 +247,10 @@ public class TcpRpcDispatcher
                 throw e;
             }
             VpnLoginUser userInfo = vpnLoginService.login(req.getUsername(), req.getPassword(), req.getAppId(), loginPurpose);
+            Long localUserId = userInfo.getVpnUser().getUserId();
+            vpnSessionKickService.kickAllSessionsForUser(localUserId);
             Map<String, Object> tokenMap = tokenService.createToken(userInfo);
+            vpnSessionKickService.bindSession(localUserId, userInfo.getToken());
 
             byte[] sessionKey = new byte[32];
             SECURE_RANDOM.nextBytes(sessionKey);
@@ -465,6 +472,7 @@ public class TcpRpcDispatcher
                 String username = JwtUtils.getUserName(token);
                 AuthUtil.logoutByToken(token);
                 vpnUserOnlineRegistryService.unregisterByAccessToken(token);
+                vpnSessionKickService.unbindByAccessToken(token);
                 vpnLoginService.logout(username);
             }
             if (userId != null)
@@ -487,7 +495,9 @@ public class TcpRpcDispatcher
         requireAuth(session, envelope);
         SessionPingRequest.parseFrom(envelope.getPayload());
         String token = resolveToken(envelope, session);
+        refreshVpnLoginTokenIfPresent(token);
         vpnUserOnlineRegistryService.touchOnlineSession(token);
+        vpnSessionKickService.touchSessionIndexByAccessToken(token);
         return RpcResult.ok(SessionPingResponse.newBuilder().build());
     }
 
@@ -580,6 +590,24 @@ public class TcpRpcDispatcher
         return RpcResult.ok(response);
     }
 
+    private void refreshVpnLoginTokenIfPresent(String accessToken)
+    {
+        if (StringUtils.isEmpty(accessToken))
+        {
+            return;
+        }
+        String tokenId = JwtUtils.getUserKey(accessToken);
+        if (StringUtils.isEmpty(tokenId))
+        {
+            return;
+        }
+        VpnLoginUser loginUser = redisService.getCacheObject(CacheConstants.LOGIN_TOKEN_KEY + tokenId);
+        if (loginUser != null)
+        {
+            tokenService.refreshToken(loginUser);
+        }
+    }
+
     private void requireAuth(TcpSessionContext session, Envelope envelope)
     {
         if (session.isAuthenticated())
@@ -625,7 +653,7 @@ public class TcpRpcDispatcher
             session.setAuthenticated(false);
             session.clearSecrets();
             vpnUserOnlineRegistryService.unregisterByTokenId(tokenId);
-            throw new ServiceException("登录状态已过期");
+            throw new ServiceException(vpnSessionKickService.resolveSessionInvalidMessage(token));
         }
     }
 

@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.vpn.auth.service.VpnLineVerifyService;
+import com.ruoyi.vpn.auth.service.VpnSessionKickService;
 import com.ruoyi.vpn.auth.service.VpnUserOnlineRegistryService;
 import com.ruoyi.common.core.domain.R;
 import com.ruoyi.common.core.utils.JwtUtils;
@@ -61,6 +62,9 @@ public class TokenController
     @Autowired
     private VpnUserOnlineRegistryService vpnUserOnlineRegistryService;
 
+    @Autowired
+    private VpnSessionKickService vpnSessionKickService;
+
     @PostMapping("login")
     public R<?> login(@RequestBody VpnLoginBody form)
     {
@@ -69,8 +73,11 @@ public class TokenController
         {
             // 用户登录
             VpnLoginUser userInfo = vpnLoginService.login(form.getUsername(), form.getPassword(), form.getAppId(), "");
-            // 获取登录token
-            return R.ok(tokenService.createToken(userInfo));
+            Long localUserId = userInfo.getVpnUser().getUserId();
+            vpnSessionKickService.kickAllSessionsForUser(localUserId);
+            Map<String, Object> tokenMap = tokenService.createToken(userInfo);
+            vpnSessionKickService.bindSession(localUserId, userInfo.getToken());
+            return R.ok(tokenMap);
         }
         finally
         {
@@ -89,6 +96,7 @@ public class TokenController
             // 删除用户缓存记录
             AuthUtil.logoutByToken(token);
             vpnUserOnlineRegistryService.unregisterByAccessToken(token);
+            vpnSessionKickService.unbindByAccessToken(token);
             // 记录用户退出日志
             vpnLoginService.logout(username);
             vpnLineVerifyService.clearSendCooldown(userId);

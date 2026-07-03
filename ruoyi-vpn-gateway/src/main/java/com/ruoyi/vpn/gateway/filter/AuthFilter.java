@@ -17,6 +17,8 @@ import com.ruoyi.common.core.utils.JwtUtils;
 import com.ruoyi.common.core.utils.ServletUtils;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.common.redis.service.RedisService;
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.ruoyi.vpn.gateway.config.properties.IgnoreWhiteProperties;
 import io.jsonwebtoken.Claims;
 import reactor.core.publisher.Mono;
@@ -62,12 +64,13 @@ public class AuthFilter implements GlobalFilter, Ordered
             return unauthorizedResponse(exchange, "令牌已过期或验证不正确！");
         }
         String userkey = JwtUtils.getUserKey(claims);
+        String userid = JwtUtils.getUserId(claims);
         boolean islogin = redisService.hasKey(getTokenKey(userkey));
         if (!islogin)
         {
-            return unauthorizedResponse(exchange, "登录状态已过期");
+            String msg = resolveVpnSessionInvalidMessage(userid, userkey);
+            return unauthorizedResponse(exchange, msg);
         }
-        String userid = JwtUtils.getUserId(claims);
         String username = JwtUtils.getUserName(claims);
         if (StringUtils.isEmpty(userid) || StringUtils.isEmpty(username))
         {
@@ -103,6 +106,50 @@ public class AuthFilter implements GlobalFilter, Ordered
     {
         log.error("[鉴权异常处理]请求路径:{},错误信息:{}", exchange.getRequest().getPath(), msg);
         return ServletUtils.webFluxResponseWriter(exchange.getResponse(), msg, HttpStatus.UNAUTHORIZED);
+    }
+
+    private String resolveVpnSessionInvalidMessage(String userid, String tokenId)
+    {
+        if (StringUtils.isEmpty(userid) || StringUtils.isEmpty(tokenId))
+        {
+            return "登录状态已过期";
+        }
+        String activeTokenId = readActiveTokenId(userid);
+        if (StringUtils.isNotEmpty(activeTokenId) && !activeTokenId.equals(tokenId))
+        {
+            return "账号已在其他设备登录，请重新登录";
+        }
+        return "登录状态已过期";
+    }
+
+    private String readActiveTokenId(String userid)
+    {
+        Object value = redisService.getCacheObject(CacheConstants.VPN_USER_TOKEN_KEY + userid);
+        if (value == null)
+        {
+            return null;
+        }
+        if (value instanceof String)
+        {
+            return ((String) value).trim();
+        }
+        try
+        {
+            JSONObject json = JSON.parseObject(JSON.toJSONString(value));
+            if (json != null)
+            {
+                String tokenId = json.getString("tokenId");
+                if (StringUtils.isNotEmpty(tokenId))
+                {
+                    return tokenId.trim();
+                }
+            }
+        }
+        catch (Exception ignored)
+        {
+            // 兼容历史索引格式
+        }
+        return null;
     }
 
     /**
