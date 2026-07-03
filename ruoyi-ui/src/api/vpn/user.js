@@ -135,3 +135,20 @@ export function deptTreeSelect(params) {
     params: params
   })
 }
+
+// 线路批量同步：弹窗上下文（未同步用户 + 按部门已同步用户）
+export function getLineSyncContext(appId) {
+  return request({
+    url: '/yianlian/vpn/user/sync-context/' + appId,
+    method: 'get'
+  })
+}
+
+// 按部门批量同步本地用户到线路
+export function syncLocalUsersToLine(data) {
+  return request({
+    url: '/yianlian/vpn/user/sync-local',
+    method: 'post',
+    data: data
+  })
+}

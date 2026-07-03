@@ -40,4 +40,6 @@ public interface IVpnLocalUserService
      * 获取线路用户控制器登录凭证（明文密码，仅内部调用）
      */
     Map<String, String> getLineUserCredentials(Long localUserId, String appId);
+
+    List<VpnLocalUser> selectUnsyncedByAppId(String appId);
 }

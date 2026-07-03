@@ -1,6 +1,7 @@
 package com.ruoyi.yianlian.mapper;
 
 import com.ruoyi.yianlian.domain.VpnLocalUser;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -26,4 +27,6 @@ public interface VpnLocalUserMapper
     int resetLocalUserPwd(VpnLocalUser user);
 
     int deleteLocalUserByIds(Long[] localUserIds);
+
+    List<VpnLocalUser> selectUnsyncedByAppId(@Param("appId") String appId);
 }

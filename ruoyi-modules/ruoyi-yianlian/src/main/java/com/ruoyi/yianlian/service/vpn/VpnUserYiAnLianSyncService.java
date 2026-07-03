@@ -1,19 +1,27 @@
 package com.ruoyi.yianlian.service.vpn;
 
 import com.ruoyi.common.core.utils.StringUtils;
+import com.ruoyi.yianlian.client.dto.YiAnLianUserAuthRequest;
 import com.ruoyi.yianlian.client.dto.YiAnLianUserCreateResultItem;
 import com.ruoyi.yianlian.client.dto.YiAnLianUserPasswordResetRequest;
 import com.ruoyi.yianlian.client.dto.vo.YiAnLianUserVO;
 import com.ruoyi.yianlian.domain.VpnDeptYianlianMapping;
+import com.ruoyi.yianlian.domain.VpnRole;
+import com.ruoyi.yianlian.domain.VpnRoleYianlianMapping;
 import com.ruoyi.yianlian.domain.VpnUser;
 import com.ruoyi.yianlian.domain.VpnUserYianlianMapping;
 import com.ruoyi.yianlian.service.IVpnDeptYianlianMappingService;
+import com.ruoyi.yianlian.service.IVpnRoleYianlianMappingService;
+import com.ruoyi.yianlian.service.vpn.IVpnRoleService;
 import com.ruoyi.yianlian.service.vpn.IVpnUserYianlianMappingService;
+import com.ruoyi.yianlian.service.yianlian.IYiAnLianAuthorityService;
 import com.ruoyi.yianlian.service.yianlian.IYiAnLianUserService;
 import com.ruoyi.yianlian.utils.AesUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -22,16 +30,26 @@ import java.util.List;
  * VPN 用户同步易安联（返回 boolean，由调用方决定事务回滚）
  */
 @Service
+@Slf4j
 public class VpnUserYiAnLianSyncService
 {
     @Autowired
     private IYiAnLianUserService yiAnLianUserService;
 
     @Autowired
+    private IYiAnLianAuthorityService yiAnLianAuthorityService;
+
+    @Autowired
     private IVpnUserYianlianMappingService userMappingService;
 
     @Autowired
     private IVpnDeptYianlianMappingService deptMappingService;
+
+    @Autowired
+    private IVpnRoleYianlianMappingService roleMappingService;
+
+    @Autowired
+    private IVpnRoleService roleService;
 
     @Autowired
     private AesUtils aesUtils;
@@ -60,7 +78,11 @@ public class VpnUserYiAnLianSyncService
         {
             return false;
         }
-        return saveMapping(user.getUserId(), appId, resultItem.getData().getId());
+        if (!saveMapping(user.getUserId(), appId, resultItem.getData().getId()))
+        {
+            return false;
+        }
+        return syncUserRoles(user);
     }
 
     /**
@@ -81,7 +103,50 @@ public class VpnUserYiAnLianSyncService
         String yiAnLianDeptId = resolveYiAnLianDeptId(user.getDeptId(), appId);
         YiAnLianUserVO remoteUser = buildYiAnLianUserVO(user, yiAnLianDeptId);
         remoteUser.setId(mapping.getYianlianId());
-        return Boolean.TRUE.equals(yiAnLianUserService.update(appId, remoteUser));
+        if (!Boolean.TRUE.equals(yiAnLianUserService.update(appId, remoteUser)))
+        {
+            return false;
+        }
+        return syncUserRoles(user);
+    }
+
+    /**
+     * 将用户角色授予易安联远端用户
+     */
+    public boolean syncUserRoles(VpnUser user)
+    {
+        String appId = user.getAppId();
+        if (StringUtils.isEmpty(appId) || user.getUserId() == null)
+        {
+            return true;
+        }
+        VpnUserYianlianMapping mapping = userMappingService.selectByUserIdAndAppId(user.getUserId(), appId);
+        if (mapping == null || StringUtils.isEmpty(mapping.getYianlianId()))
+        {
+            return false;
+        }
+        List<Long> roleIds = resolveRoleIds(user);
+        if (roleIds == null || roleIds.isEmpty())
+        {
+            return true;
+        }
+        List<YiAnLianUserAuthRequest> requestList = new ArrayList<>();
+        for (Long roleId : roleIds)
+        {
+            VpnRoleYianlianMapping roleMapping = roleMappingService.selectByRoleIdAndAppId(roleId, appId);
+            if (roleMapping == null || StringUtils.isEmpty(roleMapping.getYianlianId()))
+            {
+                VpnRole role = roleService.selectRoleById(roleId);
+                String roleName = role != null ? role.getRoleName() : String.valueOf(roleId);
+                log.error("角色「{}」未同步到线路 {}", roleName, appId);
+                return false;
+            }
+            YiAnLianUserAuthRequest req = new YiAnLianUserAuthRequest();
+            req.setUserId(mapping.getYianlianId());
+            req.setRoleId(roleMapping.getYianlianId());
+            requestList.add(req);
+        }
+        return Boolean.TRUE.equals(yiAnLianAuthorityService.grantUserAuthority(appId, requestList));
     }
 
     /**
@@ -146,6 +211,21 @@ public class VpnUserYiAnLianSyncService
         remoteUser.setName(user.getNickName());
         remoteUser.setStatus("0".equals(status) ? "enable" : "disable");
         return Boolean.TRUE.equals(yiAnLianUserService.update(appId, remoteUser));
+    }
+
+    private List<Long> resolveRoleIds(VpnUser user)
+    {
+        List<Long> roleIds = user.getRoleIdList();
+        if (roleIds != null)
+        {
+            return roleIds;
+        }
+        if (user.getUserId() == null)
+        {
+            return Collections.emptyList();
+        }
+        List<Long> dbRoleIds = roleService.selectRoleListByUserId(user.getUserId());
+        return dbRoleIds != null ? dbRoleIds : Collections.emptyList();
     }
 
     private String resolveYiAnLianDeptId(Long deptId, String appId)

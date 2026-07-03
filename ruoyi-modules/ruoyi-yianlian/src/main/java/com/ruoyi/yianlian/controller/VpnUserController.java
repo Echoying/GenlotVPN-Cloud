@@ -20,6 +20,8 @@ import com.ruoyi.yianlian.domain.VpnDept;
 import com.ruoyi.yianlian.constant.SyncProxyConstants;
 import com.ruoyi.yianlian.domain.VpnRole;
 import com.ruoyi.yianlian.domain.VpnUser;
+import com.ruoyi.yianlian.domain.vo.VpnLineBatchSyncRequest;
+import com.ruoyi.yianlian.service.vpn.IVpnLocalUserSyncService;
 import com.ruoyi.yianlian.service.vpn.IVpnDeptService;
 import com.ruoyi.yianlian.service.vpn.IVpnLineAuthService;
 import com.ruoyi.yianlian.service.vpn.IVpnRoleService;
@@ -54,6 +56,9 @@ public class VpnUserController extends BaseController {
 
     @Autowired
     private IVpnLineAuthService lineAuthService;
+
+    @Autowired
+    private IVpnLocalUserSyncService localUserSyncService;
 
     @Autowired
     private AesUtils aesUtils;
@@ -94,6 +99,21 @@ public class VpnUserController extends BaseController {
         List<VpnUser> list = userService.selectUserList(user);
         ExcelUtil<VpnUser> util = new ExcelUtil<VpnUser>(VpnUser.class);
         util.exportExcel(response, list, "用户数据");
+    }
+
+    @RequiresPermissions("yianlian:user:syncLocal")
+    @GetMapping("/sync-context/{appId}")
+    public AjaxResult syncContext(@PathVariable String appId)
+    {
+        return success(localUserSyncService.buildLineSyncContext(appId));
+    }
+
+    @RequiresPermissions("yianlian:user:syncLocal")
+    @Log(title = "线路用户管理", businessType = BusinessType.OTHER)
+    @PostMapping("/sync-local")
+    public AjaxResult syncLocal(@Validated @RequestBody VpnLineBatchSyncRequest request)
+    {
+        return success(localUserSyncService.syncUsersToLine(request));
     }
 
     @GetMapping("/deptTree")

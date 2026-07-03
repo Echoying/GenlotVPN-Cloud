@@ -44,6 +44,9 @@
           <el-col :span="1.5">
             <el-button type="warning" plain icon="el-icon-download" size="mini" @click="handleExport" v-hasPermi="['yianlian:user:export']">导出</el-button>
           </el-col>
+          <el-col :span="1.5">
+            <el-button type="primary" plain icon="el-icon-upload2" size="mini" :disabled="!currentAppId" @click="handleSyncLocal" v-hasPermi="['yianlian:user:syncLocal']">同步</el-button>
+          </el-col>
           <right-toolbar :showSearch.sync="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
         </el-row>
 
@@ -258,11 +261,106 @@
         <el-button @click="authOpen = false">取 消</el-button>
       </div>
     </el-dialog>
+
+    <el-dialog :title="syncTitle" :visible.sync="syncOpen" width="860px" append-to-body>
+      <el-alert
+        :title="'当前线路：' + (currentLineName || currentAppId)"
+        type="info"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-if="!unsyncedUsers.length && !hasSyncedGroups"
+        title="暂无可同步的本地用户，且本线路尚无已同步用户"
+        type="warning"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-else-if="!unsyncedUsers.length"
+        title="该线路已同步全部本地用户，下方仅展示各部门已同步用户"
+        type="info"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-if="syncResults.length"
+        :title="syncResultSummary"
+        :type="syncResultAlertType"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px"
+      />
+      <el-table v-if="syncResults.length" :data="syncResults" size="small" style="margin-bottom: 12px" max-height="180">
+        <el-table-column label="用户" min-width="120">
+          <template slot-scope="scope">{{ scope.row.nickName }} ({{ scope.row.userName }})</template>
+        </el-table-column>
+        <el-table-column label="部门" prop="deptName" min-width="100" show-overflow-tooltip />
+        <el-table-column label="结果" width="80" align="center">
+          <template slot-scope="scope">
+            <el-tag :type="scope.row.success ? 'success' : 'danger'" size="mini">{{ scope.row.success ? '成功' : '失败' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="说明" prop="message" min-width="200" show-overflow-tooltip />
+      </el-table>
+      <el-form ref="syncForm" :model="syncForm" label-width="0">
+        <div v-for="(group, index) in syncGroups" :key="group.key" class="sync-group-card">
+          <div class="sync-group-header">
+            <span>部门分组 {{ index + 1 }}</span>
+            <el-button v-if="syncGroups.length > 1" type="text" size="mini" @click="removeSyncGroup(index)">删除</el-button>
+          </div>
+          <el-form-item label="归属部门" label-width="90px">
+            <treeselect
+              v-model="group.deptId"
+              :options="syncDeptOptions()"
+              :show-count="true"
+              placeholder="请选择本线路下的部门"
+              @input="onSyncGroupDeptChange(group)"
+            />
+          </el-form-item>
+          <el-form-item label="用户" label-width="90px">
+            <el-select
+              v-model="group.userIds"
+              multiple
+              filterable
+              placeholder="请先选择部门，再选择用户"
+              style="width: 100%"
+              :disabled="!group.deptId"
+              @change="val => onGroupUserChange(group, val)"
+            >
+              <el-option
+                v-for="user in userOptionsForGroup(group)"
+                :key="user.localUserId"
+                :label="formatSyncUserOption(user)"
+                :value="user.localUserId"
+                :disabled="user.locked"
+              />
+            </el-select>
+            <div v-if="group.deptId && getLockedUserIds(group).length" class="sync-user-hint">
+              标注「已同步」的用户不可移除；仅新增选择的用户会提交同步
+            </div>
+          </el-form-item>
+        </div>
+      </el-form>
+      <el-button
+        type="text"
+        icon="el-icon-plus"
+        @click="addSyncGroup"
+        :disabled="syncGroups.length >= maxSyncGroupCount"
+      >添加分组</el-button>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" :loading="syncSubmitting" :disabled="!canSubmitSync" @click="submitSyncLocal">确 定</el-button>
+        <el-button @click="syncOpen = false">取 消</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect } from "@/api/vpn/user"
+import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect, getLineSyncContext, syncLocalUsersToLine } from "@/api/vpn/user"
 import { listByUserId, batchSaveUserAuth, getServiceTree } from "@/api/vpn/userauth"
 import { listLineApp } from "@/api/vpn/line"
 import { serviceGroupTreeselect } from "@/api/vpn/serviceGroup"
@@ -365,8 +463,43 @@ export default {
       authUserName: "",
       authOpen: false,
       authSaving: false,
-      lineOptions: [],
-      authGroups: []
+      authGroups: [],
+      syncOpen: false,
+      syncTitle: '',
+      syncForm: {},
+      syncSubmitting: false,
+      syncResults: [],
+      unsyncedUsers: [],
+      syncedGroupsCache: [],
+      syncGroups: [],
+      syncGroupKeySeq: 1
+    }
+  },
+  computed: {
+    hasSyncedGroups() {
+      return this.syncedGroupsCache && this.syncedGroupsCache.length > 0
+    },
+    pendingUserCount() {
+      return this.syncGroups.reduce((sum, g) => sum + this.getPendingUserIds(g).length, 0)
+    },
+    canSubmitSync() {
+      return this.pendingUserCount > 0
+    },
+    maxSyncGroupCount() {
+      return this.countDeptNodes(this.enabledDeptOptions)
+    },
+    syncResultSummary() {
+      const ok = this.syncResults.filter(r => r.success).length
+      const fail = this.syncResults.length - ok
+      if (fail === 0) return `已全部同步成功（${ok} 人）`
+      if (ok === 0) return `全部失败（${fail} 人）`
+      return `部分成功：成功 ${ok} 人，失败 ${fail} 人`
+    },
+    syncResultAlertType() {
+      const ok = this.syncResults.filter(r => r.success).length
+      if (ok === this.syncResults.length) return 'success'
+      if (ok === 0) return 'error'
+      return 'warning'
     }
   },
   created() {
@@ -822,6 +955,193 @@ export default {
       }).finally(() => {
         this.authSaving = false
       })
+    },
+    handleSyncLocal() {
+      if (!this.currentAppId) {
+        this.$modal.msgWarning('请先选择线路')
+        return
+      }
+      this.syncTitle = '同步本地用户 - ' + (this.currentLineName || this.currentAppId)
+      this.syncResults = []
+      getLineSyncContext(this.currentAppId).then(res => {
+        const data = res.data || {}
+        this.unsyncedUsers = data.unsyncedUsers || []
+        this.syncedGroupsCache = data.syncedGroups || []
+        this.syncGroups = [this.createEmptySyncGroup()]
+        this.syncOpen = true
+      })
+    },
+    createEmptySyncGroup() {
+      return {
+        key: this.syncGroupKeySeq++,
+        deptId: undefined,
+        userIds: []
+      }
+    },
+    getSyncedUsersForDept(deptId) {
+      if (!deptId) return []
+      const matched = (this.syncedGroupsCache || []).find(g => g.deptId === deptId)
+      return matched && matched.users ? matched.users : []
+    },
+    getLockedUserIds(group) {
+      return this.getSyncedUsersForDept(group.deptId).map(u => u.localUserId).filter(Boolean)
+    },
+    getPendingUserIds(group) {
+      const locked = this.getLockedUserIds(group)
+      return (group.userIds || []).filter(id => !locked.includes(id))
+    },
+    formatSyncUserOption(user) {
+      const name = (user.nickName || '') + ' (' + (user.userName || '') + ')'
+      return user.locked ? name + ' [已同步]' : name
+    },
+    userOptionsForGroup(group) {
+      if (!group.deptId) return []
+      const lockedUsers = this.getSyncedUsersForDept(group.deptId).map(u => ({
+        localUserId: u.localUserId,
+        userName: u.userName,
+        nickName: u.nickName,
+        locked: true
+      }))
+      const takenPending = new Set()
+      this.syncGroups.forEach(g => {
+        if (g === group) return
+        this.getPendingUserIds(g).forEach(id => takenPending.add(id))
+      })
+      const pendingUsers = (this.unsyncedUsers || [])
+        .filter(u => !takenPending.has(u.localUserId))
+        .map(u => ({ ...u, locked: false }))
+      const merged = new Map()
+      lockedUsers.forEach(u => merged.set(u.localUserId, u))
+      pendingUsers.forEach(u => {
+        if (!merged.has(u.localUserId)) merged.set(u.localUserId, u)
+      })
+      return Array.from(merged.values())
+    },
+    addSyncGroup() {
+      this.syncGroups.push(this.createEmptySyncGroup())
+    },
+    removeSyncGroup(index) {
+      if (this.syncGroups.length <= 1) return
+      this.syncGroups.splice(index, 1)
+    },
+    onSyncGroupDeptChange(group) {
+      if (group.deptId) {
+        const duplicated = this.syncGroups.some(g => g !== group && g.deptId === group.deptId)
+        if (duplicated) {
+          this.$modal.msgError('该部门已在其他分组中选择')
+          this.$nextTick(() => {
+            group.deptId = undefined
+            group.userIds = []
+          })
+          return
+        }
+      }
+      group.userIds = [...this.getLockedUserIds(group)]
+    },
+    onGroupUserChange(group, val) {
+      const locked = this.getLockedUserIds(group)
+      const pending = (val || []).filter(id => !locked.includes(id))
+      group.userIds = [...locked, ...pending]
+    },
+    syncDeptOptions() {
+      // 不在树里禁用已选部门：父节点 isDisabled 会导致 treeselect 无法展开选子部门
+      return JSON.parse(JSON.stringify(this.enabledDeptOptions || []))
+    },
+    countDeptNodes(nodes) {
+      if (!nodes || !nodes.length) return 0
+      let count = 0
+      nodes.forEach(node => {
+        count += 1
+        if (node.children && node.children.length) {
+          count += this.countDeptNodes(node.children)
+        }
+      })
+      return count
+    },
+    validateSyncLocalGroups() {
+      const deptIds = []
+      const pendingIds = []
+      for (const group of this.syncGroups) {
+        if (!group.deptId) {
+          this.$modal.msgError('请为每个分组选择部门')
+          return false
+        }
+        if (deptIds.includes(group.deptId)) {
+          this.$modal.msgError('部门不能重复选择')
+          return false
+        }
+        deptIds.push(group.deptId)
+        for (const localUserId of this.getPendingUserIds(group)) {
+          if (pendingIds.includes(localUserId)) {
+            this.$modal.msgError('用户不能重复选择')
+            return false
+          }
+          pendingIds.push(localUserId)
+        }
+      }
+      if (!pendingIds.length) {
+        this.$modal.msgError('请至少选择一名待同步用户')
+        return false
+      }
+      return true
+    },
+    refreshSyncContext() {
+      return getLineSyncContext(this.currentAppId).then(res => {
+        const data = res.data || {}
+        this.unsyncedUsers = data.unsyncedUsers || []
+        this.syncedGroupsCache = data.syncedGroups || []
+      })
+    },
+    rebuildSyncGroupsAfterSubmit() {
+      const nextGroups = this.syncGroups
+        .filter(g => g.deptId)
+        .map(g => {
+          const locked = this.getLockedUserIds(g)
+          const failedPending = this.getPendingUserIds(g).filter(id => {
+            const result = this.syncResults.find(r => r.localUserId === id)
+            return result && !result.success
+          })
+          return {
+            ...g,
+            userIds: [...locked, ...failedPending]
+          }
+        })
+        .filter(g => this.getPendingUserIds(g).length > 0 || this.getLockedUserIds(g).length > 0)
+      this.syncGroups = nextGroups.length ? nextGroups : [this.createEmptySyncGroup()]
+    },
+    submitSyncLocal() {
+      if (!this.validateSyncLocalGroups()) return
+      const payload = {
+        appId: this.currentAppId,
+        groups: this.syncGroups
+          .filter(g => g.deptId && this.getPendingUserIds(g).length)
+          .map(g => ({
+            deptId: g.deptId,
+            localUserIds: this.getPendingUserIds(g)
+          }))
+      }
+      this.syncSubmitting = true
+      syncLocalUsersToLine(payload).then(res => {
+        const results = res.data || []
+        this.syncResults = results
+        const ok = results.filter(r => r.success).length
+        const fail = results.length - ok
+        return this.refreshSyncContext().then(() => ({ ok, fail }))
+      }).then(({ ok, fail }) => {
+        this.rebuildSyncGroupsAfterSubmit()
+        if (fail === 0) {
+          this.$modal.msgSuccess(`已成功同步 ${ok} 人`)
+          this.syncOpen = false
+          this.getList()
+        } else if (ok === 0) {
+          this.$modal.msgError('全部同步失败，请查看明细后重试')
+        } else {
+          this.$modal.msgWarning(`部分成功：${ok} 人成功，${fail} 人失败`)
+          this.getList()
+        }
+      }).finally(() => {
+        this.syncSubmitting = false
+      })
     }
   }
 }
@@ -851,5 +1171,34 @@ export default {
 .auth-add-btn {
   text-align: center;
   padding: 8px 0;
+}
+.sync-group-card {
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 12px 12px 4px;
+  margin-bottom: 12px;
+  background: #fafafa;
+}
+.sync-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #303133;
+}
+.sync-synced-section {
+  margin: 0 0 12px 90px;
+}
+.sync-section-label {
+  font-size: 13px;
+  color: #606266;
+  margin-bottom: 6px;
+}
+.sync-user-hint {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.5;
+  margin-top: 4px;
 }
 </style>

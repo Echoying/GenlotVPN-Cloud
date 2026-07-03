@@ -409,7 +409,8 @@ INSERT INTO `sys_menu` (`menu_id`, `menu_name`, `parent_id`, `order_num`, `path`
 (1080, '在线VPN用户', 1061, 8, 'online', 'vpn/online/index', NULL, '', 1, 0, 'C', '0', '0', 'vpn:online:list', 'online', 'admin', '2026-06-12 12:00:00', '', NULL, 'VPN当前在线用户'),
 (1081, '在线查询', 1080, 1, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:online:query', '#', 'admin', '2026-06-12 12:00:00', '', NULL, ''),
 (1082, '单条强退', 1080, 2, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:online:forceLogout', '#', 'admin', '2026-06-12 12:00:00', '', NULL, ''),
-(1083, '仪表盘查看', 1061, 9, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:dashboard:view', '#', 'admin', '2026-06-12 12:00:00', '', NULL, 'VPN首页仪表盘');
+(1083, '仪表盘查看', 1061, 9, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'vpn:dashboard:view', '#', 'admin', '2026-06-12 12:00:00', '', NULL, 'VPN首页仪表盘'),
+(1084, '同步本地用户', 1065, 7, '#', '', NULL, '', 1, 0, 'F', '0', '0', 'yianlian:user:syncLocal', '#', 'admin', '2026-06-18 12:00:00', '', NULL, '按部门批量同步本地用户到当前线路');
 
 -- ---------------------------- 表结构: sys_notice ----------------------------
 DROP TABLE IF EXISTS `sys_notice`;

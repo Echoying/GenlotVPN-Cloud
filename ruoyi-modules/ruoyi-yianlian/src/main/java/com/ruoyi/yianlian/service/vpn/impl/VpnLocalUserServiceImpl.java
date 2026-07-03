@@ -209,4 +209,14 @@ public class VpnLocalUserServiceImpl implements IVpnLocalUserService
         vo.put("spaKey", spaKey);
         return vo;
     }
+
+    @Override
+    public List<VpnLocalUser> selectUnsyncedByAppId(String appId)
+    {
+        if (StringUtils.isEmpty(appId))
+        {
+            return new ArrayList<>();
+        }
+        return localUserMapper.selectUnsyncedByAppId(appId);
+    }
 }

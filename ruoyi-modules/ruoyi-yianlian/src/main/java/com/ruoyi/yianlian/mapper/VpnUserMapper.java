@@ -1,6 +1,7 @@
 package com.ruoyi.yianlian.mapper;
 
 import com.ruoyi.yianlian.domain.VpnUser;
+import com.ruoyi.yianlian.domain.vo.VpnLineSyncedUserVO;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -137,4 +138,9 @@ public interface VpnUserMapper
      * @return 结果
      */
     public VpnUser checkEmailUnique(String email);
+
+    /**
+     * 查询线路下已关联本地用户的同步记录（按部门展示）
+     */
+    List<VpnLineSyncedUserVO> selectSyncedLocalUsersByAppId(@Param("appId") String appId);
 }

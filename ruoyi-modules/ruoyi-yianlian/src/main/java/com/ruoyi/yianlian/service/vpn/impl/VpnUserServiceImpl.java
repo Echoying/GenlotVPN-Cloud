@@ -252,6 +252,10 @@ public class VpnUserServiceImpl implements IVpnUserService
         validateUserRoleAppId(user);
         userRoleMapper.deleteUserRoleByUserId(userId);
         insertUserRole(userId, roleIds);
+        if (!userYiAnLianSyncService.syncUserRoles(user))
+        {
+            throw new ServiceException("同步易安联用户角色失败");
+        }
     }
 
     /**
