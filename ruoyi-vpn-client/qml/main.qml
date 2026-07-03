@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import GenlotVPN 1.0
 
@@ -60,6 +60,9 @@ ApplicationWindow {
         } else if (page === "login") {
             applyWindowSize(Theme.loginWindowWidth, Theme.loginWindowHeight,
                             Theme.loginWindowMinWidth, Theme.loginWindowMinHeight)
+        } else if (page === "connect") {
+            applyWindowSize(Theme.connectWindowWidth, Theme.connectWindowHeight,
+                            Theme.connectWindowMinWidth, Theme.connectWindowMinHeight)
         } else {
             applyWindowSize(Theme.windowWidth, Theme.windowHeight,
                             Theme.windowMinWidth, Theme.windowMinHeight)
@@ -197,3 +200,4 @@ ApplicationWindow {
     Component { id: proxyLogPageComponent; ProxyLogPage {} }
     Component { id: settingsPageComponent; SettingsPage {} }
 }
+

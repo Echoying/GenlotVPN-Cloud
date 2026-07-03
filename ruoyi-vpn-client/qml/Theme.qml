@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 
 pragma Singleton
 
@@ -51,6 +51,11 @@ QtObject {
     readonly property int chooseLineWindowHeight: 380
     readonly property int chooseLineWindowMinWidth: 520
     readonly property int chooseLineWindowMinHeight: 300
+    // 连接页（用途 + 钉钉验证码合并弹窗）
+    readonly property int connectWindowWidth: 680
+    readonly property int connectWindowHeight: 540
+    readonly property int connectWindowMinWidth: 560
+    readonly property int connectWindowMinHeight: 480
 
     // 设置页
     readonly property int settingsWindowWidth: 680
@@ -88,3 +93,4 @@ QtObject {
     readonly property string assetLogoPng: Qt.resolvedUrl("../assets/images/genlot-logo-official.png")
     readonly property string assetIcon: Qt.resolvedUrl("../assets/images/genlot-app-icon-official.png")
 }
+

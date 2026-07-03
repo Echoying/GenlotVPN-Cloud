@@ -1,4 +1,4 @@
-#include "VpnFlowController.h"
+﻿#include "VpnFlowController.h"
 #include "AppLogger.h"
 #include "OpenApiProxyService.h"
 #include "crypto/OfflineLoginIntegrity.h"
@@ -254,8 +254,15 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         emit hasSyncProxyRoleChanged();
         m_connectChainActive = true;
         addLog(QStringLiteral("info"), QStringLiteral("云端登录成功"));
-        emit navigateTo(QStringLiteral("choose"));
-        loadAuthorizedLines();
+        const QString pendingId = m_pendingLine.value(QStringLiteral("appId")).toString();
+        if (!pendingId.isEmpty()) {
+            emit navigateTo(QStringLiteral("connect"));
+            setLoading(true);
+            m_cloud->fetchAuthorizedLines();
+        } else {
+            emit navigateTo(QStringLiteral("choose"));
+            loadAuthorizedLines();
+        }
     });
     connect(m_cloud, &VpnCloudService::authorizedLinesReady, this, [this](const QVariantList &lines) {
         if (m_chooseLineLoading) {
@@ -308,6 +315,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     connect(m_cloud, &VpnCloudService::userCredentialsReady, this, [this](const QString &user, const QString &pwd) {
         addLog(QStringLiteral("info"), QStringLiteral("用户: %1").arg(user));
         addLog(QStringLiteral("info"), QStringLiteral("正在登录控制器..."));
+        setStatusMessage(tr("正在登录控制器 SDK..."));
         m_controller->loginWithAccount(user, pwd);
     });
     connect(m_cloud, &VpnCloudService::changePasswordSucceeded, this, [this]() {
@@ -420,6 +428,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     connect(m_controller, &ControllerService::detectSucceeded, this, [this](const QVariantMap &data) {
         if (data.value(QStringLiteral("available")).toBool()) {
             addLog(QStringLiteral("info"), QStringLiteral("服务器连通性检测成功"));
+            setStatusMessage(tr("正在初始化 VPN 服务..."));
             m_controller->selectServer(m_verifyLine.isEmpty() ? m_pendingLine : m_verifyLine);
         } else {
             setLoading(false);
@@ -431,6 +440,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     });
     connect(m_controller, &ControllerService::selectSucceeded, this, [this](const QVariantMap &data) {
         addLog(QStringLiteral("info"), QStringLiteral("服务器初始化成功: %1").arg(data.value(QStringLiteral("name")).toString()));
+        setStatusMessage(tr("正在校验客户端版本..."));
         m_controller->fetchVersions(m_verifyLine.isEmpty() ? m_pendingLine : m_verifyLine);
     });
     connect(m_controller, &ControllerService::versionsReady, this, [this](const QString &sv, const QString &cv) {
@@ -442,6 +452,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
             return;
         }
         addLog(QStringLiteral("info"), QStringLiteral("正在获取登录凭证..."));
+        setStatusMessage(tr("正在获取登录凭证..."));
         const QString appId = (m_verifyLine.isEmpty() ? m_pendingLine : m_verifyLine).value(QStringLiteral("appId")).toString();
         m_cloud->fetchUserCredentials(appId);
     });
@@ -603,19 +614,14 @@ void VpnFlowController::loadAuthorizedLines()
     m_cloud->fetchAuthorizedLines();
 }
 
-void VpnFlowController::selectAuthorizedLine(const QVariantMap &line, const QString &loginPurpose)
+void VpnFlowController::selectAuthorizedLine(const QVariantMap &line)
 {
     const QString appId = line.value(QStringLiteral("appId")).toString();
     if (appId.isEmpty()) {
         emit toast(tr("请选择有效线路"), true);
         return;
     }
-    const QString purposeErr = validateLoginPurpose(loginPurpose);
-    if (!purposeErr.isEmpty()) {
-        emit toast(purposeErr, true);
-        return;
-    }
-    m_loginPurpose = loginPurpose.trimmed();
+    m_loginPurpose.clear();
     m_awaitingPublicLineLogin = false;
     setLoginError(QString());
     m_pendingLine = line;
@@ -629,14 +635,9 @@ void VpnFlowController::selectAuthorizedLine(const QVariantMap &line, const QStr
     setVerifyDialogVisible(true);
 }
 
-void VpnFlowController::selectPublicLine(const QVariantMap &line, const QString &loginPurpose)
+void VpnFlowController::selectPublicLine(const QVariantMap &line)
 {
-    const QString purposeErr = validateLoginPurpose(loginPurpose);
-    if (!purposeErr.isEmpty()) {
-        emit toast(purposeErr, true);
-        return;
-    }
-    m_loginPurpose = loginPurpose.trimmed();
+    m_loginPurpose.clear();
     m_awaitingPublicLineLogin = true;
     setLoginError(QString());
     m_pendingLine = line;
@@ -673,11 +674,6 @@ QString VpnFlowController::validateLoginPurpose(const QString &loginPurpose) con
 void VpnFlowController::doLogin(const QString &username, const QString &password, const QString &code,
                                  bool rememberMe)
 {
-    // 仅公开线路「先选线填用途再登录」需要此时校验用途
-    if (m_awaitingPublicLineLogin && m_loginPurpose.trimmed().isEmpty()) {
-        setLoginError(tr("请先在选线页填写登录用途"));
-        return;
-    }
     setLoginError(QString());
     m_storage->saveRememberedUser(username, password, rememberMe);
     m_username = username;
@@ -685,7 +681,7 @@ void VpnFlowController::doLogin(const QString &username, const QString &password
     addLog(QStringLiteral("info"), QStringLiteral("正在登录云端，用户: %1").arg(username));
     setLoading(true);
     m_loginPending = true;
-    m_cloud->login(username, password, QString(), QString(), code, m_captchaUuid, m_loginPurpose);
+    m_cloud->login(username, password, QString(), QString(), code, m_captchaUuid, QString());
 }
 
 void VpnFlowController::clearLoginError()
@@ -929,8 +925,14 @@ void VpnFlowController::startAutoConnect()
     m_cloud->fetchAuthorizedLines();
 }
 
-void VpnFlowController::sendVerifyCode()
+void VpnFlowController::sendVerifyCode(const QString &loginPurpose)
 {
+    const QString purposeErr = validateLoginPurpose(loginPurpose);
+    if (!purposeErr.isEmpty()) {
+        setVerifyError(purposeErr);
+        return;
+    }
+    m_loginPurpose = loginPurpose.trimmed();
     setVerifyError(QString());
     m_sendLineVerifyPending = true;
     setLoading(true);
@@ -964,6 +966,7 @@ void VpnFlowController::onConnectChainAfterVerify()
 void VpnFlowController::proceedControllerConnect(const QVariantMap &line)
 {
     setLoading(true);
+    setStatusMessage(tr("正在检测线路连通性..."));
     const QString host = line.value(QStringLiteral("host")).toString();
     const QString port = line.value(QStringLiteral("srvPort")).toString();
     addLog(QStringLiteral("info"), QStringLiteral("开始检测线路: %1").arg(line.value(QStringLiteral("appName")).toString()));
@@ -1924,3 +1927,6 @@ void VpnFlowController::reportClientLoginAudit(bool success, const QString &stag
 }
 
 } // namespace vpn
+
+
+

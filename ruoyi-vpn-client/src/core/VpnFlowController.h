@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <QObject>
 #include <QTimer>
@@ -111,8 +111,8 @@ public:
 
     Q_INVOKABLE void loadPublicLines();
     Q_INVOKABLE void loadAuthorizedLines();
-    Q_INVOKABLE void selectPublicLine(const QVariantMap &line, const QString &loginPurpose);
-    Q_INVOKABLE void selectAuthorizedLine(const QVariantMap &line, const QString &loginPurpose);
+    Q_INVOKABLE void selectPublicLine(const QVariantMap &line);
+    Q_INVOKABLE void selectAuthorizedLine(const QVariantMap &line);
     Q_INVOKABLE void prepareLogin();
     Q_INVOKABLE void clearLoginError();
     Q_INVOKABLE QString validateLoginPurpose(const QString &loginPurpose) const;
@@ -124,7 +124,7 @@ public:
                                         const QString &localPassword);
     Q_INVOKABLE void goBackToLogin();
     Q_INVOKABLE void startAutoConnect();
-    Q_INVOKABLE void sendVerifyCode();
+    Q_INVOKABLE void sendVerifyCode(const QString &loginPurpose);
     Q_INVOKABLE void confirmVerifyCode(const QString &code);
     Q_INVOKABLE void turnOnGateway(bool on);
     Q_INVOKABLE void switchGateway(const QString &gatewayId);
@@ -309,3 +309,4 @@ private:
 };
 
 } // namespace vpn
+

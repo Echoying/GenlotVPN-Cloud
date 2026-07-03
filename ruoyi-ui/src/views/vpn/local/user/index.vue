@@ -157,30 +157,85 @@
       </div>
     </el-dialog>
 
-    <el-dialog :title="syncTitle" :visible.sync="syncOpen" width="520px" append-to-body>
-      <el-alert v-if="allLinesSynced" title="该用户已同步到所有线路，可选择线路更新部门与角色" type="info" :closable="false" show-icon style="margin-bottom: 12px" />
-      <el-form ref="syncForm" :model="syncForm" :rules="syncRules" label-width="90px">
-        <el-form-item label="目标线路" prop="appId">
-          <el-select v-model="syncForm.appId" placeholder="请选择线路" style="width: 100%" @change="onSyncLineChange">
-            <el-option
-              v-for="line in lineOptions"
-              :key="line.appId"
-              :label="line.appName + (isLineSynced(line.appId) ? '（已同步，可更新）' : '')"
-              :value="line.appId"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="归属部门" prop="deptId">
-          <treeselect v-model="syncForm.deptId" :options="deptOptions" :show-count="true" placeholder="请选择归属部门" :disabled="!syncForm.appId" />
-        </el-form-item>
-        <el-form-item label="角色">
-          <el-select v-model="syncForm.roleIds" multiple placeholder="请选择角色" style="width: 100%" :disabled="!syncForm.appId">
-            <el-option v-for="role in roleOptions" :key="role.roleId" :label="role.roleName" :value="role.roleId" />
-          </el-select>
-        </el-form-item>
-      </el-form>
+    <el-dialog :title="syncTitle" :visible.sync="syncOpen" width="720px" append-to-body>
+      <el-alert
+        v-if="allLinesSynced"
+        title="该用户已同步到所有线路，如需修改请在线路用户管理中操作"
+        type="info"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-else-if="syncedLineUsers.length"
+        title="以下线路已同步，不可再次同步；请在下方为未同步线路添加分组"
+        type="info"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-if="syncResults.length"
+        :title="syncResultSummary"
+        :type="syncResultAlertType"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px"
+      />
+      <el-table v-if="syncResults.length" :data="syncResults" size="small" style="margin-bottom: 12px" max-height="160">
+        <el-table-column label="线路" prop="appName" min-width="120" />
+        <el-table-column label="结果" width="80" align="center">
+          <template slot-scope="scope">
+            <el-tag :type="scope.row.success ? 'success' : 'danger'" size="mini">{{ scope.row.success ? '成功' : '失败' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="说明" prop="message" min-width="200" show-overflow-tooltip />
+      </el-table>
+      <div v-if="syncedLineUsers.length" class="sync-synced-section">
+        <div class="sync-group-header">已同步线路</div>
+        <el-table :data="syncedLineUsers" size="small" style="margin-bottom: 12px">
+          <el-table-column label="线路" min-width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ formatLineUserAppName(scope.row) }}</template>
+          </el-table-column>
+          <el-table-column label="归属部门" min-width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ formatLineUserDept(scope.row) }}</template>
+          </el-table-column>
+          <el-table-column label="角色" min-width="160" show-overflow-tooltip>
+            <template slot-scope="scope">{{ formatLineUserRoles(scope.row) }}</template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <template v-if="!allLinesSynced">
+        <el-form ref="syncForm" :model="syncForm" label-width="0">
+          <div v-for="(group, index) in syncGroups" :key="group.key" class="sync-group-card">
+            <div class="sync-group-header">
+              <span>待同步分组 {{ index + 1 }}</span>
+              <el-button v-if="syncGroups.length > 1" type="text" size="mini" @click="removeSyncGroup(index)">删除</el-button>
+            </div>
+            <el-form-item label="目标线路" label-width="90px">
+              <el-select v-model="group.appId" placeholder="请选择线路" style="width: 100%" @change="onGroupLineChange(group)">
+                <el-option
+                  v-for="line in availableLinesForGroup(group)"
+                  :key="line.appId"
+                  :label="line.appName"
+                  :value="line.appId"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="归属部门" label-width="90px">
+              <treeselect v-model="group.deptId" :options="group.deptOptions" :show-count="true" placeholder="请选择归属部门" :disabled="!group.appId" />
+            </el-form-item>
+            <el-form-item label="角色" label-width="90px">
+              <el-select v-model="group.roleIds" multiple placeholder="请选择角色" style="width: 100%" :disabled="!group.appId">
+                <el-option v-for="role in group.roleOptions" :key="role.roleId" :label="role.roleName" :value="role.roleId" />
+              </el-select>
+            </el-form-item>
+          </div>
+        </el-form>
+        <el-button type="text" icon="el-icon-plus" @click="addSyncGroup" :disabled="syncGroups.length >= unsyncedLineCount">添加分组</el-button>
+      </template>
       <div slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="submitSync">确 定</el-button>
+        <el-button type="primary" :loading="syncSubmitting" :disabled="allLinesSynced || !syncGroups.length" @click="submitSync">确 定</el-button>
         <el-button @click="syncOpen = false">取 消</el-button>
       </div>
     </el-dialog>
@@ -228,8 +283,10 @@ export default {
       syncedAppIds: [],
       syncedLineUsers: [],
       lineOptions: [],
-      deptOptions: [],
-      roleOptions: [],
+      syncGroups: [],
+      syncGroupKeySeq: 1,
+      syncResults: [],
+      syncSubmitting: false,
       queryParams: {
         pageNum: 1,
         pageSize: 10,
@@ -239,10 +296,7 @@ export default {
       },
       form: {},
       syncForm: {
-        localUserId: undefined,
-        appId: undefined,
-        deptId: undefined,
-        roleIds: []
+        localUserId: undefined
       },
       rules: {
         userName: [{ required: true, message: '用户账号不能为空', trigger: 'blur' }],
@@ -251,7 +305,7 @@ export default {
         email: [{ type: 'email', message: '请输入正确的邮箱地址', trigger: ['blur', 'change'] }],
         phonenumber: [{ pattern: /^1[3|4|5|6|7|8|9][0-9]\d{8}$/, message: '请输入正确的手机号码', trigger: 'blur' }]
       },
-      syncRules: {
+      syncGroupRules: {
         appId: [{ required: true, message: '请选择线路', trigger: 'change' }],
         deptId: [{ required: true, message: '请选择部门', trigger: 'change' }]
       },
@@ -270,6 +324,22 @@ export default {
     allLinesSynced() {
       if (!this.lineOptions.length) return false
       return this.lineOptions.every(line => this.isLineSynced(line.appId))
+    },
+    unsyncedLineCount() {
+      return this.lineOptions.filter(line => !this.isLineSynced(line.appId)).length
+    },
+    syncResultSummary() {
+      const ok = this.syncResults.filter(r => r.success).length
+      const fail = this.syncResults.length - ok
+      if (fail === 0) return `已全部同步成功（${ok} 条线路）`
+      if (ok === 0) return `全部失败（${fail} 条线路）`
+      return `部分成功：成功 ${ok} 条，失败 ${fail} 条`
+    },
+    syncResultAlertType() {
+      const ok = this.syncResults.filter(r => r.success).length
+      if (ok === this.syncResults.length) return 'success'
+      if (ok === 0) return 'error'
+      return 'warning'
     }
   },
   created() {
@@ -372,58 +442,146 @@ export default {
     isLineSynced(appId) {
       return this.syncedAppIds.includes(appId)
     },
+    createEmptySyncGroup() {
+      return {
+        key: this.syncGroupKeySeq++,
+        appId: undefined,
+        deptId: undefined,
+        roleIds: [],
+        deptOptions: [],
+        roleOptions: []
+      }
+    },
+    formatLineUserAppName(lineUser) {
+      const line = this.lineOptions.find(l => l.appId === lineUser.appId)
+      return line ? line.appName : (lineUser.appId || '-')
+    },
+    formatLineUserDept(lineUser) {
+      if (lineUser.dept && lineUser.dept.deptName) return lineUser.dept.deptName
+      return lineUser.deptName || '-'
+    },
+    formatLineUserRoles(lineUser) {
+      const names = (lineUser.roles || []).map(r => r.roleName).filter(Boolean)
+      return names.length ? names.join('、') : '-'
+    },
+    addSyncGroup() {
+      this.syncGroups.push(this.createEmptySyncGroup())
+    },
+    removeSyncGroup(index) {
+      if (this.syncGroups.length <= 1) return
+      this.syncGroups.splice(index, 1)
+    },
+    availableLinesForGroup(group) {
+      const selected = this.syncGroups
+        .filter(g => g !== group && g.appId)
+        .map(g => g.appId)
+      return this.lineOptions.filter(line =>
+        !selected.includes(line.appId) && !this.isLineSynced(line.appId)
+      )
+    },
     handleSync(row) {
       this.syncUser = row
       this.syncTitle = '同步到线路 - ' + row.userName
-      this.syncForm = { localUserId: row.localUserId, appId: undefined, deptId: undefined, roleIds: [] }
-      this.deptOptions = []
-      this.roleOptions = []
+      this.syncForm = { localUserId: row.localUserId }
+      this.syncResults = []
       this.syncedLineUsers = []
       listLineUsers(row.localUserId).then(res => {
         const users = res.data || []
         this.syncedLineUsers = users
         this.syncedAppIds = users.map(u => u.appId).filter(Boolean)
+        const hasUnsynced = this.lineOptions.some(line => !this.syncedAppIds.includes(line.appId))
+        this.syncGroups = hasUnsynced ? [this.createEmptySyncGroup()] : []
         this.syncOpen = true
+        this.$nextTick(() => {
+          if (this.$refs.syncForm) this.$refs.syncForm.clearValidate()
+        })
       })
     },
-    findSyncedLineUser(appId) {
-      return this.syncedLineUsers.find(u => u.appId === appId)
+    onGroupLineChange(group) {
+      group.deptId = undefined
+      group.roleIds = []
+      group.deptOptions = []
+      group.roleOptions = []
+      if (!group.appId) return
+      deptTreeSelect({ appId: group.appId }).then(res => {
+        group.deptOptions = res.data
+      })
+      listRole({ appId: group.appId, pageNum: 1, pageSize: 100 }).then(res => {
+        group.roleOptions = res.rows || []
+      })
     },
-    onSyncLineChange(appId) {
-      this.syncForm.deptId = undefined
-      this.syncForm.roleIds = []
-      this.deptOptions = []
-      this.roleOptions = []
-      if (!appId) return
-      deptTreeSelect({ appId }).then(res => {
-        this.deptOptions = res.data
+    validateSyncGroups() {
+      if (!this.syncGroups.length) {
+        this.$modal.msgError('请至少添加一个线路分组')
+        return false
+      }
+      const appIds = []
+      for (const group of this.syncGroups) {
+        if (!group.appId) {
+          this.$modal.msgError('请为每个分组选择线路')
+          return false
+        }
+        if (this.isLineSynced(group.appId)) {
+          this.$modal.msgError('已同步线路不可再次同步')
+          return false
+        }
+        if (!group.deptId) {
+          this.$modal.msgError('请为每个分组选择归属部门')
+          return false
+        }
+        if (appIds.includes(group.appId)) {
+          this.$modal.msgError('线路不能重复选择')
+          return false
+        }
+        appIds.push(group.appId)
+      }
+      return true
+    },
+    refreshSyncedLineUsers() {
+      return listLineUsers(this.syncForm.localUserId).then(res => {
+        this.syncedLineUsers = res.data || []
+        this.syncedAppIds = this.syncedLineUsers.map(u => u.appId).filter(Boolean)
       })
-      listRole({ appId, pageNum: 1, pageSize: 100 }).then(res => {
-        this.roleOptions = res.rows || []
-      })
-      const existing = this.findSyncedLineUser(appId)
-      if (existing) {
-        this.syncForm.deptId = existing.deptId
-        this.syncForm.roleIds = (existing.roles || []).map(r => r.roleId).filter(Boolean)
+    },
+    rebuildSyncGroupsAfterSubmit() {
+      this.syncGroups = this.syncGroups.filter(g => g.appId && !this.isLineSynced(g.appId))
+      if (!this.allLinesSynced && !this.syncGroups.length) {
+        this.syncGroups = [this.createEmptySyncGroup()]
       }
     },
     submitSync() {
-      this.$refs['syncForm'].validate(valid => {
-        if (!valid) return
-        const isUpdate = this.isLineSynced(this.syncForm.appId)
-        syncLocalUserToLine(this.syncForm).then(() => {
-          const line = this.lineOptions.find(l => l.appId === this.syncForm.appId)
-          const lineName = line ? line.appName : this.syncForm.appId
-          this.$modal.msgSuccess(isUpdate ? '已更新线路「' + lineName + '」的同步信息' : '该用户已同步到线路「' + lineName + '」')
-          this.syncOpen = false
-          if (!this.syncedAppIds.includes(this.syncForm.appId)) {
-            this.syncedAppIds.push(this.syncForm.appId)
-          }
-          listLineUsers(this.syncForm.localUserId).then(res => {
-            this.syncedLineUsers = res.data || []
-            this.syncedAppIds = this.syncedLineUsers.map(u => u.appId).filter(Boolean)
-          })
+      if (!this.validateSyncGroups()) return
+      const payload = {
+        localUserId: this.syncForm.localUserId,
+        lines: this.syncGroups.map(g => ({
+          appId: g.appId,
+          deptId: g.deptId,
+          roleIds: g.roleIds || []
+        }))
+      }
+      this.syncSubmitting = true
+      syncLocalUserToLine(payload).then(res => {
+        const results = res.data || []
+        this.syncResults = results
+        const ok = results.filter(r => r.success).length
+        const fail = results.length - ok
+        return this.refreshSyncedLineUsers().then(() => {
+          this.rebuildSyncGroupsAfterSubmit()
+          return { ok, fail, results }
         })
+      }).then(({ ok, fail }) => {
+        if (fail === 0) {
+          this.$modal.msgSuccess(`已成功同步 ${ok} 条线路`)
+          if (this.allLinesSynced) {
+            this.syncOpen = false
+          }
+        } else if (ok === 0) {
+          this.$modal.msgError('全部线路同步失败，请查看明细后重试')
+        } else {
+          this.$modal.msgWarning(`部分成功：${ok} 条成功，${fail} 条失败`)
+        }
+      }).finally(() => {
+        this.syncSubmitting = false
       })
     },
     handleOfflineLogin(row) {
@@ -471,3 +629,24 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.sync-group-card {
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 12px 12px 4px;
+  margin-bottom: 12px;
+  background: #fafafa;
+}
+.sync-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #303133;
+}
+.sync-synced-section {
+  margin-bottom: 12px;
+}
+</style>

@@ -18,6 +18,7 @@ import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import com.ruoyi.yianlian.domain.VpnLocalUser;
 import com.ruoyi.yianlian.domain.VpnUser;
+import com.ruoyi.yianlian.domain.vo.VpnLocalUserBatchSyncRequest;
 import com.ruoyi.yianlian.domain.vo.VpnLocalUserSyncRequest;
 import com.ruoyi.yianlian.domain.vo.VpnOfflineLoginExportRequest;
 import com.ruoyi.yianlian.service.vpn.IVpnLocalUserService;
@@ -134,10 +135,9 @@ public class VpnLocalUserController extends BaseController
     @RequiresPermissions("vpn:localUser:sync")
     @Log(title = "本地用户管理", businessType = BusinessType.OTHER)
     @PostMapping("/sync")
-    public AjaxResult sync(@Validated @RequestBody VpnLocalUserSyncRequest request)
+    public AjaxResult sync(@Validated @RequestBody VpnLocalUserBatchSyncRequest request)
     {
-        localUserSyncService.syncToLine(request);
-        return success();
+        return success(localUserSyncService.syncToLines(request));
     }
 
     @RequiresPermissions("vpn:localUser:query")
