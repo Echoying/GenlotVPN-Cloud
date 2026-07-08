@@ -9,7 +9,7 @@ const CompressionPlugin = require('compression-webpack-plugin')
 
 const name = process.env.VUE_APP_TITLE || '穗彩VPN管理系统' // 网页标题
 
-const port = process.env.port || process.env.npm_config_port || 80 // 端口
+const port = process.env.port || process.env.npm_config_port || 8088 // 本地开发端口（Windows 上 80 需管理员权限）
 
 // vue.config.js 配置说明
 //官方vue.config.js 参考文档 https://cli.vuejs.org/zh/config/#css-loaderoptions
@@ -34,10 +34,11 @@ module.exports = {
     proxy: {
       // detail: https://cli.vuejs.org/config/#devserver-proxy
       [process.env.VUE_APP_BASE_API]: {
-        target: `http://10.9.2.177:80`,
+        target: `http://10.27.0.92:80`,
         changeOrigin: true,
+        // 服务端 Nginx 仅代理 /prod-api/ 到网关，开发环境须保留此前缀
         pathRewrite: {
-          ['^' + process.env.VUE_APP_BASE_API]: ''
+          ['^' + process.env.VUE_APP_BASE_API]: '/prod-api'
         }
       }
     },

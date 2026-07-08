@@ -1,0 +1,42 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "ruoyi-ui: 启动并调试",
+      "url": "http://localhost:8088",
+      "webRoot": "${workspaceFolder}/ruoyi-ui",
+      "preLaunchTask": "ruoyi-ui: dev",
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**"
+      ],
+      "sourceMapPathOverrides": {
+        "webpack:///src/*": "${webRoot}/src/*",
+        "webpack:///./*": "${webRoot}/*",
+        "webpack:///./~/*": "${webRoot}/node_modules/*",
+        "webpack:///./node_modules/*": "${webRoot}/node_modules/*",
+        "webpack:///*": "*"
+      }
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "ruoyi-ui: Chrome 调试（需先启动 dev）",
+      "url": "http://localhost:8088",
+      "webRoot": "${workspaceFolder}/ruoyi-ui",
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**"
+      ],
+      "sourceMapPathOverrides": {
+        "webpack:///src/*": "${webRoot}/src/*",
+        "webpack:///./*": "${webRoot}/*",
+        "webpack:///./~/*": "${webRoot}/node_modules/*",
+        "webpack:///./node_modules/*": "${webRoot}/node_modules/*",
+        "webpack:///*": "*"
+      }
+    }
+  ]
+}

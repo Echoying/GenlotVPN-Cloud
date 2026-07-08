@@ -17,7 +17,7 @@ module.exports = {
     open: true,
     proxy: {
       [process.env.VUE_APP_BASE_API]: {
-        target: `http://10.9.2.177:8060`,
+        target: `http://10.27.0.92:8060`,
         changeOrigin: true,
         pathRewrite: {
           ['^' + process.env.VUE_APP_BASE_API]: ''

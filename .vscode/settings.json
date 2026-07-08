@@ -11,5 +11,39 @@
     }
   ],
   "java.jdt.ls.java.home": "C:\\Program Files\\Java\\jdk-1.8",
-  "java.format.settings.url": ".vscode/java-formatter.xml"
+  "java.format.settings.url": ".vscode/java-formatter.xml",
+
+  // ---------- ruoyi-ui 前端（Vue 2 + Element UI）----------
+  "vue.inlayHints.missingProps": "off",
+  "vue.server.hybridMode": true,
+  "files.associations": {
+    "*.vue": "vue"
+  },
+  "[vue]": {
+    "editor.defaultFormatter": "Vue.volar"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[scss]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "editor.formatOnSave": false,
+  "path-intellisense.extensionOnImport": true,
+  "path-intellisense.mappings": {
+    "@": "${workspaceFolder}/ruoyi-ui/src"
+  },
+  "eslint.validate": [],
+  "vetur.validation.template": false,
+  "vetur.validation.script": false,
+  "vetur.validation.style": false,
+
+  "debug.javascript.terminalOptions": {
+    "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+  },
+  "debug.javascript.autoAttachFilter": "onlyWithFlag",
+  "cmake.ignoreCMakeListsMissing": true
 }

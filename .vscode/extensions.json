@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "vue.volar",
+    "esbenp.prettier-vscode",
+    "christian-kohler.path-intellisense",
+    "formulahendry.auto-rename-tag",
+    "mikestead.dotenv",
+    "editorconfig.editorconfig"
+  ],
+  "unwantedRecommendations": [
+    "octref.vetur"
+  ]
+}
