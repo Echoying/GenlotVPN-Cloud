@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Genlot ˜¹ÁLrâÏ?ùP genlot.com u4 Logo	 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 88" role="img" aria-label="GENLOT">
+  <defs>
+    <linearGradient id="orb" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="55%" stop-color="#8EC8F8"/>
+      <stop offset="100%" stop-color="#3D8FD4"/>
+    </linearGradient>
+  </defs>
+  <!-- þb€H˜¹)¡ G/6  ‹ -->
+  <path fill="#1B4F9C" d="M44 44c0-18 12-30 30-30 8 0 15 3 20 8-6-2-12-3-18-3-14 0-24 10-24 24 0 10 6 18 16 22-12-4-24-12-24-21z"/>
+  <path fill="#1B4F9C" d="M58 18c14 0 24 10 24 24 0 8-4 15-10 19 7-5 12-13 12-22 0-16-13-28-30-28-9 0-17 3-23 9 6-2 13-2 17-2z"/>
+  <circle cx="52" cy="50" r="11" fill="url(#orb)"/>
+  <!-- WGENLOT œS—S -->
+  <text x="92" y="58"
+        font-family="Arial, Helvetica, 'Segoe UI', sans-serif"
+        font-size="40" font-weight="700" font-style="italic"
+        fill="#1B4F9C" letter-spacing="1">GENLOT</text>
+</svg>

@@ -1,0 +1,22 @@
+set(GENLOT_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(GENLOT_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(GENLOT_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(GENLOT_VERSION_STRING "${PROJECT_VERSION}")
+
+set(GENLOT_BUILD_ID "")
+find_package(Git QUIET)
+set(_genlot_git_root "${CMAKE_SOURCE_DIR}/..")
+if(GIT_FOUND AND EXISTS "${_genlot_git_root}/.git")
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+        WORKING_DIRECTORY "${_genlot_git_root}"
+        OUTPUT_VARIABLE GENLOT_BUILD_ID
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+endif()
+if(GENLOT_BUILD_ID STREQUAL "")
+    string(TIMESTAMP GENLOT_BUILD_ID "%Y%m%d" UTC)
+endif()
+
+message(STATUS "GenlotVPN-Proxy 版本: ${GENLOT_VERSION_STRING} (${GENLOT_BUILD_ID})")
