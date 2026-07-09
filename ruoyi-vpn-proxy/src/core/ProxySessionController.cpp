@@ -9,7 +9,7 @@ ProxySessionController::ProxySessionController(const AppConfig &config, QObject 
     : QObject(parent)
     , m_config(config)
 {
-    m_controller = new ControllerHttpClient(config.controllerBaseUrl, this);
+    m_controller = new ControllerHttpClient(config.controllerBaseUrl, config.controllerAesEnabled, this);
     m_proxy = new OpenApiProxyService(this);
     m_sessionLogs = new SessionLogModel(this);
     m_adminEndpoint = QStringLiteral("http://%1:%2").arg(config.adminListenHost).arg(config.adminListenPort);
@@ -77,6 +77,10 @@ void ProxySessionController::bootstrap()
     }
     addSessionLog(QStringLiteral("info"),
                   QStringLiteral("管理 API 监听 %1，等待服务端登录请求").arg(m_adminEndpoint));
+    addSessionLog(QStringLiteral("info"),
+                  QStringLiteral("30303 传输加密: %1（config.json controllerAesEnabled）")
+                      .arg(m_config.controllerAesEnabled ? QStringLiteral("开启")
+                                                         : QStringLiteral("关闭")));
     setSessionState(QStringLiteral("idle"));
     AppLogger::instance()->info(QStringLiteral("GenlotVPN-Proxy 已启动"));
 }
@@ -149,6 +153,35 @@ QJsonObject ProxySessionController::handleLogin(const QJsonObject &body)
     return {{QStringLiteral("code"), 200},
             {QStringLiteral("msg"), QStringLiteral("连接成功")},
             {QStringLiteral("data"), data}};
+}
+
+QJsonObject ProxySessionController::handleProbe(const QJsonObject &body)
+{
+    const QJsonObject lineObj = body.value(QStringLiteral("line")).toObject();
+    const QVariantMap line = jsonToLine(lineObj);
+    const QString host = line.value(QStringLiteral("host")).toString().trimmed();
+    const QString srvPort = line.value(QStringLiteral("srvPort")).toString().trimmed();
+    const QString spaPort = line.value(QStringLiteral("spaPort")).toString().trimmed();
+    const QString spaKey = line.value(QStringLiteral("spaKey")).toString().trimmed();
+
+    if (host.isEmpty() || srvPort.isEmpty() || spaPort.isEmpty() || spaKey.isEmpty()) {
+        addSessionLog(QStringLiteral("error"), QStringLiteral("探测请求参数不完整"));
+        return {{QStringLiteral("code"), 400},
+                {QStringLiteral("msg"), QStringLiteral("缺少 line.host/srvPort/spaPort/spaKey")}};
+    }
+
+    const ControllerHttpClient::DetectResult result = m_controller->detectLine(line);
+    QJsonObject data;
+    data.insert(QStringLiteral("available"), result.ok && result.available);
+    if (!result.ok) {
+        addSessionLog(QStringLiteral("error"), QStringLiteral("30303 detect 失败: %1").arg(result.error));
+        return {{QStringLiteral("code"), 200},
+                {QStringLiteral("msg"), result.error},
+                {QStringLiteral("data"), data}};
+    }
+
+    const QString msg = result.available ? QStringLiteral("探测成功") : QStringLiteral("线路不可用");
+    return {{QStringLiteral("code"), 200}, {QStringLiteral("msg"), msg}, {QStringLiteral("data"), data}};
 }
 
 QJsonObject ProxySessionController::handleLogout()

@@ -39,6 +39,7 @@ public:
 
     Q_INVOKABLE void bootstrap();
     Q_INVOKABLE QJsonObject handleLogin(const QJsonObject &body);
+    Q_INVOKABLE QJsonObject handleProbe(const QJsonObject &body);
     Q_INVOKABLE QJsonObject handleLogout();
     Q_INVOKABLE void clearSessionLogs();
     Q_INVOKABLE void clearProxyLogs();

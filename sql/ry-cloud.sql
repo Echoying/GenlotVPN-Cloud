@@ -79,6 +79,9 @@ CREATE TABLE `line_app` (
   `spa_port` int(11) NOT NULL COMMENT '敲门端口',
   `spa_key` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '预共享秘钥（MD5加密32位小写）',
   `status` varchar(1) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '0' COMMENT '状态 0-启用 1-停用',
+  `probe_status` char(1) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '0' COMMENT '探测状态 0未探测 1成功 2失败',
+  `probe_time` datetime DEFAULT NULL COMMENT '最近探测时间',
+  `probe_msg` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '探测失败原因',
   `create_by` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '创建人',
   `create_time` datetime NOT NULL COMMENT '创建时间',
   `update_by` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '更新人',
@@ -240,11 +243,12 @@ CREATE TABLE `sys_job` (
   PRIMARY KEY (`job_id`,`job_name`,`job_group`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='定时任务调度表';
 
--- 数据: sys_job (3 行)
+-- 数据: sys_job (4 行)
 INSERT INTO `sys_job` (`job_id`, `job_name`, `job_group`, `invoke_target`, `cron_expression`, `misfire_policy`, `concurrent`, `status`, `create_by`, `create_time`, `update_by`, `update_time`, `remark`) VALUES
 (1, '系统默认（无参）', 'DEFAULT', 'ryTask.ryNoParams', '0/10 * * * * ?', '3', '1', '1', 'admin', '2026-04-23 07:51:21', '', NULL, ''),
 (2, '系统默认（有参）', 'DEFAULT', 'ryTask.ryParams(\'ry\')', '0/15 * * * * ?', '3', '1', '1', 'admin', '2026-04-23 07:51:21', '', NULL, ''),
-(3, '系统默认（多参）', 'DEFAULT', 'ryTask.ryMultipleParams(\'ry\', true, 2000L, 316.50D, 100)', '0/20 * * * * ?', '3', '1', '1', 'admin', '2026-04-23 07:51:21', '', NULL, '');
+(3, '系统默认（多参）', 'DEFAULT', 'ryTask.ryMultipleParams(\'ry\', true, 2000L, 316.50D, 100)', '0/20 * * * * ?', '3', '1', '1', 'admin', '2026-04-23 07:51:21', '', NULL, ''),
+(4, 'VPN线路探测', 'DEFAULT', 'lineProbeTask.run', '0 * * * * ?', '3', '1', '0', 'admin', '2026-04-23 07:51:21', '', NULL, '每分钟探测最多2条启用线路');
 
 -- ---------------------------- 表结构: sys_job_log ----------------------------
 DROP TABLE IF EXISTS `sys_job_log`;

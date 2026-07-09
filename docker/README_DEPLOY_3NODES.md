@@ -6,7 +6,7 @@
 
 ```
 docker/
-  copy.sh / copy.py            # 构建机用：把 jar/前端 dist/sql 分发到各 node-9x 子目录
+  copy.sh / copy_artifacts.py  # 构建机用：把 jar/前端 dist/sql 分发到各 node-9x 子目录
   README_DEPLOY_3NODES.md
 
   node-91/                     # 中间件机 10.27.0.91
@@ -42,7 +42,7 @@ docker/
 
 ## 四、构建与分发（构建机）
 
-1. 在源码机编译后，在 `docker/` 目录执行 `sh copy.sh`（或 `python copy.py`），将 jar / 前端 dist / sql 拷贝到 `node-9x` 对应位置。
+1. 在源码机编译后，在 `docker/` 目录执行 `sh copy.sh`（或 `python copy_artifacts.py`），将 jar / 前端 dist / sql 拷贝到 `node-9x` 对应位置。
 2. 将对应的 `node-9x` 目录分发到对应机器（也可整目录分发，各机只用自己的子目录）。
 
 ## 五、防火墙端口（跨机必开）

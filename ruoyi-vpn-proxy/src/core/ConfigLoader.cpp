@@ -24,6 +24,9 @@ AppConfig parseConfigObject(const QJsonObject &obj)
 {
     AppConfig cfg;
     cfg.controllerBaseUrl = obj.value(QStringLiteral("controllerBaseUrl")).toString(cfg.controllerBaseUrl);
+    if (obj.contains(QStringLiteral("controllerAesEnabled"))) {
+        cfg.controllerAesEnabled = obj.value(QStringLiteral("controllerAesEnabled")).toBool();
+    }
     cfg.proxyListenHost = obj.value(QStringLiteral("proxyListenHost")).toString(cfg.proxyListenHost);
     cfg.proxyListenPort = obj.value(QStringLiteral("proxyListenPort")).toInt(cfg.proxyListenPort);
     cfg.adminListenHost = obj.value(QStringLiteral("adminListenHost")).toString(cfg.adminListenHost);

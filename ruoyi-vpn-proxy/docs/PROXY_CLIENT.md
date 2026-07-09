@@ -13,11 +13,15 @@
 
 | 服务 | 默认地址 | 说明 |
 |------|----------|------|
-| 管理 API | `http://0.0.0.0:18080` | login / logout |
+| 管理 API | `http://0.0.0.0:18080` | login / logout / probe |
 | 同步代理 | `http://0.0.0.0:18001` | 转发 `/enadmin/api/open/v1/*` |
 | 30303 控制器 | `http://127.0.0.1:30303` | 本地易安联 Agent |
 
 可在 `config.json` 中修改。
+
+### 30303 传输加密
+
+与 [`ruoyi-vpn-client`](../ruoyi-vpn-client/) 一致：`controllerAesEnabled=true`（默认）时，对 `127.0.0.1:30303` 的请求/响应 JSON 做全包 AES-CBC 加密（Base64 传输，`Content-Type: text/plain`）。`loginWithAccount` 的 `password` 字段仍为服务端下发的字段级 AES 密文，外层再整包加密。旧版 Agent 可在 `config.json` 设 `controllerAesEnabled: false` 回退明文 JSON。
 
 ## 管理 API
 
@@ -81,6 +85,63 @@
   "msg": "已退出，等待下次登录"
 }
 ```
+
+### POST `/api/v1/probe`
+
+仅执行 30303 `detect`，不触发 login/logout，不开启同步代理转发。
+
+**请求体：**
+
+```json
+{
+  "line": {
+    "host": "vpn.example.com",
+    "srvPort": "443",
+    "spaPort": "62201",
+    "spaKey": "md5小写32位"
+  }
+}
+```
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `line.host` | 是 | 服务器域名或 IP |
+| `line.srvPort` | 是 | 服务器端口 |
+| `line.spaPort` | 是 | 敲门端口 |
+| `line.spaKey` | 是 | 预共享密钥 MD5（32 位小写） |
+
+**成功响应（200）：**
+
+```json
+{
+  "code": 200,
+  "msg": "探测成功",
+  "data": {
+    "available": true
+  }
+}
+```
+
+**线路不可达或 30303 调用失败（仍 HTTP 200）：**
+
+```json
+{
+  "code": 200,
+  "msg": "无法连接本地控制器 http://127.0.0.1:30303: ...",
+  "data": {
+    "available": false
+  }
+}
+```
+
+| 场景 | HTTP | `data.available` | `msg` 示例 |
+|------|------|------------------|------------|
+| 探测成功 | 200 | `true` | 探测成功 |
+| 线路不可达 | 200 | `false` | 线路不可用 |
+| 30303 未启动/超时/解密失败 | 200 | `false` | 无法连接本地控制器… |
+| 参数不完整 | 400 | — | 缺少 line.host/… |
+
+业务探测失败**不**返回 HTTP 500，便于服务端解析 JSON 并写入具体 `probe_msg`。仅参数错误返回 400。
 
 ## 同步代理行为
 

@@ -152,6 +152,23 @@ void AdminHttpServer::handleRequest(QTcpSocket *client, const QByteArray &rawReq
         return;
     }
 
+    if (method.compare(QStringLiteral("POST"), Qt::CaseInsensitive) == 0
+        && normPath == QStringLiteral("/api/v1/probe")) {
+        QJsonObject bodyObj;
+        QString parseError;
+        if (!HttpUtil::parseJsonBody(extractBody(rawRequest), &bodyObj, &parseError)) {
+            writeAndClose(client, HttpUtil::buildJsonResponse(400, 400, parseError));
+            return;
+        }
+        const QJsonObject result = m_controller->handleProbe(bodyObj);
+        const int code = result.value(QStringLiteral("code")).toInt(500);
+        const int httpStatus = code == 200 ? 200 : (code == 400 ? 400 : 500);
+        writeAndClose(client, HttpUtil::buildJsonResponse(httpStatus, code,
+                                                          result.value(QStringLiteral("msg")).toString(),
+                                                          result.value(QStringLiteral("data")).toObject()));
+        return;
+    }
+
     writeAndClose(client, HttpUtil::buildJsonResponse(404, 404, QStringLiteral("未找到接口")));
 }
 

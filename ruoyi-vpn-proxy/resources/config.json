@@ -1,5 +1,6 @@
 {
   "controllerBaseUrl": "http://127.0.0.1:30303",
+  "controllerAesEnabled": true,
   "proxyListenHost": "0.0.0.0",
   "proxyListenPort": 18001,
   "proxyAllowedSourceIps": ["10.27.0.92"],

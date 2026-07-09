@@ -60,6 +60,15 @@ public class LineApp extends BaseEntity
     /** 线路状态:0启用,1停用 */
     private String status;
 
+    /** 探测状态:0未探测,1成功,2失败 */
+    private String probeStatus;
+
+    /** 最近探测时间 */
+    private java.util.Date probeTime;
+
+    /** 探测失败原因 */
+    private String probeMsg;
+
 
     @NotBlank(message = "线路名称不能为空")
     @Size(min = 0, max = 60, message = "部门名称长度不能超过60个字符")

@@ -4,6 +4,8 @@ yianlian:
     enabled: true
     default-host: 10.27.0.94
     default-port: 18001
+    proxy-admin-port: 18080
     default-scheme: http
     allowed-source-ips:
       - 10.27.0.92
+    probe-read-timeout-ms: 35000

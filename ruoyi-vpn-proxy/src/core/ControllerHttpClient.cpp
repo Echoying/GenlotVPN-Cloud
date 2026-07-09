@@ -1,5 +1,7 @@
 #include "ControllerHttpClient.h"
 
+#include "crypto/AgentAesCrypto.h"
+
 #include <QEventLoop>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -14,12 +16,15 @@ namespace {
 
 constexpr int kGatewayPollMax = 20;
 constexpr int kGatewayPollIntervalMs = 3000;
+constexpr int kProbeDetectTimeoutMs = 25000;
 
 } // namespace
 
-ControllerHttpClient::ControllerHttpClient(const QString &baseUrl, QObject *parent)
+ControllerHttpClient::ControllerHttpClient(const QString &baseUrl, bool controllerAesEnabled,
+                                           QObject *parent)
     : QObject(parent)
     , m_baseUrl(baseUrl.trimmed().isEmpty() ? QStringLiteral("http://127.0.0.1:30303") : baseUrl.trimmed())
+    , m_controllerAesEnabled(controllerAesEnabled)
 {
 }
 
@@ -55,14 +60,48 @@ bool ControllerHttpClient::isCodeOk(const QJsonObject &obj)
     return code == QStringLiteral("200");
 }
 
+QByteArray ControllerHttpClient::encodeControllerBody(const QByteArray &plainJson) const
+{
+    if (!m_controllerAesEnabled) {
+        return plainJson;
+    }
+    const QString cipher = AgentAesCrypto::encryptToBase64(plainJson);
+    if (cipher.isEmpty() && !plainJson.isEmpty()) {
+        return QByteArray();
+    }
+    return cipher.toLatin1();
+}
+
+QByteArray ControllerHttpClient::decodeControllerBody(const QByteArray &wireBody) const
+{
+    if (!m_controllerAesEnabled) {
+        return wireBody;
+    }
+    const QByteArray plain = AgentAesCrypto::decryptFromBase64(wireBody);
+    if (plain.isEmpty() && !wireBody.isEmpty()) {
+        return QByteArray();
+    }
+    return plain;
+}
+
 ControllerHttpClient::HttpResult ControllerHttpClient::postJson(const QString &path,
-                                                                const QByteArray &body,
+                                                                const QByteArray &plainJsonBody,
                                                                 int timeoutMs)
 {
     HttpResult result;
+    const QByteArray requestBody = encodeControllerBody(plainJsonBody);
+    if (requestBody.isEmpty() && !plainJsonBody.isEmpty()) {
+        result.error = QStringLiteral("控制器请求加密失败: %1").arg(path);
+        return result;
+    }
+
     QNetworkRequest req(QUrl(m_baseUrl + path));
-    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
-    QNetworkReply *reply = m_nam.post(req, body);
+    if (m_controllerAesEnabled) {
+        req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("text/plain; charset=UTF-8"));
+    } else {
+        req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    }
+    QNetworkReply *reply = m_nam.post(req, requestBody);
     QEventLoop loop;
     QTimer timer;
     timer.setSingleShot(true);
@@ -82,9 +121,15 @@ ControllerHttpClient::HttpResult ControllerHttpClient::postJson(const QString &p
         reply->deleteLater();
         return result;
     }
-    QJsonParseError parseError;
-    const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &parseError);
+    const QByteArray wireBody = reply->readAll();
     reply->deleteLater();
+    const QByteArray plainJson = decodeControllerBody(wireBody);
+    if (plainJson.isEmpty() && !wireBody.isEmpty()) {
+        result.error = QStringLiteral("控制器响应解密失败: %1").arg(path);
+        return result;
+    }
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(plainJson, &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
         result.error = QStringLiteral("控制器响应解析失败: %1").arg(path);
         return result;
@@ -122,9 +167,15 @@ ControllerHttpClient::HttpResult ControllerHttpClient::getJson(const QString &pa
         reply->deleteLater();
         return result;
     }
-    QJsonParseError parseError;
-    const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &parseError);
+    const QByteArray wireBody = reply->readAll();
     reply->deleteLater();
+    const QByteArray plainJson = decodeControllerBody(wireBody);
+    if (plainJson.isEmpty() && !wireBody.isEmpty()) {
+        result.error = QStringLiteral("控制器响应解密失败: %1").arg(path);
+        return result;
+    }
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(plainJson, &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
         result.error = QStringLiteral("控制器响应解析失败: %1").arg(path);
         return result;
@@ -138,6 +189,33 @@ ControllerHttpClient::HttpResult ControllerHttpClient::getJson(const QString &pa
     return result;
 }
 
+ControllerHttpClient::DetectResult ControllerHttpClient::detectLine(const QVariantMap &line)
+{
+    DetectResult out;
+    const QVariantMap serverJson = lineToJson(line);
+
+    QJsonArray detectArr;
+    detectArr.append(QJsonObject::fromVariantMap(serverJson));
+    auto detectRes = postJson(QStringLiteral("/api/v1/control/detect"),
+                            QJsonDocument(detectArr).toJson(QJsonDocument::Compact),
+                            kProbeDetectTimeoutMs);
+    if (!detectRes.ok) {
+        out.error = detectRes.error;
+        return out;
+    }
+    const QJsonArray detectData = detectRes.body.value(QStringLiteral("data")).toArray();
+    if (detectData.isEmpty()) {
+        out.error = QStringLiteral("线路探测失败，无返回数据");
+        return out;
+    }
+    out.ok = true;
+    out.available = detectData.first().toObject().value(QStringLiteral("available")).toBool();
+    if (!out.available) {
+        out.error = QStringLiteral("线路探测失败，服务器不可用");
+    }
+    return out;
+}
+
 ControllerHttpClient::ConnectResult ControllerHttpClient::connectLine(const QVariantMap &line,
                                                                         const QString &username,
                                                                         const QString &password)
@@ -145,17 +223,13 @@ ControllerHttpClient::ConnectResult ControllerHttpClient::connectLine(const QVar
     ConnectResult out;
     const QVariantMap serverJson = lineToJson(line);
 
-    QJsonArray detectArr;
-    detectArr.append(QJsonObject::fromVariantMap(serverJson));
-    auto detectRes = postJson(QStringLiteral("/api/v1/control/detect"),
-                            QJsonDocument(detectArr).toJson(QJsonDocument::Compact));
-    if (!detectRes.ok) {
-        out.error = detectRes.error;
+    const DetectResult detectOut = detectLine(line);
+    if (!detectOut.ok) {
+        out.error = detectOut.error;
         return out;
     }
-    const QJsonArray detectData = detectRes.body.value(QStringLiteral("data")).toArray();
-    if (detectData.isEmpty() || !detectData.first().toObject().value(QStringLiteral("available")).toBool()) {
-        out.error = QStringLiteral("线路探测失败，服务器不可用");
+    if (!detectOut.available) {
+        out.error = detectOut.error;
         return out;
     }
 
@@ -180,6 +254,7 @@ ControllerHttpClient::ConnectResult ControllerHttpClient::connectLine(const QVar
 
     QJsonObject loginBody;
     loginBody[QStringLiteral("username")] = username;
+    // password 保持服务端下发的字段级 AES 密文；开启传输加密时由 postJson 再整包加密
     loginBody[QStringLiteral("password")] = password;
     auto loginRes = postJson(QStringLiteral("/api/v1/user/loginWithAccount"),
                              QJsonDocument(loginBody).toJson(QJsonDocument::Compact));

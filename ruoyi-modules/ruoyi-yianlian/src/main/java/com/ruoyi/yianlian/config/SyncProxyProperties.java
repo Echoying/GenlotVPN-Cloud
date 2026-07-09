@@ -22,11 +22,17 @@ public class SyncProxyProperties
     /** 默认代理监听端口 */
     private int defaultPort = 18001;
 
+    /** GenlotVPN-Proxy 管理 API 端口（login/logout/probe） */
+    private int proxyAdminPort = 18080;
+
     /** 92 访问代理的协议，默认 http */
     private String defaultScheme = "http";
 
     /** 入站白名单（GenlotVPN 代理校验用） */
     private List<String> allowedSourceIps = new ArrayList<>();
+
+    /** 线路探测调用代理管理 API 读超时（毫秒），略大于代理端 30303 detect 超时 */
+    private int probeReadTimeoutMs = 35000;
 
     public boolean isEnabled()
     {
@@ -58,6 +64,16 @@ public class SyncProxyProperties
         this.defaultPort = defaultPort;
     }
 
+    public int getProxyAdminPort()
+    {
+        return proxyAdminPort;
+    }
+
+    public void setProxyAdminPort(int proxyAdminPort)
+    {
+        this.proxyAdminPort = proxyAdminPort;
+    }
+
     public String getDefaultScheme()
     {
         return defaultScheme;
@@ -76,5 +92,15 @@ public class SyncProxyProperties
     public void setAllowedSourceIps(List<String> allowedSourceIps)
     {
         this.allowedSourceIps = allowedSourceIps != null ? allowedSourceIps : new ArrayList<>();
+    }
+
+    public int getProbeReadTimeoutMs()
+    {
+        return probeReadTimeoutMs;
+    }
+
+    public void setProbeReadTimeoutMs(int probeReadTimeoutMs)
+    {
+        this.probeReadTimeoutMs = probeReadTimeoutMs;
     }
 }

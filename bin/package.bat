@@ -10,6 +10,6 @@ cd ..
 call mvn clean package -Dmaven.test.skip=true
 
 cd docker
-call python copy.py
+call python copy_artifacts.py
 
 pause

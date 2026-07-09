@@ -107,6 +107,16 @@
       <el-table-column label="服务器端口" align="center" prop="srvPort" />
       <el-table-column label="敲门端口" align="center" prop="spaPort" />
       <el-table-column label="预共享秘钥" align="center" prop="spaKey" :show-overflow-tooltip="true" />
+      <el-table-column label="探测" align="center" prop="probeStatus" width="90">
+        <template slot-scope="scope">
+          <el-tooltip v-if="scope.row.probeStatus === '1' || scope.row.probeStatus === '2'"
+                      :content="probeTooltip(scope.row)" placement="top">
+            <el-tag v-if="scope.row.probeStatus === '1'" type="success" size="mini">成功</el-tag>
+            <el-tag v-else-if="scope.row.probeStatus === '2'" type="danger" size="mini">失败</el-tag>
+          </el-tooltip>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
       <el-table-column label="线路状态" align="center" prop="status">
         <template slot-scope="scope">
           <dict-tag :options="dict.type.vpn_line_status" :value="scope.row.status"/>
@@ -346,6 +356,17 @@ export default {
       } else {
         callback()
       }
+    },
+    /** 探测列 tooltip：探测时间与失败原因 */
+    probeTooltip(row) {
+      const parts = []
+      if (row.probeTime) {
+        parts.push('探测时间：' + this.parseTime(row.probeTime))
+      }
+      if (row.probeMsg) {
+        parts.push('原因：' + row.probeMsg)
+      }
+      return parts.length ? parts.join('\n') : ''
     },
     /** 查询线路列表 */
     getList() {

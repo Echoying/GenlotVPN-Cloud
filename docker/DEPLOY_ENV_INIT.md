@@ -322,7 +322,7 @@ firewall-cmd --reload
 
 ## 4. 上传部署文件
 
-部署产物（jar / 前端 dist / sql）需先在**构建机**用 `docker/copy.sh`（或 `python copy.py`）分发到 `node-91/92/93` 子目录，再上传到对应服务器。
+部署产物（jar / 前端 dist / sql）需先在**构建机**用 `docker/copy.sh`（或 `python copy_artifacts.py`）分发到 `node-91/92/93` 子目录，再上传到对应服务器。
 
 ### 4.1 构建要求（重要）
 
@@ -346,7 +346,7 @@ mvn clean package -DskipTests
 ```bash
 # 1) 确保已用 JDK 8 编译出各 jar 与前端 dist，然后分发到 node-9x
 cd docker
-sh copy.sh            # 或：python copy.py
+sh copy.sh            # 或：python copy_artifacts.py
 
 # 2) 上传到三台服务器的 /data/genlotvpn/ 下
 ssh root@10.27.0.91 'mkdir -p /data/genlotvpn'

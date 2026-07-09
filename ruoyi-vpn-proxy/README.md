@@ -40,6 +40,7 @@ bin\build-vpn-proxy.bat --package
 ```json
 {
   "controllerBaseUrl": "http://127.0.0.1:30303",
+  "controllerAesEnabled": true,
   "proxyListenHost": "0.0.0.0",
   "proxyListenPort": 18001,
   "proxyAllowedSourceIps": ["10.27.0.92"],
@@ -47,6 +48,10 @@ bin\build-vpn-proxy.bat --package
   "adminListenPort": 18080
 }
 ```
+
+| 配置项 | 说明 |
+|--------|------|
+| `controllerAesEnabled` | 访问本机 Agent `30303` 是否全包 AES 传输，**默认 true**（与 VPN 客户端相同 key/IV）；旧版 Agent 可设 `false` |
 
 ## API 文档
 

@@ -70,6 +70,12 @@
             <groupId>com.ruoyi</groupId>
             <artifactId>ruoyi-common-swagger</artifactId>
         </dependency>
+
+        <!-- RuoYi API Yianlian（线路探测 Feign） -->
+        <dependency>
+            <groupId>com.ruoyi</groupId>
+            <artifactId>ruoyi-api-yianlian</artifactId>
+        </dependency>
         
     </dependencies>
 

@@ -19,6 +19,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 N
 set(SOURCES
     src/main.cpp
     src/util/HttpUtil.cpp
+    src/crypto/AgentAesCrypto.cpp
     src/core/AppLogger.cpp
     src/core/ConfigLoader.cpp
     src/core/SingleInstance.cpp
@@ -66,6 +67,10 @@ qt_add_qml_module(GenlotVPN-Proxy
 target_link_libraries(GenlotVPN-Proxy PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml Qt6::Quick Qt6::QuickControls2 Qt6::Network
 )
+
+if(WIN32)
+    target_link_libraries(GenlotVPN-Proxy PRIVATE bcrypt)
+endif()
 
 target_include_directories(GenlotVPN-Proxy PRIVATE src)
 

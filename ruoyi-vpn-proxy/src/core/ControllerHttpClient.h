@@ -12,7 +12,8 @@ namespace vpnproxy {
 class ControllerHttpClient : public QObject {
     Q_OBJECT
 public:
-    explicit ControllerHttpClient(const QString &baseUrl, QObject *parent = nullptr);
+    explicit ControllerHttpClient(const QString &baseUrl, bool controllerAesEnabled = true,
+                                  QObject *parent = nullptr);
 
     struct ConnectResult {
         bool ok = false;
@@ -20,6 +21,13 @@ public:
         int tunnelStatus = -1;
     };
 
+    struct DetectResult {
+        bool ok = false;
+        bool available = false;
+        QString error;
+    };
+
+    DetectResult detectLine(const QVariantMap &line);
     ConnectResult connectLine(const QVariantMap &line, const QString &username,
                               const QString &password);
     bool logout(QString *errorOut = nullptr);
@@ -33,12 +41,15 @@ private:
         QJsonObject body;
     };
 
-    HttpResult postJson(const QString &path, const QByteArray &body, int timeoutMs = 120000);
+    QByteArray encodeControllerBody(const QByteArray &plainJson) const;
+    QByteArray decodeControllerBody(const QByteArray &wireBody) const;
+    HttpResult postJson(const QString &path, const QByteArray &plainJsonBody, int timeoutMs = 120000);
     HttpResult getJson(const QString &path, int timeoutMs = 30000);
     static QString extractError(const QJsonObject &obj, const QString &fallback);
     static bool isCodeOk(const QJsonObject &obj);
 
     QString m_baseUrl;
+    bool m_controllerAesEnabled = true;
     QNetworkAccessManager m_nam;
 };
 

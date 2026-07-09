@@ -17,6 +17,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="spaPort" column="spa_port" />
         <result property="spaKey"  column="spa_key"  />
         <result property="status"   column="status"   />
+        <result property="probeStatus" column="probe_status" />
+        <result property="probeTime" column="probe_time" />
+        <result property="probeMsg" column="probe_msg" />
         <result property="createBy"      column="create_by"      />
         <result property="createTime"    column="create_time"    />
         <result property="updateBy"      column="update_by"      />
@@ -25,7 +28,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectLineAppVo">
-        select app_id, app_name, app_secret, url, proxy_host, proxy_port, proxy_enabled, host, srv_port, spa_port, spa_key, status, create_by, create_time, update_by, update_time, remark
+        select app_id, app_name, app_secret, url, proxy_host, proxy_port, proxy_enabled, host, srv_port, spa_port, spa_key, status, probe_status, probe_time, probe_msg, create_by, create_time, update_by, update_time, remark
 		from line_app
     </sql>
     
@@ -136,5 +139,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         	#{appId}
         </foreach>
     </delete>
+
+    <select id="selectLinesForProbe" resultMap="LineAppResult">
+        <include refid="selectLineAppVo"/>
+        where status = '0'
+        order by probe_time is null desc, probe_time asc
+        limit #{limit}
+    </select>
+
+    <update id="updateLineProbeResult" parameterType="LineApp">
+        update line_app
+        set probe_status = #{probeStatus},
+            probe_time = #{probeTime},
+            probe_msg = #{probeMsg}
+        where app_id = #{appId}
+    </update>
     
 </mapper>

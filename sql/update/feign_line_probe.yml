@@ -1,0 +1,7 @@
+# Feign 线路探测超时（合并到 application-dev.yml 或 ruoyi-job-dev.yml）
+feign:
+  client:
+    config:
+      remoteLineProbeService:
+        connectTimeout: 10000
+        readTimeout: 90000

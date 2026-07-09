@@ -24,5 +24,5 @@ echo [OK] %JAR%
 echo [OK] 已包含 ruoyi-vpn-protocol
 echo.
 echo 部署: 将上述 jar 上传到服务器后 java -jar ruoyi-vpn-auth.jar
-echo Docker: cd docker ^&^& python copy.py ^&^& docker-compose up -d --build ruoyi-vpn-auth
+echo Docker: cd docker ^&^& python copy_artifacts.py ^&^& docker-compose up -d --build ruoyi-vpn-auth
 exit /b 0

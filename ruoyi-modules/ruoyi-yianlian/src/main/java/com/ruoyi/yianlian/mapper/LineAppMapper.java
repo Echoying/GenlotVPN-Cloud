@@ -66,4 +66,20 @@ public interface LineAppMapper
      * @return 结果
      */
     public int deleteLineAppByIds(String[] appIds);
+
+    /**
+     * 选取待探测的启用线路（按 probe_time 轮询）
+     *
+     * @param limit 最多条数
+     * @return 线路列表
+     */
+    public List<LineApp> selectLinesForProbe(int limit);
+
+    /**
+     * 更新线路探测结果
+     *
+     * @param lineApp 含 appId、probeStatus、probeTime、probeMsg
+     * @return 结果
+     */
+    public int updateLineProbeResult(LineApp lineApp);
 }
