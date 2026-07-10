@@ -1,0 +1,12 @@
+# Feign 同步相关超时
+feign:
+  client:
+    config:
+      # vpn-auth -> yianlian：修改密码等会触发代理登录+同步（合并到 ruoyi-vpn-auth-dev.yml）
+      remoteVpnUserService:
+        connectTimeout: 10000
+        readTimeout: 180000
+      # ruoyi-job -> yianlian：补偿按线路分批同步，单次可能较长（合并到 ruoyi-job-dev.yml）
+      remoteYiAnLianSyncTaskService:
+        connectTimeout: 10000
+        readTimeout: 600000

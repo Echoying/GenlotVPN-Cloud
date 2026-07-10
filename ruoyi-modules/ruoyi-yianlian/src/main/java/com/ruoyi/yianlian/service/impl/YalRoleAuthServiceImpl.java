@@ -1,6 +1,7 @@
 package com.ruoyi.yianlian.service.impl;
 
 import com.ruoyi.common.core.exception.ServiceException;
+import com.ruoyi.common.core.exception.yianlian.YiAnLianException;
 import com.ruoyi.common.core.utils.DateUtils;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.yianlian.domain.VpnRole;
@@ -144,15 +145,8 @@ public class YalRoleAuthServiceImpl implements IYalRoleAuthService
             result = yalRoleAuthMapper.batchInsertYalRoleAuth(authList);
         }
 
-        // 同步给易安联
-        try
-        {
-            syncToYiAnLian(roleId, authList);
-        }
-        catch (Exception e)
-        {
-            log.error("同步角色授权到易安联失败, roleId: {}, 错误: ", roleId, e);
-        }
+        // 远程同步失败将抛出异常，触发本地事务回滚（远程失败则本地不变更）
+        syncToYiAnLian(roleId, authList);
 
         return result;
     }
@@ -249,7 +243,7 @@ public class YalRoleAuthServiceImpl implements IYalRoleAuthService
                 Boolean success = yiAnLianAuthorityService.grantGroupAuthority(appId, requestList);
                 if (!Boolean.TRUE.equals(success))
                 {
-                    log.warn("同步角色[{}]授权到易安联线路[{}]失败", roleId, appId);
+                    throw new YiAnLianException("同步角色授权到易安联线路[" + appId + "]失败");
                 }
                 else
                 {

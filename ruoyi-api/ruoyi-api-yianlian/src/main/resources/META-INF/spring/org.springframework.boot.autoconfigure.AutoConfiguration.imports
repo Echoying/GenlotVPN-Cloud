@@ -1,4 +1,5 @@
 com.ruoyi.yianlian.api.factory.RemoteLineProbeFallbackFactory
+com.ruoyi.yianlian.api.factory.RemoteYiAnLianSyncTaskFallbackFactory
 com.ruoyi.yianlian.api.factory.RemoteSyncProxyFallbackFactory
 com.ruoyi.yianlian.api.factory.RemoteVpnLineFallbackFactory
 com.ruoyi.yianlian.api.factory.RemoteVpnLocalUserFallbackFactory

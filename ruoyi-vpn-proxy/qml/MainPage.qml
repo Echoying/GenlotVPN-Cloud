@@ -144,9 +144,12 @@ Item {
                     Row {
                         anchors.fill: parent
                         anchors.leftMargin: 8
-                        Text { width: parent.width * 0.15; text: qsTr("时间"); font.pixelSize: 11; font.bold: true; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter }
-                        Text { width: parent.width * 0.12; text: qsTr("类型"); font.pixelSize: 11; font.bold: true; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter }
-                        Text { width: parent.width * 0.73; text: qsTr("消息"); font.pixelSize: 11; font.bold: true; color: Theme.textSecondary; anchors.verticalCenter: parent.verticalCenter }
+                        Text { width: parent.width * 0.08; text: qsTr("时间"); font.pixelSize: 11; font.bold: true; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter }
+                        Text { width: parent.width * 0.06; text: qsTr("类型"); font.pixelSize: 11; font.bold: true; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter }
+                        Text { width: parent.width * 0.16; text: qsTr("消息"); font.pixelSize: 11; font.bold: true; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter }
+                        Text { width: parent.width * 0.30; text: qsTr("请求报文"); font.pixelSize: 11; font.bold: true; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter }
+                        Text { width: parent.width * 0.30; text: qsTr("响应报文"); font.pixelSize: 11; font.bold: true; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter }
+                        Text { width: parent.width * 0.10; text: qsTr("耗时"); font.pixelSize: 11; font.bold: true; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter }
                     }
                 }
                 Item {
@@ -160,14 +163,53 @@ Item {
                         onCountChanged: if (count > 0) positionViewAtBeginning()
                         delegate: Rectangle {
                             width: sessionList.width
-                            height: 32
+                            height: Math.max(32, Math.max(reqText.implicitHeight, respText.implicitHeight) + 12)
                             color: index % 2 === 0 ? Theme.listStripeA : Theme.listStripeB
                             Row {
                                 anchors.fill: parent
                                 anchors.leftMargin: 8
-                                Text { width: parent.width * 0.15; text: model.time; font.pixelSize: 10; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter }
-                                Text { width: parent.width * 0.12; text: model.type; font.pixelSize: 11; color: typeColor(model.type); font.bold: true; horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter }
-                                Text { width: parent.width * 0.73; text: model.message; font.pixelSize: 11; color: Theme.textPrimary; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
+                                anchors.topMargin: 6
+                                anchors.bottomMargin: 6
+                                Text { width: parent.width * 0.08; text: model.time; font.pixelSize: 10; color: Theme.textSecondary; horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter }
+                                Text { width: parent.width * 0.06; text: model.type; font.pixelSize: 11; color: typeColor(model.type); font.bold: true; horizontalAlignment: Text.AlignHCenter; anchors.verticalCenter: parent.verticalCenter }
+                                Text {
+                                    width: parent.width * 0.16
+                                    text: model.message
+                                    font.pixelSize: 11
+                                    color: Theme.textPrimary
+                                    wrapMode: Text.Wrap
+                                    maximumLineCount: 6
+                                    elide: Text.ElideRight
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    id: reqText
+                                    width: parent.width * 0.30
+                                    text: model.requestLog || "-"
+                                    font.pixelSize: 10
+                                    color: Theme.logText
+                                    wrapMode: Text.Wrap
+                                    maximumLineCount: 8
+                                    elide: Text.ElideRight
+                                }
+                                Text {
+                                    id: respText
+                                    width: parent.width * 0.30
+                                    text: model.responseLog || "-"
+                                    font.pixelSize: 10
+                                    color: Theme.logText
+                                    wrapMode: Text.Wrap
+                                    maximumLineCount: 8
+                                    elide: Text.ElideRight
+                                }
+                                Text {
+                                    width: parent.width * 0.10
+                                    text: model.elapsedMs >= 0 ? (model.elapsedMs + "ms") : "-"
+                                    font.pixelSize: 10
+                                    color: Theme.textSecondary
+                                    horizontalAlignment: Text.AlignHCenter
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
                             }
                         }
                     }

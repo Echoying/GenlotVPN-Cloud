@@ -22,6 +22,11 @@ import com.ruoyi.yianlian.domain.vo.VpnLineSyncedUserVO;
 import com.ruoyi.yianlian.mapper.VpnUserMapper;
 import com.ruoyi.yianlian.service.IVpnDeptYianlianMappingService;
 import com.ruoyi.yianlian.service.IVpnRoleYianlianMappingService;
+import com.ruoyi.yianlian.service.sync.orchestrator.BatchItemResult;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncCommand;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncConstants;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncDeferredException;
+import com.ruoyi.yianlian.service.sync.orchestrator.YiAnLianSyncOrchestrator;
 import com.ruoyi.yianlian.domain.VpnDept;
 import com.ruoyi.yianlian.service.vpn.IVpnDeptService;
 import com.ruoyi.yianlian.service.vpn.IVpnLineAppService;
@@ -33,7 +38,6 @@ import com.ruoyi.yianlian.utils.AesUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -76,18 +80,11 @@ public class VpnLocalUserSyncServiceImpl implements IVpnLocalUserSyncService
 
     @Lazy
     @Autowired
-    private VpnLocalUserSyncServiceImpl self;
+    private YiAnLianSyncOrchestrator syncOrchestrator;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void syncToLine(VpnLocalUserSyncRequest request)
-    {
-        VpnLocalUser localUser = loadAndValidateLocalUser(request.getLocalUserId());
-        doSyncToLine(localUser, request);
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
-    public void syncToLineInNewTx(VpnLocalUserSyncRequest request)
     {
         VpnLocalUser localUser = loadAndValidateLocalUser(request.getLocalUserId());
         doSyncToLine(localUser, request);
@@ -107,10 +104,18 @@ public class VpnLocalUserSyncServiceImpl implements IVpnLocalUserSyncService
             result.setAppName(resolveLineName(item.getAppId()));
             try
             {
-                self.syncToLineInNewTx(toSingleRequest(request.getLocalUserId(), item));
+                VpnLocalUserSyncRequest single = toSingleRequest(request.getLocalUserId(), item);
+                syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_LOCAL_USER, SyncConstants.OP_CREATE,
+                    single.getAppId(), single.getLocalUserId(), single));
                 result.setSuccess(true);
                 result.setUpdated(false);
                 result.setMessage("已同步到线路");
+            }
+            catch (SyncDeferredException de)
+            {
+                result.setSuccess(false);
+                result.setUpdated(false);
+                result.setMessage("代理暂不可用，已加入补偿队列，稍后自动重试");
             }
             catch (Exception e)
             {
@@ -140,6 +145,7 @@ public class VpnLocalUserSyncServiceImpl implements IVpnLocalUserSyncService
         validateLineApp(appId);
         validateLineSyncGroups(request.getAppId(), request.getGroups());
 
+        List<SyncCommand> commands = new ArrayList<>();
         List<VpnLineBatchSyncUserResult> results = new ArrayList<>();
         for (VpnLineSyncGroupItem group : request.getGroups())
         {
@@ -160,22 +166,13 @@ public class VpnLocalUserSyncServiceImpl implements IVpnLocalUserSyncService
                     result.setUserName(localUser.getUserName());
                     result.setNickName(localUser.getNickName());
                 }
-                try
-                {
-                    VpnLocalUserSyncRequest single = new VpnLocalUserSyncRequest();
-                    single.setLocalUserId(localUserId);
-                    single.setAppId(appId);
-                    single.setDeptId(group.getDeptId());
-                    single.setRoleIds(Collections.emptyList());
-                    self.syncToLineInNewTx(single);
-                    result.setSuccess(true);
-                    result.setMessage("已同步到线路");
-                }
-                catch (Exception e)
-                {
-                    result.setSuccess(false);
-                    result.setMessage(resolveErrorMessage(e));
-                }
+                VpnLocalUserSyncRequest single = new VpnLocalUserSyncRequest();
+                single.setLocalUserId(localUserId);
+                single.setAppId(appId);
+                single.setDeptId(group.getDeptId());
+                single.setRoleIds(Collections.emptyList());
+                commands.add(SyncCommand.ofApi(SyncConstants.BIZ_LOCAL_USER, SyncConstants.OP_CREATE,
+                    appId, localUserId, single));
                 results.add(result);
             }
         }
@@ -183,7 +180,32 @@ public class VpnLocalUserSyncServiceImpl implements IVpnLocalUserSyncService
         {
             throw new ServiceException("请至少选择一名待同步用户");
         }
+
+        List<BatchItemResult> batchResults = syncOrchestrator.executeBatchApi(appId, commands);
+        for (int i = 0; i < results.size(); i++)
+        {
+            applyBatchItemResult(results.get(i), batchResults.get(i));
+        }
         return results;
+    }
+
+    private void applyBatchItemResult(VpnLineBatchSyncUserResult result, BatchItemResult batchResult)
+    {
+        if (batchResult.isSuccess())
+        {
+            result.setSuccess(true);
+            result.setMessage("已同步到线路");
+            return;
+        }
+        if (batchResult.isDeferred())
+        {
+            result.setSuccess(false);
+            result.setMessage(batchResult.getMessage());
+            return;
+        }
+        result.setSuccess(false);
+        Exception error = batchResult.getError();
+        result.setMessage(error != null ? resolveErrorMessage(error) : batchResult.getMessage());
     }
 
     private void validateLineApp(String appId)

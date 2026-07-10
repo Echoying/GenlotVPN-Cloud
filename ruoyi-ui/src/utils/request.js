@@ -49,8 +49,8 @@ axios.defaults.headers['Content-Type'] = 'application/json;charset=utf-8'
 const service = axios.create({
   // axios中请求配置有baseURL选项，表示请求URL公共部分
   baseURL: process.env.VUE_APP_BASE_API,
-  // 超时
-  timeout: 10000
+  // 超时（同步易安联时需先登录代理，单次最长约150s，故放宽到180s）
+  timeout: 180000
 })
 
 // request拦截器
@@ -140,6 +140,10 @@ service.interceptors.response.use(res => {
     } else if (code === 601) {
       Message({ message: msg, type: 'warning' })
       return Promise.reject('error')
+    } else if (code === 202) {
+      // 同步已延迟入队补偿：本地未变更，提示用户稍后自动重试
+      Message({ message: msg, type: 'warning', duration: 5 * 1000 })
+      return res.data
     } else if (code !== 200) {
       Notification.error({ title: msg })
       return Promise.reject('error')

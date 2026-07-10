@@ -15,6 +15,8 @@ public:
     void error(const QString &message) { log(QStringLiteral("error"), message); }
 
     void logSession(const QString &level, const QString &message);
+    void logSession(const QString &level, const QString &message, const QString &requestLog,
+                    const QString &responseLog, qint64 elapsedMs);
     void logProxyAccess(const QString &summary, const QString &requestLog,
                         const QString &responseLog);
 

@@ -5,6 +5,8 @@ import com.alibaba.fastjson2.JSONObject;
 import com.ruoyi.yianlian.config.SyncProxyProperties;
 import com.ruoyi.yianlian.domain.LineApp;
 import com.ruoyi.yianlian.mapper.LineAppMapper;
+import com.ruoyi.yianlian.service.sync.ProxySessionScope;
+import com.ruoyi.yianlian.service.sync.SyncProxyEndpointResolver;
 import com.ruoyi.yianlian.service.vpn.ILineProbeService;
 import com.ruoyi.yianlian.utils.AesUtils;
 import org.slf4j.Logger;
@@ -43,16 +45,22 @@ public class LineProbeServiceImpl implements ILineProbeService
     private final LineAppMapper lineAppMapper;
     private final AesUtils aesUtils;
     private final SyncProxyProperties syncProxyProperties;
+    private final ProxySessionScope proxySessionScope;
+    private final SyncProxyEndpointResolver syncProxyEndpointResolver;
     private final RestTemplate restTemplate;
 
     public LineProbeServiceImpl(LineAppMapper lineAppMapper,
                                 AesUtils aesUtils,
                                 SyncProxyProperties syncProxyProperties,
+                                ProxySessionScope proxySessionScope,
+                                SyncProxyEndpointResolver syncProxyEndpointResolver,
                                 RestTemplateBuilder restTemplateBuilder)
     {
         this.lineAppMapper = lineAppMapper;
         this.aesUtils = aesUtils;
         this.syncProxyProperties = syncProxyProperties;
+        this.proxySessionScope = proxySessionScope;
+        this.syncProxyEndpointResolver = syncProxyEndpointResolver;
         this.restTemplate = restTemplateBuilder
                 .setConnectTimeout(Duration.ofSeconds(5))
                 .setReadTimeout(Duration.ofMillis(syncProxyProperties.getProbeReadTimeoutMs()))
@@ -93,8 +101,14 @@ public class LineProbeServiceImpl implements ILineProbeService
 
     private void probeOne(LineApp line)
     {
+        // 同步会话进行中则跳过本次探测，避免打断已建立的隧道（服务端 Redis 活跃标记）
+        if (proxySessionScope.isActiveForLine(line))
+        {
+            log.debug("线路 {} 同步会话进行中，跳过本次探测", line.getAppId());
+            return;
+        }
         Date now = new Date();
-        String probeUrl = buildProbeUrl();
+        String probeUrl = buildProbeUrl(line);
         Map<String, Object> body = buildProbeBody(line);
         try
         {
@@ -102,7 +116,13 @@ public class LineProbeServiceImpl implements ILineProbeService
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
             ResponseEntity<String> response = restTemplate.postForEntity(probeUrl, entity, String.class);
-            saveProbeResult(line.getAppId(), parseProbeResponse(response.getBody()), now);
+            ProbeParseResult result = parseProbeResponse(response.getBody());
+            if (result.skipped)
+            {
+                log.debug("线路 {} 代理返回跳过探测，本次不更新探测结果", line.getAppId());
+                return;
+            }
+            saveProbeResult(line.getAppId(), result, now);
         }
         catch (RestClientException ex)
         {
@@ -116,12 +136,9 @@ public class LineProbeServiceImpl implements ILineProbeService
         }
     }
 
-    private String buildProbeUrl()
+    private String buildProbeUrl(LineApp line)
     {
-        String scheme = syncProxyProperties.getDefaultScheme();
-        String host = syncProxyProperties.getDefaultHost();
-        int port = syncProxyProperties.getProxyAdminPort();
-        return String.format("%s://%s:%d/api/v1/probe", scheme, host, port);
+        return syncProxyEndpointResolver.resolveAdminBaseUrl(line) + "/api/v1/probe";
     }
 
     private Map<String, Object> buildProbeBody(LineApp line)
@@ -157,6 +174,10 @@ public class LineProbeServiceImpl implements ILineProbeService
                 return ProbeParseResult.fail(msg != null && !msg.isEmpty() ? msg : "代理探测失败");
             }
             JSONObject data = json.getJSONObject("data");
+            if (data != null && data.getBooleanValue("skipped"))
+            {
+                return ProbeParseResult.skip();
+            }
             boolean available = data != null && data.getBooleanValue("available");
             if (available)
             {
@@ -179,7 +200,7 @@ public class LineProbeServiceImpl implements ILineProbeService
             update.setProbeStatus(PROBE_STATUS_SUCCESS);
             update.setProbeTime(probeTime);
             update.setProbeMsg(null);
-            lineAppMapper.updateLineProbeResult(update);
+            persistProbeResult(appId, update);
             return;
         }
         saveProbeFailure(appId, result.message, probeTime);
@@ -196,28 +217,74 @@ public class LineProbeServiceImpl implements ILineProbeService
             message = message.substring(0, 500);
         }
         update.setProbeMsg(message);
-        lineAppMapper.updateLineProbeResult(update);
+        persistProbeResult(appId, update);
+    }
+
+    /**
+     * 写探测结果；若 Feign 已超时断开导致线程 interrupt，降级为 warn 避免 ERROR 刷屏。
+     */
+    private void persistProbeResult(String appId, LineApp update)
+    {
+        try
+        {
+            lineAppMapper.updateLineProbeResult(update);
+        }
+        catch (Exception ex)
+        {
+            if (isInterruptedPersist(ex))
+            {
+                log.warn("线路 {} 探测结果写库被中断（调用方已断开），忽略", appId);
+                return;
+            }
+            throw ex;
+        }
+    }
+
+    private boolean isInterruptedPersist(Exception ex)
+    {
+        if (Thread.currentThread().isInterrupted())
+        {
+            return true;
+        }
+        Throwable t = ex;
+        while (t != null)
+        {
+            String msg = t.getMessage();
+            if (msg != null && msg.toLowerCase().contains("interrupt"))
+            {
+                return true;
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 
     private static final class ProbeParseResult
     {
         private final boolean success;
         private final String message;
+        private final boolean skipped;
 
-        private ProbeParseResult(boolean success, String message)
+        private ProbeParseResult(boolean success, String message, boolean skipped)
         {
             this.success = success;
             this.message = message;
+            this.skipped = skipped;
         }
 
         private static ProbeParseResult success()
         {
-            return new ProbeParseResult(true, null);
+            return new ProbeParseResult(true, null, false);
         }
 
         private static ProbeParseResult fail(String message)
         {
-            return new ProbeParseResult(false, message);
+            return new ProbeParseResult(false, message, false);
+        }
+
+        private static ProbeParseResult skip()
+        {
+            return new ProbeParseResult(false, null, true);
         }
     }
 }

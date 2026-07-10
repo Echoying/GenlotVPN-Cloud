@@ -11,6 +11,9 @@ import com.ruoyi.yianlian.domain.YalDeptAuth;
 import com.ruoyi.yianlian.domain.YalDeptAuthBatchDTO;
 import com.ruoyi.yianlian.domain.vo.ServiceTreeSelect;
 import com.ruoyi.yianlian.service.IYalDeptAuthService;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncCommand;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncConstants;
+import com.ruoyi.yianlian.service.sync.orchestrator.YiAnLianSyncOrchestrator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +31,9 @@ public class YalDeptAuthController extends BaseController
 {
     @Autowired
     private IYalDeptAuthService yalDeptAuthService;
+
+    @Autowired
+    private YiAnLianSyncOrchestrator syncOrchestrator;
 
     /**
      * 获取部门授权列表
@@ -98,7 +104,9 @@ public class YalDeptAuthController extends BaseController
     @PostMapping("/batchSave")
     public AjaxResult batchSave(@RequestBody YalDeptAuthBatchDTO batchDTO)
     {
-        return toAjax(yalDeptAuthService.batchSaveDeptAuth(batchDTO.getDeptId(), batchDTO.getLineId(), batchDTO.getAuthList()));
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_YAL_DEPT_AUTH, SyncConstants.OP_UPDATE,
+            batchDTO.getLineId(), batchDTO.getDeptId(), batchDTO));
+        return success();
     }
 
     /**

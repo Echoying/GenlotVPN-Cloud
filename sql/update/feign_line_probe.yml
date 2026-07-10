@@ -1,4 +1,5 @@
 # Feign 线路探测超时（合并到 application-dev.yml 或 ruoyi-job-dev.yml）
+# 须满足：readTimeout >= 2 × yianlian.sync-proxy.probe-read-timeout-ms（默认 35s×2=70s）
 feign:
   client:
     config:

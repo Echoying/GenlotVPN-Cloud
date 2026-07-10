@@ -1,0 +1,9 @@
+# 易安联统一同步/补偿配置片段（合并到 ruoyi-yianlian-dev.yml）
+yianlian:
+  sync:
+    # 补偿任务最大重试次数，超过置为放弃（5分钟一轮，48 次约 4 小时）
+    task-max-retries: 48
+    # 单条线路单次批量补偿的最大任务数
+    task-batch-max-per-run: 200
+    # 处理中任务超时回收（分钟），Job 异常退出后避免长期占用
+    task-stale-processing-minutes: 30

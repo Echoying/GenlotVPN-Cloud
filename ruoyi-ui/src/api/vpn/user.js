@@ -46,10 +46,11 @@ export function delUser(userId) {
 }
 
 // VPN用户密码重置
-export function resetUserPwd(userId, password) {
+export function resetUserPwd(userId, password, appId) {
   const data = {
     userId,
-    password
+    password,
+    appId
   }
   return request({
     url: '/yianlian/vpn/user/resetPwd',
@@ -59,10 +60,11 @@ export function resetUserPwd(userId, password) {
 }
 
 // VPN用户状态修改
-export function changeUserStatus(userId, status) {
+export function changeUserStatus(userId, status, appId) {
   const data = {
     userId,
-    status
+    status,
+    appId
   }
   return request({
     url: '/yianlian/vpn/user/changeStatus',

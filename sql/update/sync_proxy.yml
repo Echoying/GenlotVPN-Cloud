@@ -9,3 +9,16 @@ yianlian:
     allowed-source-ips:
       - 10.27.0.92
     probe-read-timeout-ms: 35000
+    # 单条探测 HTTP 读超时；每轮最多 2 条线路，Job Feign readTimeout 须 > 2×本值（见 feign_line_probe.yml）
+    # 代理会话登录/退出：实时 API 仅 1 次（失败入队补偿），补偿 Job 最多 3 次
+    login-max-attempts-api: 1
+    login-max-attempts-job: 3
+    login-retry-interval-ms: 10000
+    login-read-timeout-ms: 150000
+    # 代理 login 成功后、发起 OpenAPI 业务请求前的等待（毫秒），默认 60 秒
+    post-login-delay-ms: 60000
+    # 服务端代理同步 login 使用的线路 VPN 用户名（各线路须存在该用户且已设密码）
+    login-username: system
+    # 代理会话分布式锁 / 活跃标记 TTL（秒）与抢锁等待（毫秒）
+    session-lock-seconds: 360
+    session-lock-wait-ms: 30000

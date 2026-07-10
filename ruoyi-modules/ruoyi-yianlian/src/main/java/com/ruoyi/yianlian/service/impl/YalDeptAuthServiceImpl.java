@@ -1,6 +1,7 @@
 package com.ruoyi.yianlian.service.impl;
 
 import com.ruoyi.common.core.exception.ServiceException;
+import com.ruoyi.common.core.exception.yianlian.YiAnLianException;
 import com.ruoyi.common.core.utils.DateUtils;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.yianlian.domain.VpnDept;
@@ -149,14 +150,8 @@ public class YalDeptAuthServiceImpl implements IYalDeptAuthService
             result = yalDeptAuthMapper.batchInsertYalDeptAuth(authList);
         }
 
-        try
-        {
-            syncToYiAnLian(deptId, authList);
-        }
-        catch (Exception e)
-        {
-            log.error("同步部门授权到易安联失败, deptId: {}, 错误: ", deptId, e);
-        }
+        // 远程同步失败将抛出异常，触发本地事务回滚（远程失败则本地不变更）
+        syncToYiAnLian(deptId, authList);
 
         return result;
     }
@@ -254,7 +249,7 @@ public class YalDeptAuthServiceImpl implements IYalDeptAuthService
                 Boolean success = yiAnLianAuthorityService.grantGroupAuthority(appId, requestList);
                 if (!Boolean.TRUE.equals(success))
                 {
-                    log.warn("同步部门[{}]授权到易安联线路[{}]失败", deptId, appId);
+                    throw new YiAnLianException("同步部门授权到易安联线路[" + appId + "]失败");
                 }
                 else
                 {

@@ -14,6 +14,12 @@ QString HttpUtil::sanitizeForLog(const QString &text)
     if (passwordRe.isValid()) {
         out.replace(passwordRe, QStringLiteral("\\1***"));
     }
+    static const QRegularExpression jsonSecretRe(
+        QStringLiteral("\"(password|appSecret|spaKey)\"\\s*:\\s*\"[^\"]*\""),
+        QRegularExpression::CaseInsensitiveOption);
+    if (jsonSecretRe.isValid()) {
+        out.replace(jsonSecretRe, QStringLiteral("\"\\1\":\"***\""));
+    }
     return out;
 }
 

@@ -7,16 +7,15 @@ import com.ruoyi.common.log.annotation.Log;
 import com.ruoyi.common.log.enums.BusinessType;
 import com.ruoyi.common.security.annotation.RequiresPermissions;
 import com.ruoyi.common.security.utils.SecurityUtils;
-import com.ruoyi.yianlian.client.dto.YiAnLianServiceGroupListResp;
-import com.ruoyi.yianlian.client.dto.vo.YiAnLianServiceGroupVO;
 import com.ruoyi.yianlian.domain.VpnServiceGroup;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncCommand;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncConstants;
+import com.ruoyi.yianlian.service.sync.orchestrator.YiAnLianSyncOrchestrator;
 import com.ruoyi.yianlian.service.vpn.IVpnServiceGroupService;
-import com.ruoyi.yianlian.service.yianlian.IYiAnLianServiceGroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -30,7 +29,7 @@ public class VpnServiceGroupController extends BaseController
     private IVpnServiceGroupService serviceGroupService;
 
     @Autowired
-    private IYiAnLianServiceGroupService yiAnLianServiceGroupService;
+    private YiAnLianSyncOrchestrator syncOrchestrator;
 
     /**
      * 获取应用组列表
@@ -90,34 +89,9 @@ public class VpnServiceGroupController extends BaseController
             return rootCheck;
         }
         serviceGroup.setCreateBy(SecurityUtils.getUsername());
-        // 先同步到易安联，获取返回的key
-        YiAnLianServiceGroupVO vo = new YiAnLianServiceGroupVO();
-      vo.setName(serviceGroup.getGroupName());
-        vo.setDescription(serviceGroup.getDescription());
-        vo.setParentId("0");
-        vo.setPath("/" + serviceGroup.getGroupName());
-        // 如果有父节点，用父节点本地存的yianlianKey作为parentId
-        if (serviceGroup.getParentId() != null && serviceGroup.getParentId() != 0)
-      {
-            VpnServiceGroup parent = serviceGroupService.selectServiceGroupById(serviceGroup.getParentId());
-         if (parent != null && StringUtils.isNotEmpty(parent.getYianlianKey()))
-            {
-                vo.setParentId(parent.getYianlianKey());
-                vo.setPath(parent.getGroupName() + "/" + serviceGroup.getGroupName());
-            }
-        }
-        String yianlianKey = yiAnLianServiceGroupService.create(serviceGroup.getAppId(), vo);
-        if (StringUtils.isNotEmpty(yianlianKey))
-        {
-        serviceGroup.setYianlianKey(yianlianKey);
-        }
-        else
-        {
-          logger.error("同步创建应用组到易安联失败, appId: {}, groupName: {}", serviceGroup.getAppId(), serviceGroup.getGroupName());
-        }
-        // 本地入库
-      int ret = serviceGroupService.insertServiceGroup(serviceGroup);
-        return toAjax(ret);
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_SERVICE_GROUP, SyncConstants.OP_CREATE,
+            serviceGroup.getAppId(), null, serviceGroup));
+        return success();
     }
 
     /**
@@ -143,21 +117,10 @@ public class VpnServiceGroupController extends BaseController
             return error("应用组不存在");
         }
         serviceGroup.setUpdateBy(SecurityUtils.getUsername());
-        // 同步到易安联
-        if (StringUtils.isNotEmpty(oldGroup.getYianlianKey()))
-        {
-            String appId = serviceGroup.getAppId() != null ? serviceGroup.getAppId() : oldGroup.getAppId();
-            YiAnLianServiceGroupVO updateVO = new YiAnLianServiceGroupVO();
-            updateVO.setId(oldGroup.getYianlianKey());
-            updateVO.setName(serviceGroup.getGroupName());
-            updateVO.setDescription(serviceGroup.getDescription());
-            Boolean syncResult = yiAnLianServiceGroupService.update(appId, updateVO);
-            if (syncResult == null || !syncResult)
-            {
-                logger.error("同步更新应用组到易安联失败, appId: {}, key: {}", appId, oldGroup.getYianlianKey());
-        }
-        }
-        return toAjax(serviceGroupService.updateServiceGroup(serviceGroup));
+        String appId = serviceGroup.getAppId() != null ? serviceGroup.getAppId() : oldGroup.getAppId();
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_SERVICE_GROUP, SyncConstants.OP_UPDATE,
+            appId, serviceGroup.getId(), serviceGroup));
+        return success();
     }
 
     /**
@@ -177,18 +140,9 @@ public class VpnServiceGroupController extends BaseController
         {
             return error("应用组不存在");
         }
-        // 同步删除易安联
-        if (StringUtils.isNotEmpty(group.getYianlianKey()))
-        {
-            List<String> deleteIds = new ArrayList<>();
-            deleteIds.add(group.getYianlianKey());
-            Boolean syncResult = yiAnLianServiceGroupService.delete(group.getAppId(), deleteIds);
-            if (syncResult == null || !syncResult)
-            {
-                logger.error("同步删除应用组到易安联失败, appId: {}, key: {}", group.getAppId(), group.getYianlianKey());
-            }
-        }
-        return toAjax(serviceGroupService.deleteServiceGroupById(id));
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_SERVICE_GROUP, SyncConstants.OP_DELETE,
+            group.getAppId(), id, null));
+        return success();
     }
 
     /**

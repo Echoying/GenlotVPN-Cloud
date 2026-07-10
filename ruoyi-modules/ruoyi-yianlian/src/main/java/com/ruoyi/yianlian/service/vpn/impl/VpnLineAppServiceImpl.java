@@ -40,6 +40,10 @@ public class VpnLineAppServiceImpl implements IVpnLineAppService
     @Override
     public LineApp getLineAppByAppId(String appId){
 
+        if (StringUtils.isEmpty(appId))
+        {
+            return null;
+        }
         // 先redis获取
         LineApp lineApp = redisService.getCacheObject(buildCacheKey(appId));
         if(lineApp == null){

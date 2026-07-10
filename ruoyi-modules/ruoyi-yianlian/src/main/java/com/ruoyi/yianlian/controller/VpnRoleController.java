@@ -10,6 +10,10 @@ import com.ruoyi.common.log.enums.BusinessType;
 import com.ruoyi.common.security.annotation.RequiresPermissions;
 import com.ruoyi.common.security.utils.SecurityUtils;
 import com.ruoyi.yianlian.domain.VpnRole;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncCommand;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncConstants;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncDeferredException;
+import com.ruoyi.yianlian.service.sync.orchestrator.YiAnLianSyncOrchestrator;
 import com.ruoyi.yianlian.service.vpn.IVpnRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -29,6 +33,9 @@ public class VpnRoleController extends BaseController {
 
     @Autowired
     private IVpnRoleService roleService;
+
+    @Autowired
+    private YiAnLianSyncOrchestrator syncOrchestrator;
 
     @RequiresPermissions("yianlian:role:list")
     @GetMapping("/list")
@@ -68,8 +75,9 @@ public class VpnRoleController extends BaseController {
             return error("新增角色'" + role.getRoleName() + "'失败，角色权限字符已存在");
         }
         role.setCreateBy(SecurityUtils.getUsername());
-        int rows = roleService.insertRoleWithSync(role);
-        return rows > 0 ? success(role.getRoleId()) : error("新增角色失败");
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_ROLE, SyncConstants.OP_CREATE,
+            role.getAppId(), null, role));
+        return success(role.getRoleId());
     }
 
     @RequiresPermissions("yianlian:role:edit")
@@ -87,7 +95,9 @@ public class VpnRoleController extends BaseController {
             return error("修改角色'" + role.getRoleName() + "'失败，角色权限字符已存在");
         }
         role.setUpdateBy(SecurityUtils.getUsername());
-        return toAjax(roleService.updateRoleWithSync(role));
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_ROLE, SyncConstants.OP_UPDATE,
+            role.getAppId(), role.getRoleId(), role));
+        return success();
     }
 
     @RequiresPermissions("yianlian:role:edit")
@@ -102,7 +112,23 @@ public class VpnRoleController extends BaseController {
     @Log(title = "VPN角色管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{roleIds}")
     public AjaxResult remove(@PathVariable Long[] roleIds) {
-        return toAjax(roleService.deleteRoleByIdsWithSync(roleIds));
+        boolean anyDeferred = false;
+        for (Long roleId : roleIds) {
+            VpnRole role = roleService.selectRoleById(roleId);
+            if (role == null) {
+                continue;
+            }
+            try {
+                syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_ROLE, SyncConstants.OP_DELETE,
+                    role.getAppId(), roleId, null));
+            } catch (SyncDeferredException e) {
+                anyDeferred = true;
+            }
+        }
+        if (anyDeferred) {
+            throw new SyncDeferredException(null, "部分角色代理暂不可用，已加入补偿队列，稍后自动重试");
+        }
+        return success();
     }
 
     @RequiresPermissions("yianlian:role:query")

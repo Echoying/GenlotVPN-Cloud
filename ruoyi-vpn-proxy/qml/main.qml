@@ -1,10 +1,11 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Window
 import GenlotVPNProxy 1.0
 
 ApplicationWindow {
     id: appWindow
-    visible: true
+    visibility: Window.Maximized
     width: Theme.appListWindowWidth
     height: Theme.appListWindowHeight
     minimumWidth: Theme.appListWindowMinWidth
@@ -12,7 +13,11 @@ ApplicationWindow {
     title: qsTr("GenlotVPN Proxy")
     color: Theme.windowBg
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowSystemMenuHint
-           | Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint
+           | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
+
+    Component.onCompleted: {
+        visibility = Window.Maximized
+    }
 
     onClosing: function(close) {
         if (vpnTray.available) {

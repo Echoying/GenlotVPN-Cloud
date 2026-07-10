@@ -10,6 +10,9 @@ ProxySessionController::ProxySessionController(const AppConfig &config, QObject 
     , m_config(config)
 {
     m_controller = new ControllerHttpClient(config.controllerBaseUrl, config.controllerAesEnabled, this);
+    m_controller->setSessionLogCallback([this](const SessionLogPayload &payload) {
+        addSessionLog(payload);
+    });
     m_proxy = new OpenApiProxyService(this);
     m_sessionLogs = new SessionLogModel(this);
     m_adminEndpoint = QStringLiteral("http://%1:%2").arg(config.adminListenHost).arg(config.adminListenPort);
@@ -34,11 +37,19 @@ void ProxySessionController::setSessionState(const QString &state)
     emit sessionStateChanged();
 }
 
-void ProxySessionController::addSessionLog(const QString &type, const QString &message)
+void ProxySessionController::addSessionLog(const SessionLogPayload &payload)
 {
     if (m_sessionLogs) {
-        m_sessionLogs->append(type, message);
+        m_sessionLogs->append(payload);
     }
+}
+
+void ProxySessionController::addSessionLog(const QString &type, const QString &message)
+{
+    SessionLogPayload payload;
+    payload.type = type;
+    payload.message = message;
+    addSessionLog(payload);
 }
 
 QVariantMap ProxySessionController::jsonToLine(const QJsonObject &lineObj)
@@ -122,7 +133,6 @@ QJsonObject ProxySessionController::handleLogin(const QJsonObject &body)
     m_upstreamUrl = upstream;
     emit upstreamUrlChanged();
 
-    addSessionLog(QStringLiteral("info"), QStringLiteral("开始 30303 detect..."));
     const ControllerHttpClient::ConnectResult result = m_controller->connectLine(line, username, password);
     if (!result.ok) {
         m_proxy->clearUpstream();
@@ -138,10 +148,27 @@ QJsonObject ProxySessionController::handleLogin(const QJsonObject &body)
 
     m_tunnelStatus = result.tunnelStatus;
     emit tunnelStatusChanged();
+
+    const ControllerHttpClient::UpstreamReadyResult readyResult =
+        m_controller->waitUpstreamTokenReachable(m_upstreamUrl);
+    if (!readyResult.ok) {
+        QString logoutError;
+        m_controller->logout(&logoutError);
+        m_proxy->clearUpstream();
+        m_upstreamUrl.clear();
+        emit upstreamUrlChanged();
+        m_tunnelStatus = -1;
+        emit tunnelStatusChanged();
+        setSessionState(QStringLiteral("error"));
+        addSessionLog(QStringLiteral("error"), readyResult.error);
+        m_busy = false;
+        return {{QStringLiteral("code"), 500}, {QStringLiteral("msg"), readyResult.error}};
+    }
+
     m_proxy->setVpnReady(true);
     setSessionState(QStringLiteral("ready"));
     addSessionLog(QStringLiteral("info"),
-                  QStringLiteral("30303 连接成功，隧道状态=%1，同步代理已开启 %2")
+                  QStringLiteral("30303 连接成功，上游 token 已可达，隧道状态=%1，同步代理已开启 %2")
                       .arg(m_tunnelStatus)
                       .arg(m_proxy->listenEndpoint()));
     m_busy = false;
@@ -157,6 +184,17 @@ QJsonObject ProxySessionController::handleLogin(const QJsonObject &body)
 
 QJsonObject ProxySessionController::handleProbe(const QJsonObject &body)
 {
+    // 同步会话进行中（connecting/ready）时跳过探测，避免打断已建立的隧道
+    if (m_sessionState == QStringLiteral("ready") || m_sessionState == QStringLiteral("connecting")) {
+        addSessionLog(QStringLiteral("info"), QStringLiteral("同步会话进行中，本次探测已跳过"));
+        QJsonObject data;
+        data.insert(QStringLiteral("skipped"), true);
+        data.insert(QStringLiteral("available"), QJsonValue());
+        return {{QStringLiteral("code"), 200},
+                {QStringLiteral("msg"), QStringLiteral("同步会话进行中，跳过探测")},
+                {QStringLiteral("data"), data}};
+    }
+
     const QJsonObject lineObj = body.value(QStringLiteral("line")).toObject();
     const QVariantMap line = jsonToLine(lineObj);
     const QString host = line.value(QStringLiteral("host")).toString().trimmed();

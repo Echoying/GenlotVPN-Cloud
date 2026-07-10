@@ -1,5 +1,6 @@
 package com.ruoyi.yianlian.service.impl;
 
+import com.ruoyi.common.core.exception.yianlian.YiAnLianException;
 import com.ruoyi.common.core.utils.DateUtils;
 import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.yianlian.client.dto.YiAnLianUserAuthRequest;
@@ -143,15 +144,8 @@ public class YalUserAuthServiceImpl implements IYalUserAuthService
             result = yalUserAuthMapper.batchInsertYalUserAuth(authList);
         }
 
-        // 同步给易安联
-        try
-        {
-            syncToYiAnLian(userId, authList);
-        }
-        catch (Exception e)
-      {
-            log.error("同步用户授权到易安联失败, userId: {}, 错误: ", userId, e);
-        }
+        // 远程同步失败将抛出异常，触发本地事务回滚（远程失败则本地不变更）
+        syncToYiAnLian(userId, authList);
 
         return result;
     }
@@ -247,7 +241,7 @@ public class YalUserAuthServiceImpl implements IYalUserAuthService
                 Boolean success = yiAnLianAuthorityService.grantUserAuthority(appId, requestList);
                 if (!Boolean.TRUE.equals(success))
                 {
-                  log.warn("同步用户[{}]授权到易安联线路[{}]失败", userId, appId);
+                    throw new YiAnLianException("同步用户授权到易安联线路[" + appId + "]失败");
                 }
            else
              {

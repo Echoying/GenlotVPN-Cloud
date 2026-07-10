@@ -52,6 +52,7 @@ signals:
 
 private:
     void setSessionState(const QString &state);
+    void addSessionLog(const SessionLogPayload &payload);
     void addSessionLog(const QString &type, const QString &message);
     static QVariantMap jsonToLine(const QJsonObject &lineObj);
     static QStringList parseAllowedIps(const QJsonObject &proxyObj, const QStringList &defaults);

@@ -89,9 +89,12 @@ void TrayIcon::raiseWindow()
         return;
     }
     if (m_window->visibility() == QWindow::Minimized) {
-        m_window->showNormal();
+        m_window->showMaximized();
     } else {
         m_window->show();
+        if (m_window->visibility() != QWindow::Maximized) {
+            m_window->showMaximized();
+        }
     }
     m_window->raise();
     m_window->requestActivate();

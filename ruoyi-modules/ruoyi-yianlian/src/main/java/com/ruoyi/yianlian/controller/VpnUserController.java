@@ -21,6 +21,12 @@ import com.ruoyi.yianlian.constant.SyncProxyConstants;
 import com.ruoyi.yianlian.domain.VpnRole;
 import com.ruoyi.yianlian.domain.VpnUser;
 import com.ruoyi.yianlian.domain.vo.VpnLineBatchSyncRequest;
+import com.ruoyi.yianlian.service.sync.handler.payload.AssignRolesPayload;
+import com.ruoyi.yianlian.service.sync.handler.payload.ResetPwdPayload;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncCommand;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncConstants;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncDeferredException;
+import com.ruoyi.yianlian.service.sync.orchestrator.YiAnLianSyncOrchestrator;
 import com.ruoyi.yianlian.service.vpn.IVpnLocalUserSyncService;
 import com.ruoyi.yianlian.service.vpn.IVpnDeptService;
 import com.ruoyi.yianlian.service.vpn.IVpnLineAuthService;
@@ -62,6 +68,9 @@ public class VpnUserController extends BaseController {
 
     @Autowired
     private AesUtils aesUtils;
+
+    @Autowired
+    private YiAnLianSyncOrchestrator syncOrchestrator;
 
     /**
      * 获取用户授权线路列表（供Feign调用）
@@ -182,7 +191,10 @@ public class VpnUserController extends BaseController {
     @Log(title = "用户管理", businessType = BusinessType.GRANT)
     @PutMapping("/authRole")
     public AjaxResult insertAuthRole(Long userId, Long[] roleIds) {
-        userService.insertUserAuth(userId, roleIds);
+        VpnUser user = userService.selectUserById(userId);
+        String appId = user != null ? user.getAppId() : null;
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_VPN_USER, SyncConstants.OP_ASSIGN_ROLES,
+            appId, userId, new AssignRolesPayload(userId, roleIds)));
         return success();
     }
 
@@ -195,7 +207,9 @@ public class VpnUserController extends BaseController {
             return error("修改用户'" + user.getUserName() + "'失败，登录账号已存在");
         }
         user.setUpdateBy(SecurityUtils.getUsername());
-        return toAjax(userService.updateUserWithSync(user));
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_VPN_USER, SyncConstants.OP_UPDATE,
+            user.getAppId(), user.getUserId(), user));
+        return success();
     }
 
     @RequiresPermissions("vpn:user:remove")
@@ -205,28 +219,62 @@ public class VpnUserController extends BaseController {
         if (ArrayUtils.contains(userIds, SecurityUtils.getUserId())) {
             return error("当前用户不能删除");
         }
-        return toAjax(userService.deleteUserByIdsWithSync(userIds));
+        boolean anyDeferred = false;
+        for (Long userId : userIds) {
+            VpnUser user = userService.selectUserById(userId);
+            if (user == null) {
+                continue;
+            }
+            try {
+                syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_VPN_USER, SyncConstants.OP_DELETE,
+                    user.getAppId(), userId, null));
+            } catch (SyncDeferredException e) {
+                anyDeferred = true;
+            }
+        }
+        if (anyDeferred) {
+            throw new SyncDeferredException(null, "部分用户代理暂不可用，已加入补偿队列，稍后自动重试");
+        }
+        return success();
     }
 
     @RequiresPermissions("vpn:user:resetPwd")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping("/resetPwd")
     public AjaxResult resetPwd(@RequestBody VpnUser user) {
-        userService.checkUserAllowed(user);
+        VpnUser dbUser = userService.selectUserById(user.getUserId());
+        if (dbUser == null)
+        {
+            return error("用户不存在");
+        }
+        userService.checkUserAllowed(dbUser);
         String plainPassword = user.getPassword();
-        user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
+        user.setAppId(dbUser.getAppId());
+        user.setUserName(dbUser.getUserName());
+        user.setPassword(SecurityUtils.encryptPassword(plainPassword));
         user.setEncryptedPwd(aesUtils.encrypt(plainPassword));
         user.setUpdateBy(SecurityUtils.getUsername());
-        return toAjax(userService.resetPwdWithSync(user, plainPassword));
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_VPN_USER, SyncConstants.OP_RESET_PASSWORD,
+            dbUser.getAppId(), user.getUserId(), new ResetPwdPayload(user, plainPassword)));
+        return success();
     }
 
     @RequiresPermissions("vpn:user:edit")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
     @PutMapping("/changeStatus")
     public AjaxResult changeStatus(@RequestBody VpnUser user) {
-        userService.checkUserAllowed(user);
+        VpnUser dbUser = userService.selectUserById(user.getUserId());
+        if (dbUser == null)
+        {
+            return error("用户不存在");
+        }
+        userService.checkUserAllowed(dbUser);
+        user.setAppId(dbUser.getAppId());
+        user.setUserName(dbUser.getUserName());
         user.setUpdateBy(SecurityUtils.getUsername());
-        return toAjax(userService.updateUserStatusWithSync(user));
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_VPN_USER, SyncConstants.OP_CHANGE_STATUS,
+            dbUser.getAppId(), user.getUserId(), user));
+        return success();
     }
 
     @InnerAuth

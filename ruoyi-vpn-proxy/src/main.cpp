@@ -162,6 +162,7 @@ int main(int argc, char *argv[])
         if (!appIcon.isNull()) {
             mainWindow->setIcon(appIcon);
         }
+        mainWindow->showMaximized();
     }
     QObject::connect(&trayIcon, &vpnproxy::TrayIcon::quitRequested, &app, &QCoreApplication::quit);
 

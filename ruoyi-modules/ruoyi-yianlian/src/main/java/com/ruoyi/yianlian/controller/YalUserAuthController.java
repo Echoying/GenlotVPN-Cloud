@@ -9,6 +9,9 @@ import com.ruoyi.common.security.utils.SecurityUtils;
 import com.ruoyi.yianlian.domain.YalUserAuth;
 import com.ruoyi.yianlian.domain.YalUserAuthBatchDTO;
 import com.ruoyi.yianlian.service.IYalUserAuthService;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncCommand;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncConstants;
+import com.ruoyi.yianlian.service.sync.orchestrator.YiAnLianSyncOrchestrator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,6 +28,9 @@ public class YalUserAuthController extends BaseController
 {
     @Autowired
     private IYalUserAuthService yalUserAuthService;
+
+    @Autowired
+    private YiAnLianSyncOrchestrator syncOrchestrator;
 
     /**
      * 获取用户授权列表
@@ -95,7 +101,9 @@ public class YalUserAuthController extends BaseController
     @PostMapping("/batchSave")
     public AjaxResult batchSave(@RequestBody YalUserAuthBatchDTO batchDTO)
     {
-        return toAjax(yalUserAuthService.batchSaveUserAuth(batchDTO.getUserId(), batchDTO.getLineId(), batchDTO.getAuthList()));
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_YAL_USER_AUTH, SyncConstants.OP_UPDATE,
+            batchDTO.getLineId(), batchDTO.getUserId(), batchDTO));
+        return success();
     }
 
     /**

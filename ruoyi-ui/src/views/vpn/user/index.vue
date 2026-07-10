@@ -588,7 +588,7 @@ export default {
     handleStatusChange(row) {
       let text = row.status === "0" ? "启用" : "停用"
       this.$modal.confirm('确认要"' + text + '""' + row.userName + '"用户吗？').then(function() {
-        return changeUserStatus(row.userId, row.status)
+        return changeUserStatus(row.userId, row.status, row.appId || this.currentAppId)
       }).then(() => {
         this.$modal.msgSuccess(text + "成功")
       }).catch(function() {
@@ -693,7 +693,7 @@ export default {
           }
         },
       }).then(({ value }) => {
-        resetUserPwd(row.userId, value).then(() => {
+        resetUserPwd(row.userId, value, row.appId || this.currentAppId).then(() => {
           this.$modal.msgSuccess("修改成功，新密码是：" + value)
         })
       }).catch(() => {})

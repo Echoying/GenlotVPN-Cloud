@@ -42,6 +42,31 @@ public class SyncProxyEndpointResolver
         return scheme + "://" + host + ":" + port;
     }
 
+    /**
+     * 代理管理 API 基址（login/logout/probe），host 优先取线路 proxy_host，端口为管理端口
+     */
+    public String resolveAdminBaseUrl(LineApp lineApp)
+    {
+        String host = lineApp != null && StringUtils.isNotEmpty(lineApp.getProxyHost())
+            ? lineApp.getProxyHost().trim()
+            : syncProxyProperties.getDefaultHost();
+        String scheme = StringUtils.isNotEmpty(syncProxyProperties.getDefaultScheme())
+            ? syncProxyProperties.getDefaultScheme().trim()
+            : "http";
+        return scheme + "://" + host + ":" + syncProxyProperties.getProxyAdminPort();
+    }
+
+    /**
+     * 代理会话的唯一标识（host:adminPort），用于 Redis 分布式锁与活跃标记
+     */
+    public String resolveAdminKey(LineApp lineApp)
+    {
+        String host = lineApp != null && StringUtils.isNotEmpty(lineApp.getProxyHost())
+            ? lineApp.getProxyHost().trim()
+            : syncProxyProperties.getDefaultHost();
+        return host + ":" + syncProxyProperties.getProxyAdminPort();
+    }
+
     public String resolveListenHost(LineApp lineApp)
     {
         if (lineApp != null && StringUtils.isNotEmpty(lineApp.getProxyHost()))

@@ -6,7 +6,8 @@ import { Message, MessageBox } from 'element-ui'
 
 const service = axios.create({
   baseURL: process.env.VUE_APP_BASE_API,
-  timeout: 10000
+  // 超时（修改密码等需同步易安联，先登录代理，故放宽到180s）
+  timeout: 180000
 })
 
 service.interceptors.request.use(config => {

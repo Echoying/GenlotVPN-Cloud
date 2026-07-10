@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.yianlian.mapper.YianlianSyncTaskMapper">
+
+    <resultMap type="com.ruoyi.yianlian.domain.YianlianSyncTask" id="YianlianSyncTaskResult">
+        <id     property="taskId"        column="task_id"         />
+        <result property="bizType"       column="biz_type"        />
+        <result property="operation"     column="operation"       />
+        <result property="appId"         column="app_id"          />
+        <result property="bizId"         column="biz_id"          />
+        <result property="payload"       column="payload"         />
+        <result property="status"        column="status"          />
+        <result property="retryCount"    column="retry_count"     />
+        <result property="priority"      column="priority"        />
+        <result property="lastError"     column="last_error"      />
+        <result property="nextRetryTime" column="next_retry_time" />
+        <result property="createBy"      column="create_by"       />
+        <result property="createTime"    column="create_time"     />
+        <result property="updateTime"    column="update_time"     />
+    </resultMap>
+
+    <sql id="selectVo">
+        select task_id, biz_type, operation, app_id, biz_id, payload, status, retry_count,
+               priority, last_error, next_retry_time, create_by, create_time, update_time
+        from yianlian_sync_task
+    </sql>
+
+    <insert id="insert" parameterType="com.ruoyi.yianlian.domain.YianlianSyncTask" useGeneratedKeys="true" keyProperty="taskId">
+        insert into yianlian_sync_task(
+            biz_type, operation, app_id, biz_id, payload, status, retry_count, priority,
+            last_error, next_retry_time, create_by, create_time
+        ) values (
+            #{bizType}, #{operation}, #{appId}, #{bizId}, #{payload},
+            #{status}, #{retryCount}, #{priority}, #{lastError}, #{nextRetryTime},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="update" parameterType="com.ruoyi.yianlian.domain.YianlianSyncTask">
+        update yianlian_sync_task
+        <set>
+            <if test="bizType != null">biz_type = #{bizType},</if>
+            <if test="operation != null">operation = #{operation},</if>
+            <if test="appId != null">app_id = #{appId},</if>
+            <if test="bizId != null">biz_id = #{bizId},</if>
+            <if test="payload != null">payload = #{payload},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="retryCount != null">retry_count = #{retryCount},</if>
+            <if test="priority != null">priority = #{priority},</if>
+            <if test="lastError != null">last_error = #{lastError},</if>
+            next_retry_time = #{nextRetryTime},
+            update_time = sysdate()
+        </set>
+        where task_id = #{taskId}
+    </update>
+
+    <select id="selectById" resultMap="YianlianSyncTaskResult">
+        <include refid="selectVo"/>
+        where task_id = #{taskId}
+    </select>
+
+    <select id="selectPendingDuplicate" resultMap="YianlianSyncTaskResult">
+        <include refid="selectVo"/>
+        where status = '0'
+          and biz_type = #{bizType}
+          and operation = #{operation}
+          and app_id = #{appId}
+          <choose>
+              <when test="bizId != null and bizId != ''">and biz_id = #{bizId}</when>
+              <otherwise>and biz_id is null</otherwise>
+          </choose>
+        limit 1
+    </select>
+
+    <select id="selectDueAppIds" resultType="java.lang.String">
+        select app_id
+        from yianlian_sync_task
+        where status = '0'
+          and (next_retry_time is null or next_retry_time &lt;= now())
+        group by app_id
+        order by min(priority) asc, min(task_id) asc
+        limit #{limit}
+    </select>
+
+    <select id="selectDueTasksByAppId" resultMap="YianlianSyncTaskResult">
+        <include refid="selectVo"/>
+        where status = '0'
+          and app_id = #{appId}
+          and (next_retry_time is null or next_retry_time &lt;= now())
+        order by priority asc, task_id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectDueTasksForClaim" resultMap="YianlianSyncTaskResult">
+        <include refid="selectVo"/>
+        where status = '0'
+          and app_id = #{appId}
+          and (next_retry_time is null or next_retry_time &lt;= now())
+        order by priority asc, task_id asc
+        limit #{limit}
+        for update
+    </select>
+
+    <update id="claimTasks">
+        update yianlian_sync_task
+        set status = '1',
+            update_time = sysdate()
+        where status = '0'
+          and task_id in
+        <foreach collection="taskIds" item="taskId" open="(" separator="," close=")">
+            #{taskId}
+        </foreach>
+    </update>
+
+    <update id="resetStaleProcessing">
+        update yianlian_sync_task
+        set status = '0',
+            last_error = '处理超时，重新排队',
+            update_time = sysdate()
+        where status = '1'
+          and update_time &lt; date_sub(now(), interval #{staleMinutes} minute)
+    </update>
+
+    <select id="countDueTasks" resultType="int">
+        select count(1)
+        from yianlian_sync_task
+        where status = '0'
+          and (next_retry_time is null or next_retry_time &lt;= now())
+    </select>
+
+    <select id="selectList" parameterType="com.ruoyi.yianlian.domain.YianlianSyncTask" resultMap="YianlianSyncTaskResult">
+        select task_id, biz_type, operation, app_id, biz_id, status, retry_count,
+               priority, last_error, next_retry_time, create_by, create_time, update_time
+        from yianlian_sync_task
+        <where>
+            <if test="status != null and status != ''">
+                and status = #{status}
+            </if>
+            <if test="bizType != null and bizType != ''">
+                and biz_type = #{bizType}
+            </if>
+            <if test="operation != null and operation != ''">
+                and operation = #{operation}
+            </if>
+            <if test="bizId != null and bizId != ''">
+                and biz_id like concat('%', #{bizId}, '%')
+            </if>
+            <if test="params.appIdList != null">
+                and app_id in
+                <foreach collection="params.appIdList" item="appId" open="(" separator="," close=")">
+                    #{appId}
+                </foreach>
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and create_time &lt;= #{params.endTime}
+            </if>
+        </where>
+        order by task_id desc
+    </select>
+
+</mapper>

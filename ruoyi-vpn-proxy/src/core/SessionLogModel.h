@@ -6,11 +6,22 @@
 
 namespace vpnproxy {
 
+struct SessionLogPayload {
+    QString type;
+    QString message;
+    QString requestLog;
+    QString responseLog;
+    qint64 elapsedMs = -1;
+};
+
 struct SessionLogEntry {
     QString id;
     QDateTime time;
     QString type;
     QString message;
+    QString requestLog;
+    QString responseLog;
+    qint64 elapsedMs = -1;
 };
 
 class SessionLogModel : public QAbstractListModel {
@@ -22,7 +33,10 @@ public:
         IdRole = Qt::UserRole + 1,
         TimeRole,
         TypeRole,
-        MessageRole
+        MessageRole,
+        RequestLogRole,
+        ResponseLogRole,
+        ElapsedMsRole
     };
 
     explicit SessionLogModel(QObject *parent = nullptr);
@@ -32,7 +46,7 @@ public:
     QHash<int, QByteArray> roleNames() const override;
     int count() const { return m_entries.size(); }
 
-    void append(const QString &type, const QString &message);
+    void append(const SessionLogPayload &payload);
     Q_INVOKABLE void clear();
 
 signals:

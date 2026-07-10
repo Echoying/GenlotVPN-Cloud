@@ -50,6 +50,9 @@ public class OpenApiClient
     @Autowired
     private SyncProxyEndpointResolver syncProxyEndpointResolver;
 
+    @Autowired
+    private com.ruoyi.yianlian.service.sync.ProxySessionScope proxySessionScope;
+
     private static final Logger log = LoggerFactory.getLogger(OpenApiClient.class);
 
     private static final int TOKEN_RETRY_MAX = 2;
@@ -65,19 +68,22 @@ public class OpenApiClient
     {
         try
         {
-            LineApp lineApp = requireLineApp(appId);
-            String responseStr = invokePostWithTokenRetry(lineApp, path, body);
-
-            if (responseType == Boolean.class)
+            return proxySessionScope.run(appId, () ->
             {
-                return parseBooleanResponse(responseStr);
-            }
+                LineApp lineApp = requireLineApp(appId);
+                String responseStr = invokePostWithTokenRetry(lineApp, path, body);
 
-            YiAnLianResponse<T> response = objectMapper.readValue(
-                responseStr,
-                objectMapper.getTypeFactory().constructParametricType(YiAnLianResponse.class, responseType)
-            );
-            return requireSuccessData(response);
+                if (responseType == Boolean.class)
+                {
+                    return parseBooleanResponse(responseStr);
+                }
+
+                YiAnLianResponse<T> response = objectMapper.readValue(
+                    responseStr,
+                    objectMapper.getTypeFactory().constructParametricType(YiAnLianResponse.class, responseType)
+                );
+                return requireSuccessData(response);
+            });
         }
         catch (YiAnLianException e)
         {
@@ -95,17 +101,20 @@ public class OpenApiClient
     {
         try
         {
-            LineApp lineApp = requireLineApp(appId);
-            String responseStr = invokePostWithTokenRetry(lineApp, path, body);
+            return proxySessionScope.run(appId, () ->
+            {
+                LineApp lineApp = requireLineApp(appId);
+                String responseStr = invokePostWithTokenRetry(lineApp, path, body);
 
-            YiAnLianResponse<java.util.List<T>> response = objectMapper.readValue(
-                responseStr,
-                objectMapper.getTypeFactory().constructParametricType(
-                    YiAnLianResponse.class,
-                    objectMapper.getTypeFactory().constructCollectionType(java.util.List.class, elementType)
-                )
-            );
-            return requireSuccessData(response);
+                YiAnLianResponse<java.util.List<T>> response = objectMapper.readValue(
+                    responseStr,
+                    objectMapper.getTypeFactory().constructParametricType(
+                        YiAnLianResponse.class,
+                        objectMapper.getTypeFactory().constructCollectionType(java.util.List.class, elementType)
+                    )
+                );
+                return requireSuccessData(response);
+            });
         }
         catch (YiAnLianException e)
         {
@@ -169,40 +178,43 @@ public class OpenApiClient
     {
         try
         {
-            LineApp lineApp = requireLineApp(appId);
-            String url = resolveApiBaseUrl(lineApp) + path;
-            if (queryParams != null && !queryParams.isEmpty())
+            return proxySessionScope.run(appId, () ->
             {
-                StringBuilder queryString = new StringBuilder("?");
-                for (java.util.Map.Entry<String, Object> entry : queryParams.entrySet())
+                LineApp lineApp = requireLineApp(appId);
+                String url = resolveApiBaseUrl(lineApp) + path;
+                if (queryParams != null && !queryParams.isEmpty())
                 {
-                    if (entry.getValue() != null)
+                    StringBuilder queryString = new StringBuilder("?");
+                    for (java.util.Map.Entry<String, Object> entry : queryParams.entrySet())
                     {
-                        queryString.append(entry.getKey())
-                            .append("=")
-                            .append(java.net.URLEncoder.encode(String.valueOf(entry.getValue()), "UTF-8"))
-                            .append("&");
+                        if (entry.getValue() != null)
+                        {
+                            queryString.append(entry.getKey())
+                                .append("=")
+                                .append(java.net.URLEncoder.encode(String.valueOf(entry.getValue()), "UTF-8"))
+                                .append("&");
+                        }
+                    }
+                    if (queryString.length() > 1)
+                    {
+                        queryString.setLength(queryString.length() - 1);
+                        url += queryString.toString();
                     }
                 }
-                if (queryString.length() > 1)
+
+                String responseStr = invokeGetWithTokenRetry(lineApp, url);
+
+                if (responseType == Boolean.class)
                 {
-                    queryString.setLength(queryString.length() - 1);
-                    url += queryString.toString();
+                    return parseBooleanResponse(responseStr);
                 }
-            }
 
-            String responseStr = invokeGetWithTokenRetry(lineApp, url);
-
-            if (responseType == Boolean.class)
-            {
-                return parseBooleanResponse(responseStr);
-            }
-
-            YiAnLianResponse<T> response = objectMapper.readValue(
-                responseStr,
-                objectMapper.getTypeFactory().constructParametricType(YiAnLianResponse.class, responseType)
-            );
-            return requireSuccessData(response);
+                YiAnLianResponse<T> response = objectMapper.readValue(
+                    responseStr,
+                    objectMapper.getTypeFactory().constructParametricType(YiAnLianResponse.class, responseType)
+                );
+                return requireSuccessData(response);
+            });
         }
         catch (YiAnLianException e)
         {

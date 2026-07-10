@@ -3,6 +3,8 @@ package com.ruoyi.yianlian.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+import com.ruoyi.yianlian.constant.SyncProxyConstants;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,6 +35,30 @@ public class SyncProxyProperties
 
     /** 线路探测调用代理管理 API 读超时（毫秒），略大于代理端 30303 detect 超时 */
     private int probeReadTimeoutMs = 35000;
+
+    /** 实时 API 触发的代理 login 最大尝试次数（失败即入队补偿） */
+    private int loginMaxAttemptsApi = 1;
+
+    /** 定时补偿 Job 触发的代理 login 最大尝试次数 */
+    private int loginMaxAttemptsJob = 3;
+
+    /** 代理 login 两次尝试之间的间隔（毫秒） */
+    private long loginRetryIntervalMs = 10000L;
+
+    /** 单次代理 login/logout HTTP 读超时（毫秒），需覆盖 30303 建隧道全过程 */
+    private int loginReadTimeoutMs = 150000;
+
+    /** 代理会话分布式锁 / 活跃标记 TTL（秒） */
+    private long sessionLockSeconds = 360L;
+
+    /** 抢占代理会话锁的最长等待时间（毫秒） */
+    private long sessionLockWaitMs = 30000L;
+
+    /** 代理 login 成功后、发起 OpenAPI 业务请求前的等待时间（毫秒），用于隧道/路由就绪 */
+    private long postLoginDelayMs = 60000L;
+
+    /** 服务端代理同步 login 使用的线路 VPN 用户名（各线路须存在同名用户且已设密码） */
+    private String loginUsername = SyncProxyConstants.LOGIN_USERNAME;
 
     public boolean isEnabled()
     {
@@ -102,5 +128,85 @@ public class SyncProxyProperties
     public void setProbeReadTimeoutMs(int probeReadTimeoutMs)
     {
         this.probeReadTimeoutMs = probeReadTimeoutMs;
+    }
+
+    public int getLoginMaxAttemptsApi()
+    {
+        return loginMaxAttemptsApi;
+    }
+
+    public void setLoginMaxAttemptsApi(int loginMaxAttemptsApi)
+    {
+        this.loginMaxAttemptsApi = loginMaxAttemptsApi;
+    }
+
+    public int getLoginMaxAttemptsJob()
+    {
+        return loginMaxAttemptsJob;
+    }
+
+    public void setLoginMaxAttemptsJob(int loginMaxAttemptsJob)
+    {
+        this.loginMaxAttemptsJob = loginMaxAttemptsJob;
+    }
+
+    public long getLoginRetryIntervalMs()
+    {
+        return loginRetryIntervalMs;
+    }
+
+    public void setLoginRetryIntervalMs(long loginRetryIntervalMs)
+    {
+        this.loginRetryIntervalMs = loginRetryIntervalMs;
+    }
+
+    public int getLoginReadTimeoutMs()
+    {
+        return loginReadTimeoutMs;
+    }
+
+    public void setLoginReadTimeoutMs(int loginReadTimeoutMs)
+    {
+        this.loginReadTimeoutMs = loginReadTimeoutMs;
+    }
+
+    public long getSessionLockSeconds()
+    {
+        return sessionLockSeconds;
+    }
+
+    public void setSessionLockSeconds(long sessionLockSeconds)
+    {
+        this.sessionLockSeconds = sessionLockSeconds;
+    }
+
+    public long getSessionLockWaitMs()
+    {
+        return sessionLockWaitMs;
+    }
+
+    public void setSessionLockWaitMs(long sessionLockWaitMs)
+    {
+        this.sessionLockWaitMs = sessionLockWaitMs;
+    }
+
+    public long getPostLoginDelayMs()
+    {
+        return postLoginDelayMs;
+    }
+
+    public void setPostLoginDelayMs(long postLoginDelayMs)
+    {
+        this.postLoginDelayMs = postLoginDelayMs;
+    }
+
+    public String getLoginUsername()
+    {
+        return loginUsername;
+    }
+
+    public void setLoginUsername(String loginUsername)
+    {
+        this.loginUsername = loginUsername;
     }
 }

@@ -9,6 +9,9 @@ import com.ruoyi.common.log.enums.BusinessType;
 import com.ruoyi.common.security.annotation.RequiresPermissions;
 import com.ruoyi.common.security.utils.SecurityUtils;
 import com.ruoyi.yianlian.domain.VpnDept;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncCommand;
+import com.ruoyi.yianlian.service.sync.orchestrator.SyncConstants;
+import com.ruoyi.yianlian.service.sync.orchestrator.YiAnLianSyncOrchestrator;
 import com.ruoyi.yianlian.service.vpn.IVpnDeptService;
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +33,9 @@ public class VpnDeptController extends BaseController
 {
     @Autowired
     private IVpnDeptService deptService;
+
+    @Autowired
+    private YiAnLianSyncOrchestrator syncOrchestrator;
 
     /**
      * 获取部门列表
@@ -120,7 +126,9 @@ public class VpnDeptController extends BaseController
             return error("新增部门'" + dept.getDeptName() + "'失败，部门名称已存在");
         }
         dept.setCreateBy(SecurityUtils.getUsername());
-        return toAjax(deptService.insertDeptWithSync(dept));
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_DEPT, SyncConstants.OP_CREATE,
+            dept.getAppId(), null, dept));
+        return success();
     }
 
     /**
@@ -159,7 +167,9 @@ public class VpnDeptController extends BaseController
             return error("原部门不存在");
         }
         dept.setUpdateBy(SecurityUtils.getUsername());
-        return toAjax(deptService.updateDeptWithSync(dept));
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_DEPT, SyncConstants.OP_UPDATE,
+            dept.getAppId(), dept.getDeptId(), dept));
+        return success();
     }
 
     /**
@@ -192,11 +202,14 @@ public class VpnDeptController extends BaseController
         {
             return warn("部门存在用户,不允许删除");
         }
-        if (deptService.selectDeptById(deptId) == null)
+        VpnDept dept = deptService.selectDeptById(deptId);
+        if (dept == null)
         {
             return error("部门不存在");
         }
-        return toAjax(deptService.deleteDeptWithSync(deptId));
+        syncOrchestrator.execute(SyncCommand.ofApi(SyncConstants.BIZ_DEPT, SyncConstants.OP_DELETE,
+            dept.getAppId(), deptId, null));
+        return success();
     }
 
     private AjaxResult validateAppId(String appId)

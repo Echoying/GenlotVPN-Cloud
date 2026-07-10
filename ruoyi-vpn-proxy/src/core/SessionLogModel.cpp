@@ -1,5 +1,6 @@
 #include "SessionLogModel.h"
 #include "AppLogger.h"
+#include "util/HttpUtil.h"
 
 namespace vpnproxy {
 
@@ -21,16 +22,25 @@ QVariant SessionLogModel::data(const QModelIndex &index, int role) const
     case TimeRole: return e.time.toString(QStringLiteral("HH:mm:ss"));
     case TypeRole: return e.type;
     case MessageRole: return e.message;
+    case RequestLogRole: return e.requestLog;
+    case ResponseLogRole: return e.responseLog;
+    case ElapsedMsRole: return e.elapsedMs;
     default: return {};
     }
 }
 
 QHash<int, QByteArray> SessionLogModel::roleNames() const
 {
-    return {{IdRole, "id"}, {TimeRole, "time"}, {TypeRole, "type"}, {MessageRole, "message"}};
+    return {{IdRole, "id"},
+            {TimeRole, "time"},
+            {TypeRole, "type"},
+            {MessageRole, "message"},
+            {RequestLogRole, "requestLog"},
+            {ResponseLogRole, "responseLog"},
+            {ElapsedMsRole, "elapsedMs"}};
 }
 
-void SessionLogModel::append(const QString &type, const QString &message)
+void SessionLogModel::append(const SessionLogPayload &payload)
 {
     if (m_entries.size() >= kMaxEntries) {
         beginRemoveRows(QModelIndex(), m_entries.size() - 1, m_entries.size() - 1);
@@ -40,12 +50,16 @@ void SessionLogModel::append(const QString &type, const QString &message)
     SessionLogEntry entry;
     entry.id = QString::number(++m_seq);
     entry.time = QDateTime::currentDateTime();
-    entry.type = type;
-    entry.message = message;
+    entry.type = payload.type;
+    entry.message = HttpUtil::sanitizeForLog(payload.message.trimmed());
+    entry.requestLog = HttpUtil::sanitizeForLog(payload.requestLog.trimmed());
+    entry.responseLog = HttpUtil::sanitizeForLog(payload.responseLog.trimmed());
+    entry.elapsedMs = payload.elapsedMs;
     beginInsertRows(QModelIndex(), 0, 0);
     m_entries.prepend(entry);
     endInsertRows();
-    AppLogger::instance()->logSession(type, message);
+    AppLogger::instance()->logSession(entry.type, entry.message, entry.requestLog, entry.responseLog,
+                                     entry.elapsedMs);
     emit countChanged();
     emit entryAdded();
 }

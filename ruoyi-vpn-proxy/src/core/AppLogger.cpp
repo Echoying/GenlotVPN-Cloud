@@ -89,15 +89,30 @@ void AppLogger::log(const QString &level, const QString &message)
 
 void AppLogger::logSession(const QString &level, const QString &message)
 {
+    logSession(level, message, QString(), QString(), -1);
+}
+
+void AppLogger::logSession(const QString &level, const QString &message, const QString &requestLog,
+                           const QString &responseLog, qint64 elapsedMs)
+{
     const QString text = HttpUtil::sanitizeForLog(message.trimmed());
-    if (text.isEmpty()) {
+    if (text.isEmpty() && requestLog.trimmed().isEmpty() && responseLog.trimmed().isEmpty()) {
         return;
     }
     ensureLogFiles();
-    const QString line = QStringLiteral("[%1] [%2] %3")
-                             .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")),
-                                  levelLabel(level), text);
-    appendToFile(m_sessionLogFilePath, line, isErrorLevel(level));
+    const QString time = QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"));
+    const QString elapsedText = elapsedMs >= 0 ? QStringLiteral("%1ms").arg(elapsedMs) : QStringLiteral("-");
+    appendToFile(m_sessionLogFilePath,
+                 QStringLiteral("[%1] [%2] %3 | 耗时: %4").arg(time, levelLabel(level), text, elapsedText),
+                 isErrorLevel(level));
+    if (!requestLog.trimmed().isEmpty()) {
+        appendToFile(m_sessionLogFilePath, QStringLiteral("--- request ---"), false);
+        appendToFile(m_sessionLogFilePath, HttpUtil::sanitizeForLog(requestLog), false);
+    }
+    if (!responseLog.trimmed().isEmpty()) {
+        appendToFile(m_sessionLogFilePath, QStringLiteral("--- response ---"), false);
+        appendToFile(m_sessionLogFilePath, HttpUtil::sanitizeForLog(responseLog), false);
+    }
     log(level, QStringLiteral("[会话] %1").arg(text));
 }
 
