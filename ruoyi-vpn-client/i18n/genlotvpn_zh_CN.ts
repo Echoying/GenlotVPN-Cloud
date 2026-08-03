@@ -8,26 +8,9 @@
         <source>当前线路</source>
         <translation>当前线路</translation>
     </message>
-    <message>
-        <location filename="../qml/pages/AppListPage.qml" line="40"/>
-        <source>同步代理日志</source>
-        <translation>同步代理日志</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/AppListPage.qml" line="52"/>
-        <source>同步代理服务</source>
-        <translation>同步代理服务</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/AppListPage.qml" line="74"/>
-        <source>同步代理: %1</source>
-        <translation>同步代理: %1</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/AppListPage.qml" line="74"/>
-        <source>未启动</source>
-        <translation>未启动</translation>
-    </message>
+    
+    
+    
     <message>
         <location filename="../qml/pages/AppListPage.qml" line="80"/>
         <source>应用网关</source>
@@ -361,11 +344,7 @@
         <source>Genlot VPN 已在运行中。</source>
         <translation>Genlot VPN 已在运行中。</translation>
     </message>
-    <message>
-        <location filename="../src/main.cpp" line="143"/>
-        <source>通过 vpnFlow.proxyLogs 访问</source>
-        <translation>通过 vpnFlow.proxyLogs 访问</translation>
-    </message>
+    
     <message>
         <location filename="../src/main.cpp" line="161"/>
         <source>界面加载失败，请查看 logs 目录中的 [QML] 日志。</source>
@@ -429,83 +408,6 @@
         <location filename="../qml/pages/OfflineChooseLinePage.qml" line="187"/>
         <source>取消</source>
         <translation>取消</translation>
-    </message>
-</context>
-<context>
-    <name>ProxyLogPage</name>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="59"/>
-        <source>返回</source>
-        <translation>返回</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="65"/>
-        <source>同步代理日志</source>
-        <translation>同步代理日志</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="75"/>
-        <source>清空</source>
-        <translation>清空</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="90"/>
-        <source>监听地址: %1</source>
-        <translation>监听地址: %1</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="114"/>
-        <source>时间</source>
-        <translation>时间</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="126"/>
-        <source>方法</source>
-        <translation>方法</translation>
-    </message>
-    <message>
-        <source>路径</source>
-        <translation>路径</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="138"/>
-        <source>URL</source>
-        <translation>URL</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="150"/>
-        <source>状态</source>
-        <translation>状态</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="162"/>
-        <source>来源 IP</source>
-        <translation>来源 IP</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="288"/>
-        <source>暂无代理请求记录</source>
-        <translation>暂无代理请求记录</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="305"/>
-        <source>请求日志</source>
-        <translation>请求日志</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="324"/>
-        <source>选中上方记录查看请求详情</source>
-        <translation>选中上方记录查看请求详情</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="341"/>
-        <source>响应日志</source>
-        <translation>响应日志</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ProxyLogPage.qml" line="360"/>
-        <source>选中上方记录查看响应详情</source>
-        <translation>选中上方记录查看响应详情</translation>
     </message>
 </context>
 <context>
@@ -1001,16 +903,8 @@
         <source>密码长度在 5 到 20 个字符</source>
         <translation>密码长度在 5 到 20 个字符</translation>
     </message>
-    <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1570"/>
-        <source>同步代理已启动 %1</source>
-        <translation>同步代理已启动 %1</translation>
-    </message>
-    <message>
-        <location filename="../src/core/VpnFlowController.cpp" line="1573"/>
-        <source>同步代理启动失败</source>
-        <translation>同步代理启动失败</translation>
-    </message>
+    
+    
     <message>
         <location filename="../src/core/VpnFlowController.cpp" line="1594"/>
         <source>链接已复制</source>

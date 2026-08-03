@@ -11,7 +11,6 @@
 #include "vpn/auth.pb.h"
 #include "vpn/line.pb.h"
 #include "vpn/line_verify.pb.h"
-#include "vpn/sync_proxy.pb.h"
 #endif
 
 namespace vpn {
@@ -50,8 +49,6 @@ QString messageTypeName(int messageType)
         return QStringLiteral("GET_USER_CREDENTIALS");
     case vpn::MessageType::REPORT_CLIENT_LOGIN:
         return QStringLiteral("REPORT_CLIENT_LOGIN");
-    case vpn::MessageType::GET_SYNC_PROXY_CONFIG:
-        return QStringLiteral("GET_SYNC_PROXY_CONFIG");
     case vpn::MessageType::SESSION_PING:
         return QStringLiteral("SESSION_PING");
     default:
@@ -152,13 +149,6 @@ QString formatCloudRequestPayload(int messageType, const QByteArray &payload)
     }
     case vpn::MessageType::REPORT_CLIENT_LOGIN: {
         vpn::ReportClientLoginRequest req;
-        if (!req.ParseFromArray(payload.constData(), payload.size())) {
-            return QStringLiteral("<解析失败>");
-        }
-        return protoToLog(req);
-    }
-    case vpn::MessageType::GET_SYNC_PROXY_CONFIG: {
-        vpn::GetSyncProxyConfigRequest req;
         if (!req.ParseFromArray(payload.constData(), payload.size())) {
             return QStringLiteral("<解析失败>");
         }
@@ -269,13 +259,6 @@ QString formatCloudResponseData(int messageType, const QByteArray &data)
     }
     case vpn::MessageType::REPORT_CLIENT_LOGIN: {
         vpn::ReportClientLoginResponse resp;
-        if (!resp.ParseFromArray(data.constData(), data.size())) {
-            return QStringLiteral("<解析失败>");
-        }
-        return protoToLog(resp);
-    }
-    case vpn::MessageType::GET_SYNC_PROXY_CONFIG: {
-        vpn::GetSyncProxyConfigResponse resp;
         if (!resp.ParseFromArray(data.constData(), data.size())) {
             return QStringLiteral("<解析失败>");
         }

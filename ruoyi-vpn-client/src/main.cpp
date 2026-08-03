@@ -10,7 +10,6 @@
 #include <QTranslator>
 #include <QUrl>
 #include <QWindow>
-#include <QtQml/qqml.h>
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
@@ -22,7 +21,6 @@
 #include "core/LocaleManager.h"
 #include "core/VpnFlowController.h"
 #include "core/AppInfo.h"
-#include "core/ProxyLogModel.h"
 #include "platform/SingleInstance.h"
 #include "platform/TrayIcon.h"
 
@@ -138,9 +136,6 @@ int main(int argc, char *argv[])
     if (!localeManager.installTranslator(&app, &engine)) {
         appLogger->warn(QStringLiteral("[i18n] 未能加载翻译文件，使用界面源语言"));
     }
-    qmlRegisterUncreatableType<vpn::ProxyLogModel>(
-        "GenlotVPN", 1, 0, "ProxyLogModel",
-        QCoreApplication::translate("Main", "通过 vpnFlow.proxyLogs 访问"));
     vpn::TrayIcon trayIcon(appIcon);
     // 与 Qt Creator 一致：从 exe 同目录加载 GenlotVPN/qmldir（打包脚本会复制该目录）
     engine.addImportPath(QCoreApplication::applicationDirPath());

@@ -1,6 +1,5 @@
 ﻿#include "VpnFlowController.h"
 #include "AppLogger.h"
-#include "OpenApiProxyService.h"
 #include "crypto/OfflineLoginIntegrity.h"
 #include "../transport/TcpClient.h"
 #include <QCoreApplication>
@@ -173,14 +172,6 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
     , m_offlineLoginDir(OfflineLoginImporter::defaultDirectory())
 {
     m_timeProvider = new TrustedTimeProvider(this);
-    m_syncProxy = new OpenApiProxyService(this);
-    connect(m_syncProxy, &OpenApiProxyService::started, this, [this]() { emit syncProxyRunningChanged(); });
-    connect(m_syncProxy, &OpenApiProxyService::stopped, this, [this]() { emit syncProxyRunningChanged(); });
-    // 将代理内部日志（含启动失败的具体原因）转发到应用日志
-    connect(m_syncProxy, &OpenApiProxyService::logMessage, this,
-            [this](const QString &type, const QString &message) {
-        addLog(type, message);
-    });
     bootstrapServer();
 
     m_countdownTimer = new QTimer(this);
@@ -238,7 +229,6 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         setLoginError(QString());
         m_awaitingPublicLineLogin = false;
         setLoggedIn(true);
-        emit hasSyncProxyRoleChanged();
         m_connectChainActive = true;
         addLog(QStringLiteral("info"), QStringLiteral("云端登录成功"));
         if (!m_offlineMode) {
@@ -313,35 +303,6 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         setLoading(false);
         emit toast(tr("密码修改成功，请使用新密码登录"), false);
         emit changePasswordFinished();
-    });
-    connect(m_cloud, &VpnCloudService::syncProxyConfigReady, this,
-            [this](const QString &upstreamUrl, const QString &listenHost, int listenPort,
-                   const QStringList &allowedIps) {
-        // 仅缓存服务端下发的配置并标记允许，由用户手动开启，默认不启动
-        m_syncProxyUpstreamUrl = upstreamUrl;
-        m_syncProxyListenHost = listenHost;
-        m_syncProxyListenPort = listenPort;
-        m_syncProxyAllowedIps = allowedIps;
-        if (!m_lineSyncProxyEnabled) {
-            m_lineSyncProxyEnabled = true;   // 允许 -> 显示开关
-            emit lineSyncProxyEnabledChanged();
-        }
-        addLog(QStringLiteral("info"), QStringLiteral("同步代理可用，可手动开启"));
-    });
-    connect(m_cloud, &VpnCloudService::lineSyncProxyDisabled, this, [this]() {
-        if (m_syncProxy) {
-            m_syncProxy->stop();
-        }
-        // 清空缓存配置
-        m_syncProxyUpstreamUrl.clear();
-        m_syncProxyListenHost.clear();
-        m_syncProxyListenPort = 0;
-        m_syncProxyAllowedIps.clear();
-        if (m_lineSyncProxyEnabled) {
-            m_lineSyncProxyEnabled = false;
-            emit lineSyncProxyEnabledChanged();
-        }
-        addLog(QStringLiteral("info"), QStringLiteral("当前线路未启用同步代理，管理系统将直连"));
     });
     connect(m_cloud, &VpnCloudService::requestFailed, this, [this](const QString &msg) {
         if (m_handlingSessionExpiry || m_logoutCleanupInProgress) {
@@ -472,11 +433,7 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         m_controller->fetchGatewayList();
         m_controller->fetchAppList();
         startTunnelStatusPolling();
-        m_lineSyncProxyEnabled = false;
-        emit lineSyncProxyEnabledChanged();
         if (!m_offlineMode) {
-            const QString appId = line.value(QStringLiteral("appId")).toString();
-            m_cloud->fetchSyncProxyConfig(appId);
             startSessionPing();
         }
         if (m_offlineMode) {
@@ -1441,18 +1398,6 @@ void VpnFlowController::handleSessionExpired(const QString &serverMsg)
 
 void VpnFlowController::finishLogout(bool clearUsername)
 {
-    if (m_syncProxy) {
-        m_syncProxy->stop();
-    }
-    m_lineSyncProxyEnabled = false;
-    // 清空缓存的同步代理配置，保证下次连接默认关闭
-    m_syncProxyUpstreamUrl.clear();
-    m_syncProxyListenHost.clear();
-    m_syncProxyListenPort = 0;
-    m_syncProxyAllowedIps.clear();
-    emit hasSyncProxyRoleChanged();
-    emit lineSyncProxyEnabledChanged();
-    emit syncProxyRunningChanged();
     stopGatewayPolling();
     stopTunnelStatusPolling();
     stopSessionPing();
@@ -1556,63 +1501,6 @@ void VpnFlowController::goToSettings()
     emit navigateTo(QStringLiteral("settings"));
 }
 
-void VpnFlowController::goToProxyLogs()
-{
-    emit navigateTo(QStringLiteral("proxylogs"));
-}
-
-void VpnFlowController::clearProxyLogs()
-{
-    if (m_syncProxy) {
-        m_syncProxy->clearLogs();
-    }
-}
-
-bool VpnFlowController::hasSyncProxyRole() const
-{
-    return m_cloud && m_cloud->hasSyncProxyRole();
-}
-
-bool VpnFlowController::syncProxyRunning() const
-{
-    return m_syncProxy && m_syncProxy->isRunning();
-}
-
-QString VpnFlowController::syncProxyEndpoint() const
-{
-    return m_syncProxy ? m_syncProxy->listenEndpoint() : QString();
-}
-
-void VpnFlowController::setSyncProxyEnabled(bool on)
-{
-    if (!m_syncProxy) {
-        return;
-    }
-    if (on) {
-        if (!m_lineSyncProxyEnabled || m_syncProxy->isRunning()) {
-            return;   // 未允许或已在运行
-        }
-        if (m_syncProxy->start(m_syncProxyUpstreamUrl, m_syncProxyListenHost,
-                               m_syncProxyListenPort, m_syncProxyAllowedIps)) {
-            addLog(QStringLiteral("info"),
-                   QStringLiteral("同步代理监听: %1").arg(m_syncProxy->listenEndpoint()));
-            setStatusMessage(tr("同步代理已启动 %1").arg(m_syncProxy->listenEndpoint()));
-        } else {
-            addLog(QStringLiteral("error"), QStringLiteral("同步代理启动失败"));
-            emit toast(tr("同步代理启动失败"), true);
-        }
-    } else {
-        m_syncProxy->stop();
-        addLog(QStringLiteral("info"), QStringLiteral("同步代理已关闭"));
-    }
-    // syncProxyRunning 变化由 OpenApiProxyService started/stopped 信号触发，无需手动 emit
-}
-
-ProxyLogModel *VpnFlowController::proxyLogs() const
-{
-    return m_syncProxy ? m_syncProxy->logModel() : nullptr;
-}
-
 void VpnFlowController::copyToClipboard(const QString &text)
 {
     const QString trimmed = text.trimmed();
@@ -1621,6 +1509,12 @@ void VpnFlowController::copyToClipboard(const QString &text)
     }
     QGuiApplication::clipboard()->setText(trimmed);
     emit toast(tr("链接已复制"), false);
+}
+
+QString VpnFlowController::clipboardText() const
+{
+    const QClipboard *clip = QGuiApplication::clipboard();
+    return clip ? clip->text() : QString();
 }
 
 bool VpnFlowController::isHttpUrl(const QString &url) const

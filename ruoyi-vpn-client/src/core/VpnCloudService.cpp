@@ -14,7 +14,6 @@
 #include "vpn/line.pb.h"
 #include "vpn/line_verify.pb.h"
 #include "vpn/common.pb.h"
-#include "vpn/sync_proxy.pb.h"
 #endif
 
 namespace vpn {
@@ -311,10 +310,6 @@ void VpnCloudService::login(const QString &username, const QString &password,
         data.ParseFromArray(r.data.constData(), r.data.size());
         m_accessToken = QString::fromStdString(data.access_token());
         m_sessionKey = QByteArray(data.session_key().data(), static_cast<int>(data.session_key().size()));
-        m_roleKeys.clear();
-        for (int i = 0; i < data.role_keys_size(); ++i) {
-            m_roleKeys.append(QString::fromStdString(data.role_keys(i)));
-        }
         emit loginSucceeded(m_accessToken);
     });
 #endif
@@ -457,7 +452,6 @@ void VpnCloudService::clearSession()
 {
     m_accessToken.clear();
     m_sessionKey.clear();
-    m_roleKeys.clear();
     m_tcp.resetConnection();
 }
 
@@ -496,44 +490,6 @@ void VpnCloudService::logout(std::function<void(bool ok)> onComplete)
     if (onComplete) {
         onComplete(true);
     }
-#endif
-}
-
-bool VpnCloudService::hasSyncProxyRole() const
-{
-    return m_roleKeys.contains(QStringLiteral("sync_proxy"));
-}
-
-void VpnCloudService::fetchSyncProxyConfig(const QString &appId)
-{
-#ifdef VPN_HAS_PROTO
-    if (appId.isEmpty()) {
-        return;
-    }
-    vpn::GetSyncProxyConfigRequest req;
-    req.set_app_id(appId.toStdString());
-    sendRpc(static_cast<int>(vpn::MessageType::GET_SYNC_PROXY_CONFIG), serializeProto(req),
-            [this](const RpcResult &r) {
-        if (!r.ok) {
-            return;
-        }
-        vpn::GetSyncProxyConfigResponse data;
-        data.ParseFromArray(r.data.constData(), r.data.size());
-        if (!data.enabled()) {
-            emit lineSyncProxyDisabled();
-            return;
-        }
-        QStringList allowed;
-        for (int i = 0; i < data.allowed_source_ips_size(); ++i) {
-            allowed.append(QString::fromStdString(data.allowed_source_ips(i)));
-        }
-        emit syncProxyConfigReady(QString::fromStdString(data.upstream_url()),
-                                  QString::fromStdString(data.listen_host()),
-                                  data.listen_port(),
-                                  allowed);
-    });
-#else
-    Q_UNUSED(appId);
 #endif
 }
 

@@ -20,8 +20,8 @@ Item {
             spacing: 8
 
             Item {
-                width: parent.width - proxyLogBtn.implicitWidth - parent.spacing
-                height: proxyLogBtn.implicitHeight
+                width: parent.width
+                height: 28
 
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
@@ -33,47 +33,6 @@ Item {
                     elide: Text.ElideRight
                 }
             }
-
-            GhostButton {
-                id: proxyLogBtn
-                visible: vpnFlow.hasSyncProxyRole && vpnFlow.lineSyncProxyEnabled
-                text: qsTr("同步代理日志")
-                onClicked: vpnFlow.goToProxyLogs()
-            }
-        }
-
-        Row {
-            width: parent.width
-            spacing: 8
-            visible: vpnFlow.lineSyncProxyEnabled
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: qsTr("同步代理服务")
-                color: Theme.navy
-                font.pixelSize: 13
-            }
-
-            TlsSwitch {
-                id: proxySwitch
-                anchors.verticalCenter: parent.verticalCenter
-                checked: vpnFlow.syncProxyRunning
-                onToggled: vpnFlow.setSyncProxyEnabled(checked)
-            }
-        }
-
-        Connections {
-            target: vpnFlow
-            function onSyncProxyRunningChanged() {
-                proxySwitch.checked = vpnFlow.syncProxyRunning
-            }
-        }
-
-        Text {
-            visible: vpnFlow.lineSyncProxyEnabled && vpnFlow.syncProxyRunning
-            text: qsTr("同步代理: %1").arg(vpnFlow.syncProxyEndpoint || qsTr("未启动"))
-            font.pixelSize: 11
-            color: Theme.textSecondary
         }
 
         Text {

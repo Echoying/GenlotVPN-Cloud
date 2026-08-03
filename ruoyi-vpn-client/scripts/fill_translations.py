@@ -10,10 +10,6 @@ EN_TS = ROOT / "i18n" / "genlotvpn_en.ts"
 
 EN_MAP = {
     "当前线路": "Current Line",
-    "同步代理日志": "Sync Proxy Logs",
-    "同步代理服务": "Sync Proxy Service",
-    "同步代理: %1": "Sync Proxy: %1",
-    "未启动": "Not started",
     "应用网关": "Application Gateways",
     "名称": "Name",
     "网关 IP": "Gateway IP",
@@ -61,23 +57,15 @@ EN_MAP = {
     "确认新密码": "Confirm new password",
     "Genlot VPN": "Genlot VPN",
     "Genlot VPN 已在运行中。": "Genlot VPN is already running.",
-    "通过 vpnFlow.proxyLogs 访问": "Access via vpnFlow.proxyLogs",
     "界面加载失败，请确认安装目录下存在 GenlotVPN 文件夹。\n详细日志见 logs 目录。": (
         "Failed to load UI. Ensure the GenlotVPN folder exists next to the executable.\n"
         "See the logs directory for details."
     ),
     "返回": "Back",
     "清空": "Clear",
-    "监听地址: %1": "Listen address: %1",
     "时间": "Time",
     "方法": "Method",
     "路径": "Path",
-    "来源 IP": "Source IP",
-    "暂无代理请求记录": "No proxy requests yet",
-    "请求日志": "Request Log",
-    "选中上方记录查看请求详情": "Select a row above to view request details",
-    "响应日志": "Response Log",
-    "选中上方记录查看响应详情": "Select a row above to view response details",
     "服务器": "Server",
     "语言": "Language",
     "安全连接": "Security",
@@ -154,8 +142,6 @@ EN_MAP = {
     "两次输入的密码不一致": "Passwords do not match",
     "新密码不能与旧密码相同": "New password must differ from the old one",
     "密码长度在 5 到 20 个字符": "Password must be 5 to 20 characters",
-    "同步代理已启动 %1": "Sync proxy started at %1",
-    "同步代理启动失败": "Failed to start sync proxy",
     "链接已复制": "Link copied",
     "TLS（未配置指纹）": "TLS (no pin configured)",
     "明文 TCP": "Plain TCP",

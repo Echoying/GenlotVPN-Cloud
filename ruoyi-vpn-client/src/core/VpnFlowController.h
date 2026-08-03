@@ -9,8 +9,6 @@
 #include "ControllerService.h"
 #include "SessionManager.h"
 #include "SecureStorage.h"
-#include "OpenApiProxyService.h"
-#include "ProxyLogModel.h"
 #include "OfflineLoginImporter.h"
 #include "TrustedTimeProvider.h"
 
@@ -59,11 +57,6 @@ class VpnFlowController : public QObject {
     Q_PROPERTY(QString verifyError READ verifyError NOTIFY verifyErrorChanged)
     Q_PROPERTY(QString selectedGatewayId READ selectedGatewayId NOTIFY selectedGatewayIdChanged)
     Q_PROPERTY(QString switchingGatewayId READ switchingGatewayId NOTIFY switchingGatewayIdChanged)
-    Q_PROPERTY(bool hasSyncProxyRole READ hasSyncProxyRole NOTIFY hasSyncProxyRoleChanged)
-    Q_PROPERTY(bool lineSyncProxyEnabled READ lineSyncProxyEnabled NOTIFY lineSyncProxyEnabledChanged)
-    Q_PROPERTY(bool syncProxyRunning READ syncProxyRunning NOTIFY syncProxyRunningChanged)
-    Q_PROPERTY(QString syncProxyEndpoint READ syncProxyEndpoint NOTIFY syncProxyRunningChanged)
-    Q_PROPERTY(ProxyLogModel *proxyLogs READ proxyLogs CONSTANT)
 
 public:
     explicit VpnFlowController(VpnCloudService *cloud, ControllerService *controller,
@@ -101,11 +94,6 @@ public:
     QString verifyError() const { return m_verifyError; }
     QString selectedGatewayId() const { return m_selectedGatewayId; }
     QString switchingGatewayId() const { return m_switchingGatewayId; }
-    bool hasSyncProxyRole() const;
-    bool lineSyncProxyEnabled() const { return m_lineSyncProxyEnabled; }
-    bool syncProxyRunning() const;
-    QString syncProxyEndpoint() const;
-    ProxyLogModel *proxyLogs() const;
 
     void setVerifyDialogVisible(bool visible);
 
@@ -137,10 +125,9 @@ public:
                                     const QString &newPwd, const QString &confirmPwd);
     Q_INVOKABLE void goChooseLine();
     Q_INVOKABLE void goToSettings();
-    Q_INVOKABLE void goToProxyLogs();
-    Q_INVOKABLE void clearProxyLogs();
-    Q_INVOKABLE void setSyncProxyEnabled(bool on);
     Q_INVOKABLE void copyToClipboard(const QString &text);
+    /** 读取系统剪贴板文本（供验证码等字段粘贴） */
+    Q_INVOKABLE QString clipboardText() const;
     Q_INVOKABLE bool isHttpUrl(const QString &url) const;
     Q_INVOKABLE QString gatewayIp(const QVariant &gateway) const;
     Q_INVOKABLE bool isGatewaySwitching(const QString &gatewayId) const;
@@ -176,9 +163,6 @@ signals:
     void verifyErrorChanged();
     void selectedGatewayIdChanged();
     void switchingGatewayIdChanged();
-    void hasSyncProxyRoleChanged();
-    void lineSyncProxyEnabledChanged();
-    void syncProxyRunningChanged();
     void navigateTo(const QString &page);
     void toast(const QString &message, bool isError);
     void changePasswordFinished();
@@ -233,7 +217,6 @@ private:
     SessionManager *m_session;
     SecureStorage *m_storage;
     TrustedTimeProvider *m_timeProvider = nullptr;
-    OpenApiProxyService *m_syncProxy = nullptr;
 
     QVariantList m_publicLines;
     QVariantList m_authorizedLines;
@@ -295,12 +278,6 @@ private:
     int m_gatewayPollAttempts = 0;
     int m_tunnelStatus = -1;
     bool m_tunnelReConnect = false;
-    bool m_lineSyncProxyEnabled = false;
-    // 服务端下发的同步代理配置，缓存待用户手动开启
-    QString m_syncProxyUpstreamUrl;
-    QString m_syncProxyListenHost;
-    int m_syncProxyListenPort = 0;
-    QStringList m_syncProxyAllowedIps;
 
     static constexpr int GatewayPollIntervalMs = 3000;
     static constexpr int GatewayPollMaxAttempts = 20;

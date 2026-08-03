@@ -40,7 +40,6 @@ public:
                                     const QString &newPassword, const QString &appId);
     Q_INVOKABLE void logout();
     void logout(std::function<void(bool ok)> onComplete);
-    Q_INVOKABLE void fetchSyncProxyConfig(const QString &appId);
     void reportClientLogin(const QString &appId, const QString &lineName, bool success,
                            const QString &stage, const QString &msg);
     void sessionPing(std::function<void(bool ok, const QString &msg)> onComplete);
@@ -48,7 +47,6 @@ public:
 
     QString accessToken() const { return m_accessToken; }
     bool hasSession() const { return !m_accessToken.isEmpty(); }
-    bool hasSyncProxyRole() const;
 
 signals:
     void linesReady(const QVariantList &lines);
@@ -60,9 +58,6 @@ signals:
     void userCredentialsReady(const QString &username, const QString &encryptedPassword);
     void changePasswordSucceeded();
     void logoutSucceeded();
-    void syncProxyConfigReady(const QString &upstreamUrl, const QString &listenHost, int listenPort,
-                              const QStringList &allowedSourceIps);
-    void lineSyncProxyDisabled();
     void requestFailed(const QString &message);
 
 private:
@@ -80,7 +75,6 @@ private:
     TcpClient m_tcp;
     QByteArray m_sessionKey;
     QString m_accessToken;
-    QStringList m_roleKeys;
     QString m_host;
     quint16 m_port = 9443;
     bool m_useTls = false;

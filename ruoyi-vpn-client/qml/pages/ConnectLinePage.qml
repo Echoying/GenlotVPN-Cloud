@@ -190,7 +190,9 @@ Item {
                         id: verifyCodeField
                         width: parent.width
                         placeholderText: qsTr("6位数字验证码")
-                        maximumLength: 6
+                        // 放宽原始长度，允许粘贴钉钉整段消息；数字上限用 maxDigits
+                        maximumLength: 256
+                        maxDigits: 6
                         digitsOnly: true
                         horizontalAlignment: Text.AlignHCenter
                         font.pixelSize: 16
