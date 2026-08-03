@@ -9,7 +9,7 @@
 | ----- | ---------- | --------- | ----------------------------------------------------------------------- |
 | 中间件机  | 10.27.0.91 | `node-91` | MySQL / Redis / Nacos                                                   |
 | 管理端机  | 10.27.0.92 | `node-92` | gateway / auth / system / gen / job / file / monitor / yianlian / nginx |
-| VPN 机 | 10.27.0.93 | `node-93` | vpn-gateway / vpn-auth / vpn-nginx                                      |
+| VPN 机 | 10.27.0.93 | `node-93` | vpn-auth（9400 / 9443） |
 
 
 - 登录账号：`root`（密码由运维单独保管，勿写入文档或代码库）
@@ -58,7 +58,7 @@ Swap:          8.0Gi          0B       8.0Gi
 | --- | -------------------------- | ---------------------------------------------------------- |
 | 91  | MySQL InnoDB 缓冲池           | `innodb-buffer-pool-size=1G`（`node-91/docker-compose.yml`） |
 | 92  | 8 个 Java 微服务 JVM           | `-Xms256m -Xmx512m`（各服务 `dockerfile`）                      |
-| 93  | vpn-gateway / vpn-auth JVM | `-Xms256m -Xmx512m`（各服务 `dockerfile`）                      |
+| 93  | vpn-auth JVM | `-Xms256m -Xmx512m`（`dockerfile`）                      |
 
 
 > 92 上 8×512M ≈ 4G 堆上限，加系统与 nginx 后 15G 内存较稳妥。若上线后某服务频繁 Full GC，可单独将该服务 `-Xmx` 调至 768m，并观察 `free -h`。
@@ -311,7 +311,7 @@ firewall-cmd --reload
 **93（VPN 机）：**
 
 ```bash
-for p in 8060 8090 9400 9443; do firewall-cmd --add-port=${p}/tcp --permanent; done
+for p in 9400 9443; do firewall-cmd --add-port=${p}/tcp --permanent; done
 firewall-cmd --reload
 ```
 
@@ -410,11 +410,10 @@ ssh root@10.27.0.93 'docker ps --format "{{.Names}}\t{{.Status}}"'
 
 # 3) 接口连通性
 curl -s -o /dev/null -w "管理端=%{http_code}\n" http://10.27.0.92/
-curl -s -o /dev/null -w "VPN端=%{http_code}\n"  http://10.27.0.93:8060/
+# VPN 桌面客户端连接 10.27.0.93:9443（TLS/TCP）；HTTP 9400 为服务内部端口
 ```
 
 - 管理端：`http://10.27.0.92`（默认管理员 `admin`，初始密码见系统说明）
-- VPN 用户端：`http://10.27.0.93:8060`
 - VPN 桌面客户端：连接 `10.27.0.93:9443`（TLS/TCP）
 
 ---
@@ -443,7 +442,6 @@ sh deploy.sh up       # 重新构建并启动
 | 92 | `nginx/logs` | nginx(~101) | 中 | 访问日志/错误日志写失败 |
 | 92 | `ruoyi/uploadPath` | root(Java) | 低 | 文件上传服务写文件失败 |
 | 92 | `ruoyi/**/logs` | root(Java) | 低 | 应用日志写失败（一般不影响业务） |
-| 93 | `ruoyi/vpn/nginx/logs` | nginx(~101) | 中 | VPN 前端 Nginx 日志写失败 |
 | 93 | `ruoyi/vpn/**/logs` | root(Java) | 低 | VPN 服务日志写失败 |
 
 三台 `deploy.sh up` 已内置 `prep()` 自动 `mkdir` 并放宽权限。若已部署，可手动一次性修复：
@@ -467,11 +465,9 @@ docker-compose restart ruoyi-nginx
 
 # ztna3
 cd /data/genlotvpn/node-93
-mkdir -p ruoyi/vpn/nginx/logs
 find ruoyi/vpn -type d -name logs -exec mkdir -p {} \;
-chmod -R 777 ruoyi/vpn/nginx/logs
 find ruoyi/vpn -type d -name logs -exec chmod 777 {} \;
-docker-compose restart ruoyi-vpn-nginx
+docker-compose restart ruoyi-vpn-auth
 ```
 
 ---

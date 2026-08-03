@@ -1,4 +1,4 @@
-# 网关响应超时（合并到 ruoyi-gateway-dev.yml 与 ruoyi-vpn-gateway-dev.yml）
+# 网关响应超时（合并到 ruoyi-gateway-dev.yml）
 # 同步易安联时下游需先登录代理，单次最长约150s，放宽网关响应超时到180s
 spring:
   cloud:

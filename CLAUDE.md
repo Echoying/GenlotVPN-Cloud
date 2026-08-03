@@ -57,14 +57,6 @@ npm run build:prod   # 生产构建
 npm run build:stage  # 预发布构建
 ```
 
-### 前端（VPN 用户登录端）
-```bash
-cd ruoyi-vpn-ui
-npm install
-npm run dev          # 开发服务器，端口 8060，API 代理到 10.9.2.177:8060
-npm run build:prod   # 生产构建
-```
-
 ### Docker 部署
 ```bash
 cd docker
@@ -84,16 +76,16 @@ sh deploy.sh rm        # 删除所有容器
 
 ### 请求流转
 
-浏览器 → Nginx (:80) → `/prod-api/` → 网关 (:8080) → 下游服务
+- 管理端：浏览器 → Nginx (:80) → `/prod-api/` → 网关 (:8080) → 下游服务
+- VPN 桌面客户端：直连 `ruoyi-vpn-auth` TCP/TLS (:9443，Protobuf)，不经网页入口
 
 ### 微服务拓扑
 
 | 服务 | 端口 | 用途 |
 |---|---|---|
 | ruoyi-gateway | 8080 | 系统管理端 API 网关（Spring Cloud Gateway） |
-| ruoyi-vpn-gateway | 8081 | VPN 用户端 API 网关（独立网关实例） |
 | ruoyi-auth | 9200 | 认证与令牌管理（系统用户） |
-| ruoyi-vpn-auth | 9400 | VPN 用户认证（使用 `ruoyi-api-yianlian`） |
+| ruoyi-vpn-auth | 9400 / 9443 | VPN 用户认证（HTTP 9400；桌面端 TCP/TLS 9443） |
 | ruoyi-modules-system | 9201 | 系统管理（用户、角色、菜单） |
 | ruoyi-modules-yianlian | 9205 | **VPN 业务逻辑**（核心自定义模块） |
 | ruoyi-modules-gen | 9202 | 代码生成器 |
@@ -112,14 +104,13 @@ sh deploy.sh rm        # 删除所有容器
 - **ruoyi-common/**：9 个共享库（core、redis、security、log、swagger、datascope、datasource、sensitive、seata）
 - **ruoyi-modules/**：服务实现 — system、yianlian、gen、job、file
 - **ruoyi-gateway/**：路由定义、过滤器、认证校验（系统管理端）
-- **ruoyi-vpn-gateway/**：面向 VPN 用户的独立网关，带验证码校验
 - **ruoyi-auth/**：登录、登出、令牌刷新（系统用户）
-- **ruoyi-vpn-auth/**：VPN 用户认证服务
+- **ruoyi-vpn-auth/**：VPN 用户认证（桌面端 TCP/TLS + Protobuf；HTTP 接口仍保留但网页入口已下线）
 - **ruoyi-visual/**：Spring Boot Admin 监控
 
 ### VPN 用户认证流程
 
-VPN 用户登录由 `ruoyi-vpn-auth` 处理（与 `ruoyi-auth` 中的系统管理端认证相互独立）：
+VPN 用户登录由 `ruoyi-vpn-auth` 处理（与 `ruoyi-auth` 中的系统管理端认证相互独立）。正式客户端为桌面端（`ruoyi-vpn-client`），经 TCP/TLS 9443 完成选线、登录、钉钉验证等：
 
 1. `VpnLoginService.login()` 校验用户名/密码长度，检查 Redis IP 黑名单（`CacheConstants.SYS_LOGIN_BLACKIPLIST`）
 2. 通过 Feign 调用易安联模块（`RemoteVpnUserService.getUserInfo`，使用 `SecurityConstants.INNER` 表示内部可信调用）

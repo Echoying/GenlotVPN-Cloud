@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# VPN 机（10.27.0.93）：vpn-gateway / vpn-auth / vpn-nginx
+# VPN 机（10.27.0.93）：vpn-auth（桌面端 TCP 9443 / HTTP 9400）
 # 在本目录执行：sh deploy.sh [up|stop|rm|port]
 # 注意：需先确保中间件机（91）已就绪。
 
@@ -13,11 +13,9 @@ usage() {
 	exit 1
 }
 
-# 创建日志目录（nginx 非 root；Java 默认 root）
+# 创建日志目录
 prep(){
-	mkdir -p ruoyi/vpn/nginx/logs
-	mkdir -p ruoyi/vpn/gateway/logs ruoyi/vpn/auth/logs
-	chmod -R 777 ruoyi/vpn/nginx/logs 2>/dev/null || true
+	mkdir -p ruoyi/vpn/auth/logs
 	find ruoyi/vpn -type d -name logs -exec chmod 777 {} \; 2>/dev/null || true
 }
 
@@ -35,8 +33,6 @@ rm(){
 }
 
 port(){
-	firewall-cmd --add-port=8060/tcp --permanent
-	firewall-cmd --add-port=8090/tcp --permanent
 	firewall-cmd --add-port=9400/tcp --permanent
 	firewall-cmd --add-port=9443/tcp --permanent
 	firewall-cmd --reload

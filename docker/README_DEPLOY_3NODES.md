@@ -21,7 +21,7 @@ docker/
 
   node-93/                     # VPN 机 10.27.0.93
     .env  deploy.sh  docker-compose.yml
-    ruoyi/vpn/{gateway, auth/certs, nginx}/
+    ruoyi/vpn/auth/certs/
 ```
 
 ## 二、机器与服务分配
@@ -30,7 +30,7 @@ docker/
 |------|----|--------|------|------|
 | 中间件机 | 10.27.0.91 | node-91 | ruoyi-mysql / ruoyi-redis / ruoyi-nacos | 3306 / 6379 / 8848,9848,9849 |
 | 管理端机 | 10.27.0.92 | node-92 | gateway / auth / system / gen / job / file / monitor / yianlian / nginx | 8080 / 9200 / 9201 / 9202 / 9203 / 9300 / 9100 / 9205 / 80 |
-| VPN 机 | 10.27.0.93 | node-93 | vpn-gateway / vpn-auth / vpn-nginx | 8090 / 9400,9443 / 8060 |
+| VPN 机 | 10.27.0.93 | node-93 | vpn-auth | 9400, 9443 |
 
 每个 `node-9x` 目录内含独立的 `.env`（三台 IP 变量）、`deploy.sh`（本机操作脚本）、`docker-compose.yml`。
 
@@ -51,7 +51,7 @@ docker/
 |------|----------|------|
 | 91 | 3306, 6379, 8848, 9848, 9849 | 92 / 93 |
 | 92 | 80, 8080, 9100, 9200, 9201, 9202, 9203, 9205, 9300 | 93 / 客户端 |
-| 93 | 8060, 8090, 9400, 9443 | 92 / 客户端 |
+| 93 | 9400, 9443 | 92 / 客户端 |
 
 > 注意：Nacos 的 gRPC 端口 `9848/9849` 必须放通，否则 2.x 客户端注册/心跳失败。
 
@@ -82,7 +82,7 @@ cd node-93 && sh deploy.sh up
 ## 七、验证
 
 1. 打开 Nacos 控制台 `http://10.27.0.91:8848/nacos`，在「服务管理 → 服务列表」中确认各微服务实例 IP 为 `10.27.0.92` / `10.27.0.93`（**不能是 172.x 容器内网 IP**）。
-2. 访问管理端 `http://10.27.0.92`、VPN 用户端 `http://10.27.0.93:8060` 联调。
+2. 访问管理端 `http://10.27.0.92` 联调。
 3. VPN 桌面客户端连接 `10.27.0.93:9443`（TLS/TCP）。
 
 ## 八、停止 / 删除
@@ -104,8 +104,7 @@ sh deploy.sh rm     # 删除本机容器
 | 91 | Nacos | `nacos/logs/` | Nacos 运行日志 |
 | 92 | Java 微服务 ×8 | `ruoyi/<模块>/logs/` | `ruoyi-*/info.log`、`error.log`（按日滚动） |
 | 92 | Nginx | `nginx/logs/` | `access.log`、`error.log` |
-| 93 | vpn-gateway / vpn-auth | `ruoyi/vpn/*/logs/` | 同上 |
-| 93 | vpn-nginx | `ruoyi/vpn/nginx/logs/` | `access.log`、`error.log` |
+| 93 | vpn-auth | `ruoyi/vpn/auth/logs/` | 同上 |
 
 Java 服务容器内写 `/home/ruoyi/logs/<服务名>/`，与 logback.xml 一致。首次启动后目录自动创建。
 
@@ -117,5 +116,5 @@ tail -f /data/genlotvpn/node-92/ruoyi/gateway/logs/ruoyi-gateway/info.log
 ## 十、注意事项
 
 - host 模式下 compose 中的 `ports:` 不生效，已全部移除；需保证同机端口无冲突（当前各服务端口唯一）。
-- node-93 的 `ruoyi-vpn-nginx` 使用本目录 `ruoyi/vpn/nginx/dockerfile` 构建（`build.context: ./ruoyi/vpn/nginx`）。
 - `ry_config` 中 `ruoyi-file-dev.yml` 的 `file.domain` 已设为 `http://10.27.0.92:9300`。
+- 网页版 VPN 登录（vpn-ui / vpn-nginx:8060 / vpn-gateway:8090）已下线；桌面客户端直连 `vpn-auth:9443`。已有环境请在 Nacos 删除废弃 dataId `ruoyi-vpn-gateway.yml`，并停删对应容器、收回防火墙 8060/8090。

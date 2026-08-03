@@ -60,8 +60,6 @@ cp ../sql/quartz.sql ./node-91/mysql/db
 # copy html
 echo "begin copy html "
 copy_html_dist "../ruoyi-ui/dist" "./node-92/nginx/html"
-echo "begin copy vpn html "
-copy_html_dist "../ruoyi-vpn-ui/dist" "./node-93/ruoyi/vpn/nginx/html"
 
 # copy jar -> node-92（管理端）
 echo "begin copy ruoyi-gateway "
@@ -89,9 +87,6 @@ echo "begin copy ruoyi-modules-yianlian "
 cp ../ruoyi-modules/ruoyi-yianlian/target/ruoyi-modules-yianlian.jar ./node-92/ruoyi/modules/yianlian/jar
 
 # copy jar -> node-93（VPN）
-echo "begin copy ruoyi-vpn-gateway "
-cp ../ruoyi-vpn-gateway/target/ruoyi-vpn-gateway.jar ./node-93/ruoyi/vpn/gateway/jar
-
 echo "begin copy ruoyi-vpn-auth "
 cp ../ruoyi-vpn-auth/target/ruoyi-vpn-auth.jar ./node-93/ruoyi/vpn/auth/jar
 
@@ -104,6 +99,5 @@ check_jar_java8 ./node-92/ruoyi/modules/file/jar/ruoyi-modules-file.jar
 check_jar_java8 ./node-92/ruoyi/modules/job/jar/ruoyi-modules-job.jar
 check_jar_java8 ./node-92/ruoyi/modules/gen/jar/ruoyi-modules-gen.jar
 check_jar_java8 ./node-92/ruoyi/modules/yianlian/jar/ruoyi-modules-yianlian.jar
-check_jar_java8 ./node-93/ruoyi/vpn/gateway/jar/ruoyi-vpn-gateway.jar
 check_jar_java8 ./node-93/ruoyi/vpn/auth/jar/ruoyi-vpn-auth.jar
 echo "all jars are Java 8"

@@ -224,7 +224,7 @@ Test-NetConnection -ComputerName <服务器IP> -Port 9443
 - 记住密码为 DPAPI 保护，**不换机复制 profile** 到其他用户无效
 - 云端 `session_key` 仅存内存，不落盘；会话过期需重新登录
 - 控制器：`controllerAesEnabled=true`（默认）时，30303 请求/响应全包 AES；`loginWithAccount` 的 `password` 仍为字段级 AES 密文（与云端下发一致），外层再整包加密。设为 `false` 时保持旧版明文 JSON 传输
-- **30303 密钥/IV 说明**：AES key/IV 为易安联 Agent **协议常量**（与云端 `AesUtils`、Web 端注释一致），写在客户端代码中属正常实现，**不是**可轮换的业务密钥；勿写入工单或对外文档当作机密。本机 loopback 加密不防同机攻击者，生产边界靠 **9443 TLS + Pin** 与 Agent 登录态；日志中 `password` 已脱敏，禁止打印 key 或完整密文链
+- **30303 密钥/IV 说明**：AES key/IV 为易安联 Agent **协议常量**（与云端 `AesUtils` 注释一致），写在客户端代码中属正常实现，**不是**可轮换的业务密钥；勿写入工单或对外文档当作机密。本机 loopback 加密不防同机攻击者，生产边界靠 **9443 TLS + Pin** 与 Agent 登录态；日志中 `password` 已脱敏，禁止打印 key 或完整密文链
 
 ---
 

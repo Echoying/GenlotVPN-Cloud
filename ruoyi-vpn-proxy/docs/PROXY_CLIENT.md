@@ -49,7 +49,7 @@
 | 字段 | 必填 | 说明 |
 |------|------|------|
 | `username` / `password` | 是 | 易安联平台账号 |
-| `line` | 是 | 30303 选线参数（与 Web 选线页一致） |
+| `line` | 是 | 30303 选线参数（与桌面选线参数一致） |
 | `proxy.upstreamUrl` | 是 | 代理转发目标根 URL |
 | `proxy.allowedSourceIps` | 否 | 覆盖配置中的来源 IP 白名单；空则使用 `config.json` 默认值 |
 

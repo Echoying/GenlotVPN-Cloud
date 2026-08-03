@@ -184,7 +184,7 @@ bin\package-vpn-client.bat
 
 | 方案 | 说明 |
 |------|------|
-| **只测后端** | 用 Maven 启动 `ruoyi-vpn-auth`，TCP 9443；Web 端 `ruoyi-vpn-ui` 仍走 HTTP |
+| **只测后端** | 用 Maven 启动 `ruoyi-vpn-auth`，TCP 9443 |
 | **找一台已装 Qt 的机器** | 拷贝整个仓库，按上文构建后把 `GenlotVPN-{version}.exe` 和 Qt DLL 打包分发 |
 | **CI 自动构建** | 在 GitHub Actions / 公司 Jenkins 上装 Qt+Protobuf 后编译（可向团队申请） |
 | **Qt 在线安装器 + 离线包** | 内网可下载 Qt 离线安装包，避免外网限制 |

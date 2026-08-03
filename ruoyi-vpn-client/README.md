@@ -21,7 +21,7 @@ Windows/macOS 跨平台 VPN 登录客户端。UI 风格对齐 [Genlot 官网](ht
 
 检查依赖：`bin\check-vpn-client-deps.bat`
 
-**暂未安装 Qt/Protobuf 时**：可先只构建后端 `mvn package -pl ruoyi-vpn-auth -am -DskipTests`，Web 端 `ruoyi-vpn-ui` 仍可 HTTP 登录；桌面客户端待环境就绪后再编译。
+**暂未安装 Qt/Protobuf 时**：可先只构建后端 `mvn package -pl ruoyi-vpn-auth -am -DskipTests` 并用 TCP 9443 联调；桌面客户端待环境就绪后再编译。
 
 ## 构建（Release）
 

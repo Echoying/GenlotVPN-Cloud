@@ -4,7 +4,7 @@ import java.util.Random;
 import com.google.code.kaptcha.text.impl.DefaultTextCreator;
 
 /**
- * 数学算式验证码文本生成器（与 ruoyi-vpn-gateway 一致）
+ * 数学算式验证码文本生成器
  */
 public class VpnKaptchaTextCreator extends DefaultTextCreator
 {

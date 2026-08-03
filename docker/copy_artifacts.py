@@ -112,14 +112,8 @@ def main() -> int:
     print("begin copy html")
     copy_html_dist(base.parent / "ruoyi-ui" / "dist", node92 / "nginx" / "html")
 
-    print("begin copy vpn html")
-    copy_html_dist(base.parent / "ruoyi-vpn-ui" / "dist", node93 / "ruoyi" / "vpn" / "nginx" / "html")
-
     print("begin copy ruoyi-gateway")
     copy_file(base.parent / "ruoyi-gateway" / "target" / "ruoyi-gateway.jar", node92 / "ruoyi" / "gateway" / "jar")
-
-    print("begin copy ruoyi-vpn-gateway")
-    copy_file(base.parent / "ruoyi-vpn-gateway" / "target" / "ruoyi-vpn-gateway.jar", node93 / "ruoyi" / "vpn" / "gateway" / "jar")
 
     print("begin copy ruoyi-auth")
     copy_file(base.parent / "ruoyi-auth" / "target" / "ruoyi-auth.jar", node92 / "ruoyi" / "auth" / "jar")
@@ -155,7 +149,6 @@ def main() -> int:
         node92 / "ruoyi" / "modules" / "job" / "jar" / "ruoyi-modules-job.jar",
         node92 / "ruoyi" / "modules" / "gen" / "jar" / "ruoyi-modules-gen.jar",
         node92 / "ruoyi" / "modules" / "yianlian" / "jar" / "ruoyi-modules-yianlian.jar",
-        node93 / "ruoyi" / "vpn" / "gateway" / "jar" / "ruoyi-vpn-gateway.jar",
         node93 / "ruoyi" / "vpn" / "auth" / "jar" / "ruoyi-vpn-auth.jar",
     ]
     for jar_path in jar_paths:

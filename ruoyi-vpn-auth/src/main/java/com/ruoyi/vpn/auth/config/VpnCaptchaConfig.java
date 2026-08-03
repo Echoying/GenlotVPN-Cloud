@@ -21,7 +21,7 @@ import static com.google.code.kaptcha.Constants.KAPTCHA_TEXTPRODUCER_FONT_SIZE;
 import static com.google.code.kaptcha.Constants.KAPTCHA_TEXTPRODUCER_IMPL;
 
 /**
- * TCP 通道验证码 Bean（彩色样式，与 ruoyi-vpn-gateway 对齐）
+ * TCP 通道验证码 Bean（彩色样式）
  */
 @Configuration
 public class VpnCaptchaConfig
