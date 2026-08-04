@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QIcon>
+#include <QMessageBox>
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QSGRendererInterface>
@@ -14,6 +15,7 @@
 #include <windows.h>
 #endif
 #include "core/AppLogger.h"
+#include "core/AppPaths.h"
 #include "core/VpnCloudService.h"
 #include "core/ControllerService.h"
 #include "core/SessionManager.h"
@@ -55,7 +57,9 @@ void showStartupError(const QString &message)
                 reinterpret_cast<LPCWSTR>(QCoreApplication::translate("Main", "Genlot VPN").utf16()),
                 MB_OK | MB_ICONERROR);
 #else
-    Q_UNUSED(message)
+    QMessageBox::critical(nullptr,
+                          QCoreApplication::translate("Main", "Genlot VPN"),
+                          message);
 #endif
 }
 
@@ -67,7 +71,9 @@ void showAlreadyRunningNotice(const QString &message)
                 reinterpret_cast<LPCWSTR>(QCoreApplication::translate("Main", "Genlot VPN").utf16()),
                 MB_OK | MB_ICONINFORMATION);
 #else
-    Q_UNUSED(message)
+    QMessageBox::information(nullptr,
+                             QCoreApplication::translate("Main", "Genlot VPN"),
+                             message);
 #endif
 }
 
@@ -137,8 +143,9 @@ int main(int argc, char *argv[])
         appLogger->warn(QStringLiteral("[i18n] 未能加载翻译文件，使用界面源语言"));
     }
     vpn::TrayIcon trayIcon(appIcon);
-    // 与 Qt Creator 一致：从 exe 同目录加载 GenlotVPN/qmldir（打包脚本会复制该目录）
-    engine.addImportPath(QCoreApplication::applicationDirPath());
+    // Windows：exe 同目录；macOS：Contents/MacOS 或 Resources 下的 GenlotVPN/qmldir
+    engine.addImportPath(vpn::AppPaths::qmlImportPath());
+    appLogger->info(QStringLiteral("可写目录: %1").arg(vpn::AppPaths::writableRoot()));
     engine.rootContext()->setContextProperty(QStringLiteral("vpnFlow"), &flow);
     engine.rootContext()->setContextProperty(QStringLiteral("vpnStorage"), &secureStorage);
     engine.rootContext()->setContextProperty(QStringLiteral("localeManager"), &localeManager);

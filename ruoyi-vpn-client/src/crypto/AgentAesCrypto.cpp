@@ -5,6 +5,8 @@
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <bcrypt.h>
+#elif defined(Q_OS_MACOS)
+#include <CommonCrypto/CommonCryptor.h>
 #endif
 
 namespace vpn {
@@ -114,13 +116,43 @@ QByteArray aesCbcCrypt(const QByteArray &input, bool encrypt)
     return output;
 }
 
+#elif defined(Q_OS_MACOS)
+
+QByteArray aesCbcCrypt(const QByteArray &input, bool encrypt)
+{
+    QByteArray ivBuf(kIv, static_cast<int>(sizeof(kIv) - 1));
+    const size_t bufferSize = static_cast<size_t>(input.size()) + kCCBlockSizeAES128;
+    QByteArray output;
+    output.resize(static_cast<int>(bufferSize));
+    size_t outLength = 0;
+
+    const CCCryptorStatus status = CCCrypt(
+        encrypt ? kCCEncrypt : kCCDecrypt,
+        kCCAlgorithmAES,
+        kCCOptionPKCS7Padding,
+        kKey,
+        sizeof(kKey) - 1,
+        ivBuf.constData(),
+        input.constData(),
+        static_cast<size_t>(input.size()),
+        output.data(),
+        bufferSize,
+        &outLength);
+
+    if (status != kCCSuccess) {
+        return QByteArray();
+    }
+    output.resize(static_cast<int>(outLength));
+    return output;
+}
+
 #endif
 
 } // namespace
 
 QString AgentAesCrypto::encryptToBase64(const QByteArray &plainUtf8)
 {
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
     const QByteArray cipher = aesCbcCrypt(plainUtf8, true);
     if (cipher.isEmpty() && !plainUtf8.isEmpty()) {
         return QString();
@@ -134,7 +166,7 @@ QString AgentAesCrypto::encryptToBase64(const QByteArray &plainUtf8)
 
 QByteArray AgentAesCrypto::decryptFromBase64(const QByteArray &cipherBase64)
 {
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
     const QByteArray decoded = QByteArray::fromBase64(cipherBase64);
     if (decoded.isEmpty() && !cipherBase64.isEmpty()) {
         return QByteArray();

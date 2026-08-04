@@ -26,7 +26,7 @@ QString humanizeConnectError(const QString &raw, bool useTls)
         || lower.contains(QStringLiteral("unsupported function"))) {
         return QCoreApplication::translate(
             "TcpClient",
-            "TLS 握手失败（Windows 与服务器 TLS 特性不兼容）。请重启 ruoyi-vpn-auth 使服务端支持 TLS 1.2+1.3，"
+            "TLS 握手失败（本机 TLS 与服务器特性不兼容）。请重启 ruoyi-vpn-auth 使服务端支持 TLS 1.2+1.3，"
             "并确认 config.json 中 useTls 为 true。");
     }
     if (protocolRelated) {

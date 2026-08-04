@@ -1,10 +1,10 @@
 #include "OfflineLoginImporter.h"
 
 #include "AppLogger.h"
+#include "AppPaths.h"
 #include "TrustedTimeProvider.h"
 #include "crypto/BcryptVerifier.h"
 #include "crypto/OfflineLoginIntegrity.h"
-#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -43,7 +43,7 @@ int readPort(const QJsonObject &obj, const char *snakeKey, const char *camelKey)
 
 QString OfflineLoginImporter::defaultDirectory()
 {
-    return QCoreApplication::applicationDirPath() + QStringLiteral("/offline-login");
+    return AppPaths::offlineLoginDir();
 }
 
 bool OfflineLoginImporter::ensureDirectoryExists(QString *errorOut)

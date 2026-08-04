@@ -20,13 +20,26 @@ if(WIN32 AND NOT DEFINED Protobuf_ROOT AND EXISTS "D:/anaconda3/Library/include/
     set(Protobuf_ROOT "D:/anaconda3/Library" CACHE PATH "Protobuf 安装目录（Anaconda）")
 endif()
 
+if(APPLE AND NOT DEFINED Protobuf_ROOT)
+    foreach(_pb_hint "/opt/homebrew" "/usr/local")
+        if(EXISTS "${_pb_hint}/include/google/protobuf/message.h")
+            set(Protobuf_ROOT "${_pb_hint}" CACHE PATH "Protobuf 安装目录（Homebrew）")
+            break()
+        endif()
+    endforeach()
+endif()
+
+if(APPLE AND NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "macOS 最低版本" FORCE)
+endif()
+
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 Network Linguist)
 find_package(Protobuf REQUIRED)
 if(NOT Protobuf_LIBRARIES AND NOT TARGET protobuf::libprotobuf)
     message(FATAL_ERROR
-        "未找到 Protobuf 库。请使用 MSVC Kit，并在 CMake 参数中设置：\n"
-        "  -DProtobuf_ROOT=D:/anaconda3/Library\n"
-        "或在 Qt Creator → 项目 → CMake → 初始配置 中添加上述变量。")
+        "未找到 Protobuf 库。\n"
+        "Windows: -DProtobuf_ROOT=D:/anaconda3/Library\n"
+        "macOS: brew install protobuf，或 -DProtobuf_ROOT=/opt/homebrew")
 endif()
 
 set(PROTO_DIR ${CMAKE_SOURCE_DIR}/../proto)
@@ -54,7 +67,7 @@ set(SOURCES
     src/core/ControllerService.cpp
     src/core/SessionManager.cpp
     src/core/SecureStorage.cpp
-    src/windows/DpapiProtector.cpp
+    src/core/AppPaths.cpp
     src/core/AppLogger.cpp
     src/core/ClientDeviceInfo.cpp
     src/core/PacketLogUtil.cpp
@@ -65,11 +78,19 @@ set(SOURCES
     src/core/LocaleManager.cpp
     src/platform/SingleInstance.cpp
     src/platform/TrayIcon.cpp
+    src/platform/PasswordProtector.cpp
     ${PROTO_SRCS}
 )
 
-# WIN32：使用 GUI 子系统，避免运行时弹出黑色 cmd 窗口
-qt_add_executable(GenlotVPN WIN32 ${SOURCES})
+if(WIN32)
+    list(APPEND SOURCES src/windows/DpapiProtector.cpp)
+endif()
+if(APPLE)
+    list(APPEND SOURCES src/macos/KeychainProtector.cpp)
+endif()
+
+# WIN32：GUI 子系统；MACOSX_BUNDLE：产出 .app
+qt_add_executable(GenlotVPN WIN32 MACOSX_BUNDLE ${SOURCES})
 
 if(WIN32)
     configure_file(
@@ -82,6 +103,28 @@ if(WIN32)
         target_sources(GenlotVPN PRIVATE windows/app_icon.rc)
     elseif(MSVC)
         message(WARNING "未找到 assets/images/genlot-app.ico，跳过嵌入 exe 图标")
+    endif()
+endif()
+
+if(APPLE)
+    set_target_properties(GenlotVPN PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_EXECUTABLE_NAME "GenlotVPN"
+        MACOSX_BUNDLE_BUNDLE_NAME "GenlotVPN"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.genlot.GenlotVPN"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${GENLOT_VERSION_STRING}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${GENLOT_VERSION_STRING}"
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/macos/Info.plist.in"
+    )
+    if(EXISTS "${CMAKE_SOURCE_DIR}/assets/images/genlot-app.icns")
+        set_source_files_properties(
+            "${CMAKE_SOURCE_DIR}/assets/images/genlot-app.icns"
+            PROPERTIES MACOSX_PACKAGE_LOCATION "Resources"
+        )
+        target_sources(GenlotVPN PRIVATE "${CMAKE_SOURCE_DIR}/assets/images/genlot-app.icns")
+        set_target_properties(GenlotVPN PROPERTIES
+            MACOSX_BUNDLE_ICON_FILE "genlot-app.icns"
+        )
     endif()
 endif()
 
@@ -142,6 +185,9 @@ target_link_libraries(GenlotVPN PRIVATE
 if(WIN32)
     target_link_libraries(GenlotVPN PRIVATE crypt32 bcrypt)
 endif()
+if(APPLE)
+    target_link_libraries(GenlotVPN PRIVATE "-framework Security" "-framework CoreFoundation")
+endif()
 
 target_include_directories(GenlotVPN PRIVATE src ${CMAKE_CURRENT_BINARY_DIR})
 target_compile_definitions(GenlotVPN PRIVATE VPN_HAS_PROTO=1)
@@ -178,7 +224,7 @@ if(MSVC AND GENLOT_PROTOBUF_DLL AND NOT GENLOT_ALLOW_DEBUG_PROTOBUF)
     endif()
 endif()
 
-# 拷贝默认配置与 libprotobuf.dll 到输出目录（与 exe 同目录，便于 Qt Creator 直接运行）
+# 拷贝默认配置与运行时依赖到输出目录（exe 旁或 .app/Contents/MacOS）
 configure_file(${CMAKE_SOURCE_DIR}/resources/config.json ${CMAKE_BINARY_DIR}/config.json COPYONLY)
 add_custom_command(TARGET GenlotVPN POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -192,6 +238,17 @@ add_custom_command(TARGET GenlotVPN POST_BUILD
         $<TARGET_FILE_DIR:GenlotVPN>/config.default.json
     COMMENT "Copy config.default.json (first-run template)"
 )
+if(APPLE)
+    # 可写配置从 Application Support 读取模板时，也放入 Resources
+    add_custom_command(TARGET GenlotVPN POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            $<TARGET_BUNDLE_DIR:GenlotVPN>/Contents/Resources
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_SOURCE_DIR}/resources/config.default.json
+            $<TARGET_BUNDLE_DIR:GenlotVPN>/Contents/Resources/config.default.json
+        COMMENT "Copy config.default.json into app Resources"
+    )
+endif()
 if(GENLOT_PROTOBUF_DLL)
     get_filename_component(GENLOT_PROTOBUF_BIN_DIR "${GENLOT_PROTOBUF_DLL}" DIRECTORY)
     add_custom_command(TARGET GenlotVPN POST_BUILD
@@ -225,4 +282,14 @@ if(GENLOT_QM_FILES)
             $<TARGET_FILE_DIR:GenlotVPN>/i18n/
         COMMENT "Copy translation QM files"
     )
+    if(APPLE)
+        add_custom_command(TARGET GenlotVPN POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+                $<TARGET_BUNDLE_DIR:GenlotVPN>/Contents/Resources/i18n
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${GENLOT_QM_FILES}
+                $<TARGET_BUNDLE_DIR:GenlotVPN>/Contents/Resources/i18n/
+            COMMENT "Copy translation QM files into app Resources"
+        )
+    endif()
 endif()

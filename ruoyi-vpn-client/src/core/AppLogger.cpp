@@ -1,5 +1,5 @@
 #include "AppLogger.h"
-#include <QCoreApplication>
+#include "AppPaths.h"
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -18,7 +18,7 @@ AppLogger *AppLogger::instance()
 
 AppLogger::AppLogger()
 {
-    m_logDirPath = QCoreApplication::applicationDirPath() + QStringLiteral("/logs");
+    m_logDirPath = AppPaths::logDir();
     QDir().mkpath(m_logDirPath);
     ensureLogFiles();
 }

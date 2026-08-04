@@ -10,22 +10,20 @@ Windows/macOS 跨平台 VPN 登录客户端。UI 风格对齐 [Genlot 官网](ht
 
 ## 依赖
 
-本机需安装开发环境，**详见 [docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md)**。
+| 平台 | 文档 | 一键检查 |
+|------|------|----------|
+| Windows | [docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md) | `bin\check-vpn-client-deps.bat` |
+| macOS | [docs/MACOS_SETUP.md](docs/MACOS_SETUP.md) | `bash bin/check-vpn-client-deps-macos.sh` |
 
-| 组件 | 说明 |
-|------|------|
-| Visual Studio 2022 | C++ 桌面开发 |
-| CMake 3.21+ | 构建 |
-| Qt 6.6+ MSVC 64-bit | UI |
-| Protobuf 3.x | 协议（推荐 vcpkg） |
+**Windows 组件**：Visual Studio 2022、CMake 3.21+、Qt 6.6+ MSVC 64-bit、Protobuf 3.x  
 
-检查依赖：`bin\check-vpn-client-deps.bat`
+**macOS 组件**：Xcode CLT、CMake 3.21+、Qt 6.6+ macOS、Homebrew `protobuf`（默认 arm64）
 
 **暂未安装 Qt/Protobuf 时**：可先只构建后端 `mvn package -pl ruoyi-vpn-auth -am -DskipTests` 并用 TCP 9443 联调；桌面客户端待环境就绪后再编译。
 
 ## 构建（Release）
 
-**推荐：一键脚本（W-01）**
+### Windows（W-01）
 
 ```bat
 set CMAKE_PREFIX_PATH=D:\apps\Qt\6.11.1\msvc2022_64
@@ -35,6 +33,20 @@ bin\build-vpn-client.bat
 ```
 
 产物：`ruoyi-vpn-client\build-msvc2022\Release\GenlotVPN.exe`
+
+### macOS
+
+```bash
+export CMAKE_PREFIX_PATH="$HOME/Qt/6.11.1/macos"
+bash bin/check-vpn-client-deps-macos.sh
+bash bin/build-vpn-client-macos.sh
+# 打包到 dist/：
+bash bin/build-vpn-client-macos.sh --package
+```
+
+产物：`ruoyi-vpn-client/build-macos/GenlotVPN.app`  
+分发目录：`ruoyi-vpn-client/dist/GenlotVPN-macos-{arch}-{version}/`  
+运维说明：[docs/DEPLOY_MACOS.md](docs/DEPLOY_MACOS.md)
 
 **打包依赖（W-02，windeployqt + libprotobuf.dll）**
 
@@ -127,9 +139,10 @@ cmake --build build-msvc2022 --config Release
 - 设置页：**安全连接** → 启用 TLS → 填写证书指纹
 - `controllerAesEnabled`：控制本机 Agent `30303` 全包 AES（默认 `true`），见 `config.default.json`
 
-## 部署与运维（Windows）
+## 部署与运维
 
-生产/内网分发、防火墙、Agent、日志排障：**[docs/DEPLOY_WINDOWS.md](docs/DEPLOY_WINDOWS.md)**
+- Windows：**[docs/DEPLOY_WINDOWS.md](docs/DEPLOY_WINDOWS.md)**
+- macOS：**[docs/DEPLOY_MACOS.md](docs/DEPLOY_MACOS.md)**（配置/日志在 `~/Library/Application Support/Genlot/GenlotVPN/`）
 
 ## 联调步骤
 
@@ -143,15 +156,15 @@ cmake --build build-msvc2022 --config Release
 - 云端传输：生产环境 **TLS 1.3 + 证书 Pinning**（自签证书以 SPKI 指纹为信任锚）
 - 登录后 RPC 携带 **HMAC-SHA256(session_key)**
 - 启用 TLS 时必须配置 `certPinSha256`（64 位 hex）
-- 记住密码使用 Windows DPAPI 加密存储（macOS 计划 Keychain）
+- 记住密码：Windows 使用 DPAPI；macOS 使用 Keychain（`com.genlot.GenlotVPN`）
 - 控制器密码：云端经 TLS 下发表字段级 AES 密文，客户端原样写入 `loginWithAccount`；`controllerAesEnabled=true` 时再对整段 JSON 做传输层 AES 加密
 - **30303 AES 密钥/IV**：与易安联 Agent SDK 一致的**协议固定参数**（非业务密钥），硬编码于客户端以便与本机 Agent 互通；主要约束本机回环上的明文 JSON 可见性，**不抵御**同机恶意软件或逆向。远程敏感数据依赖 **TLS 9443** 与 Agent 登录后会话；`controllerAesEnabled` 用于协议版本/兼容，勿当作额外安全开关
 
 ## 日志
 
 - 日志仅写入本地文件，界面不展示
-- 全量日志：`<exe目录>/logs/genlot-vpn-YYYY-MM-DD.log`
-- **报错专用**：`<exe目录>/logs/genlot-vpn-error-YYYY-MM-DD.log`（ERROR 级别双写并立即刷盘）
+- Windows 全量 / 报错日志：`<exe目录>/logs/genlot-vpn-*.log`、`genlot-vpn-error-*.log`
+- macOS：`~/Library/Application Support/Genlot/GenlotVPN/logs/`（同上文件名）
 - 云端 TCP/RPC、本地控制器 HTTP 请求失败均会写入报错日志
 
 ## 国际化

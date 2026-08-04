@@ -7,7 +7,7 @@
 
 namespace vpn {
 
-/** 本地配置；记住的密码经 Windows DPAPI 加密后存入 QSettings */
+/** 本地配置；记住的密码经平台安全存储（Windows DPAPI / macOS Keychain）后写入 QSettings */
 class SecureStorage : public QObject {
     Q_OBJECT
 public:

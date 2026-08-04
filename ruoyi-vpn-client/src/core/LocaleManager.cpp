@@ -1,4 +1,5 @@
 #include "LocaleManager.h"
+#include "AppPaths.h"
 #include "SecureStorage.h"
 #include <QApplication>
 #include <QCoreApplication>
@@ -105,7 +106,7 @@ QString LocaleManager::normalizeLocale(const QString &locale) const
 
 QString LocaleManager::translationsDir() const
 {
-    return QCoreApplication::applicationDirPath() + QStringLiteral("/i18n");
+    return AppPaths::i18nDir();
 }
 
 bool LocaleManager::applyLocale(const QString &locale)

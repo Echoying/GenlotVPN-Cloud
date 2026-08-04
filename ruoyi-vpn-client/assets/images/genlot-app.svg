@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 由 scripts/make_app_icon.py 生成，勿手工编辑 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"
+     width="1024" height="1024" role="img" aria-label="Genlot VPN">
+  <defs>
+    <linearGradient id="body" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0B2D5B"/>
+      <stop offset="100%" stop-color="#1E4A7A"/>
+    </linearGradient>
+    <linearGradient id="orb" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="55%" stop-color="#8EC8F8"/>
+      <stop offset="100%" stop-color="#3D8FD4"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824"
+        rx="184" ry="184" fill="url(#body)"/>
+  <g transform="translate(45.730 228.508) scale(7.46032)">
+      <path fill="#FFFFFF" d="M44 44c0-18 12-30 30-30 8 0 15 3 20 8-6-2-12-3-18-3-14 0-24 10-24 24 0 10 6 18 16 22-12-4-24-12-24-21z"/>
+      <path fill="#FFFFFF" d="M58 18c14 0 24 10 24 24 0 8-4 15-10 19 7-5 12-13 12-22 0-16-13-28-30-28-9 0-17 3-23 9 6-2 13-2 17-2z"/>
+      <circle cx="52" cy="50" r="11" fill="url(#orb)"/>
+  </g>
+</svg>
