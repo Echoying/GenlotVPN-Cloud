@@ -10,6 +10,7 @@
 
 class QNetworkAccessManager;
 class QNetworkReply;
+class QTimer;
 
 namespace vpn {
 

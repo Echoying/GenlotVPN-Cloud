@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""生成 macOS 应用图标。
+"""生成 macOS 应用图标（与 Windows genlot-app.ico 对齐）。
 
-从 assets/images/genlot-logo.svg 的左侧圆形标志（双弧 + 光球）重新排版为方形图标，
+优先使用 assets/images/genlot-app-icon-official.png（与 exe / 托盘同源），
+铺到 Big Sur 风格黑底圆角方块上。
+
 输出：
-  - assets/images/genlot-app.svg    方形图标源（供设计复用）
   - assets/images/genlot-app-1024.png
-  - assets/images/genlot-app.icns   CMake 在 APPLE 分支自动嵌入 Bundle
+  - assets/images/genlot-app.icns
 
-不依赖 iconutil，可在 Windows/Linux 上执行；仅需 Pillow + numpy。
-
-用法：python scripts/make_app_icon.py
+macOS 推荐：swift scripts/make_app_icon.swift
+跨平台：python3 scripts/make_app_icon.py（需 Pillow + numpy）
 """
 
 from __future__ import annotations
@@ -37,8 +37,8 @@ MARK_BOX = 470  # 标志在本体内的最大边长
 SS = 4  # 超采样倍数
 
 NAVY_TOP = (11, 45, 91)      # Theme.navy  #0B2D5B
-NAVY_BOTTOM = (30, 74, 122)  # Theme.navyLight #1E4A7A
-MARK_COLOR = (255, 255, 255)
+NAVY_BOTTOM = (8, 28, 58)    # 更深，保证 #1B4F9C 标志可读
+MARK_COLOR = (27, 79, 156)   # 与 genlot-logo.svg 一致 #1B4F9C
 ORB_STOPS = [
     (0.00, (255, 255, 255)),
     (0.55, (142, 200, 248)),  # #8EC8F8
@@ -258,6 +258,37 @@ ICNS_ENTRIES = [
 
 
 def build_icns(master: Image.Image) -> bytes:
+    """优先走 macOS iconutil（系统可识别）；其他平台回退为 PNG 块 ICNS。"""
+    import platform
+    import shutil
+    import subprocess
+    import tempfile
+
+    if platform.system() == "Darwin" and shutil.which("iconutil"):
+        with tempfile.TemporaryDirectory(prefix="genlot-iconset-") as tmp:
+            iconset = Path(tmp) / "genlot-app.iconset"
+            iconset.mkdir()
+            mapping = [
+                ("icon_16x16.png", 16),
+                ("icon_16x16@2x.png", 32),
+                ("icon_32x32.png", 32),
+                ("icon_32x32@2x.png", 64),
+                ("icon_128x128.png", 128),
+                ("icon_128x128@2x.png", 256),
+                ("icon_256x256.png", 256),
+                ("icon_256x256@2x.png", 512),
+                ("icon_512x512.png", 512),
+                ("icon_512x512@2x.png", 1024),
+            ]
+            for name, size in mapping:
+                resized = master if size == master.width else master.resize(
+                    (size, size), Image.LANCZOS)
+                resized.save(iconset / name, format="PNG")
+            out = Path(tmp) / "genlot-app.icns"
+            subprocess.check_call(
+                ["iconutil", "-c", "icns", str(iconset), "-o", str(out)])
+            return out.read_bytes()
+
     chunks = bytearray()
     for ostype, size in ICNS_ENTRIES:
         buffer = BytesIO()
@@ -271,14 +302,37 @@ def build_icns(master: Image.Image) -> bytes:
     return b"icns" + struct.pack(">I", len(chunks) + 8) + bytes(chunks)
 
 
+def render_from_official(images_dir: Path) -> Image.Image | None:
+    """与 Windows genlot-app.ico 同源：铺 official PNG 到黑底圆角方块。"""
+    official_path = images_dir / "genlot-app-icon-official.png"
+    if not official_path.is_file():
+        return None
+    official = Image.open(official_path).convert("RGBA")
+    image = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
+    offset = (CANVAS - BODY) // 2
+    body_mask = Image.new("L", (BODY, BODY), 0)
+    ImageDraw.Draw(body_mask).rounded_rectangle(
+        (0, 0, BODY - 1, BODY - 1), radius=BODY_RADIUS, fill=255)
+    body = Image.new("RGBA", (BODY, BODY), (0, 0, 0, 255))
+    pad = 28
+    dest = BODY - pad * 2
+    scaled = official.resize((dest, dest), Image.LANCZOS)
+    body.paste(scaled, (pad, pad), scaled)
+    image.paste(body, (offset, offset), body_mask)
+    return image
+
+
 def main() -> None:
     images_dir = Path(__file__).resolve().parent.parent / "assets" / "images"
     images_dir.mkdir(parents=True, exist_ok=True)
 
-    master = render_icon()
-
-    svg_path = images_dir / "genlot-app.svg"
-    svg_path.write_text(build_svg(), encoding="utf-8")
+    master = render_from_official(images_dir)
+    if master is None:
+        master = render_icon()
+        (images_dir / "genlot-app.svg").write_text(build_svg(), encoding="utf-8")
+        print("[..] 未找到 genlot-app-icon-official.png，回退 SVG 重绘")
+    else:
+        print("[..] 使用 genlot-app-icon-official.png（与 Windows 对齐）")
 
     png_path = images_dir / "genlot-app-1024.png"
     master.save(png_path, format="PNG", optimize=True)
@@ -286,7 +340,7 @@ def main() -> None:
     icns_path = images_dir / "genlot-app.icns"
     icns_path.write_bytes(build_icns(master))
 
-    for path in (svg_path, png_path, icns_path):
+    for path in (png_path, icns_path):
         print(f"[OK] {path.name}  {path.stat().st_size / 1024:.1f} KB")
 
 

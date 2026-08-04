@@ -177,9 +177,20 @@ void TcpClient::resetConnection()
     m_waitingResponse = false;
     m_readBuffer.clear();
     m_tlsReady = false;
-    if (m_socket.state() != QAbstractSocket::UnconnectedState) {
-        m_socket.abort();
+    deferAbortSocket();
+}
+
+void TcpClient::deferAbortSocket()
+{
+    if (m_socket.state() == QAbstractSocket::UnconnectedState) {
+        return;
     }
+    // 勿在 readyRead / TLS 回调栈内同步 abort，否则 OpenSSL 可能 SIGSEGV
+    QMetaObject::invokeMethod(this, [this]() {
+        if (m_socket.state() != QAbstractSocket::UnconnectedState) {
+            m_socket.abort();
+        }
+    }, Qt::QueuedConnection);
 }
 
 void TcpClient::startConnect()
@@ -235,7 +246,7 @@ void TcpClient::onTlsReady()
     if (m_useTls) {
         if (!m_pinner.verify(&m_socket)) {
             AppLogger::instance()->error(QStringLiteral("[云端] 证书 Pinning 校验失败"));
-            m_socket.abort();
+            deferAbortSocket();
             failPending(QStringLiteral("证书 Pinning 校验失败"));
             return;
         }
@@ -257,7 +268,7 @@ void TcpClient::onSslErrors(const QList<QSslError> &errors)
         return;
     }
     AppLogger::instance()->error(QStringLiteral("[云端] TLS 证书校验失败"));
-    m_socket.abort();
+    deferAbortSocket();
     failPending(QStringLiteral("TLS 证书校验失败"));
 }
 
@@ -308,11 +319,16 @@ void TcpClient::onDisconnected()
 
 void TcpClient::finishActive(bool ok, const QByteArray &body, const QString &err)
 {
-    if (m_pendingCallback) {
-        m_pendingCallback(ok, body, err);
-        m_pendingCallback = nullptr;
-    }
+    // 必须先挪走再调用：回调里可能 clearSession/resetConnection，
+    // 若直接操作 m_pendingCallback 会在 std::function 执行中销毁自身导致崩溃
+    ResponseCallback cb = std::move(m_pendingCallback);
+    m_pendingCallback = nullptr;
     m_waitingResponse = false;
+    m_connectTimer.stop();
+    m_responseTimer.stop();
+    if (cb) {
+        cb(ok, body, err);
+    }
     dispatchNext();
 }
 

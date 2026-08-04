@@ -1219,6 +1219,13 @@ void VpnFlowController::shutdownAndQuit()
 
 void VpnFlowController::performLogoutCleanup(bool clearUsername, bool quitApp)
 {
+    if (m_handlingSessionExpiry) {
+        // 会话过期清理进行中：仅在退出应用时排队 quit
+        if (quitApp) {
+            QTimer::singleShot(100, qApp, []() { QCoreApplication::quit(); });
+        }
+        return;
+    }
     if (m_logoutCleanupInProgress) {
         if (quitApp) {
             QTimer::singleShot(100, qApp, []() { QCoreApplication::quit(); });
@@ -1233,7 +1240,7 @@ void VpnFlowController::performLogoutCleanup(bool clearUsername, bool quitApp)
 
     const bool needsCloudLogout = hasActiveCloudSession();
 
-    if (m_loggedIn || needsCloudLogout) {
+    if (needsControllerLogout()) {
         m_controller->controllerLogout();
     }
 
@@ -1280,10 +1287,11 @@ void VpnFlowController::performLogoutCleanup(bool clearUsername, bool quitApp)
 
 void VpnFlowController::ensureLogoutBeforeProcessExit()
 {
-    if (m_logoutCleanupInProgress) {
+    if (m_logoutCleanupInProgress || m_handlingSessionExpiry) {
         return;
     }
-    if (!hasActiveCloudSession() && !m_loggedIn) {
+    const bool needController = needsControllerLogout();
+    if (!hasActiveCloudSession() && !m_loggedIn && !needController) {
         return;
     }
 
@@ -1291,7 +1299,7 @@ void VpnFlowController::ensureLogoutBeforeProcessExit()
     stopTunnelStatusPolling();
     stopSessionPing();
 
-    if (m_loggedIn || hasActiveCloudSession()) {
+    if (needController) {
         m_controller->controllerLogout();
     }
 
@@ -1334,6 +1342,14 @@ bool VpnFlowController::hasActiveCloudSession() const
     return m_loggedIn || m_cloud->hasSession();
 }
 
+bool VpnFlowController::needsControllerLogout() const
+{
+    // 离线模式不会 setLoggedIn，但仍会 loginWithAccount；选线成功后也有控制器会话
+    return m_loggedIn || m_offlineMode || hasActiveCloudSession()
+           || !m_selectedLine.value(QStringLiteral("appId")).toString().isEmpty()
+           || !m_apps.isEmpty();
+}
+
 bool VpnFlowController::maybeHandleSessionExpired(const QString &msg)
 {
     if (m_handlingSessionExpiry || m_logoutCleanupInProgress) {
@@ -1360,7 +1376,8 @@ void VpnFlowController::handleSessionExpired(const QString &serverMsg)
 
     // 推迟到事件循环下一轮，避免 TCP 回调栈内重入导致重复清理崩溃
     QTimer::singleShot(0, this, [this, reason]() {
-        if (!m_handlingSessionExpiry) {
+        if (!m_handlingSessionExpiry || m_logoutCleanupInProgress) {
+            m_handlingSessionExpiry = false;
             return;
         }
 
@@ -1383,7 +1400,7 @@ void VpnFlowController::handleSessionExpired(const QString &serverMsg)
         stopTunnelStatusPolling();
         stopSessionPing();
 
-        if (m_controller) {
+        if (m_controller && needsControllerLogout()) {
             m_controller->controllerLogout();
         }
         if (m_cloud && m_cloud->hasSession()) {
@@ -1445,11 +1462,8 @@ void VpnFlowController::finishLogout(bool clearUsername)
     emit selectedGatewayIdChanged();
     emit switchingGatewayIdChanged();
 
-    const bool hasLine = !m_pendingLine.value(QStringLiteral("appId")).toString().isEmpty();
-    if (m_loggedIn) {
-        m_authorizedLines.clear();
-        emit authorizedLinesChanged();
-    }
+    m_authorizedLines.clear();
+    emit authorizedLinesChanged();
     emit navigateTo(QStringLiteral("login"));
     if (!wasOffline) {
         m_cloud->fetchCaptcha();

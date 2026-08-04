@@ -61,6 +61,8 @@ private:
     void failPending(const QString &err);
     void finishActive(bool ok, const QByteArray &body, const QString &err);
     void dispatchNext();
+    /** 延迟 abort，避免在 TLS/OpenSSL 回调栈内同步断开 */
+    void deferAbortSocket();
 
     QSslSocket m_socket;
     QTimer m_connectTimer;

@@ -15,8 +15,10 @@ bash bin/check-vpn-client-deps-macos.sh
 # 重新探测（check 脚本可能已设置）
 if [[ -z "${CMAKE_PREFIX_PATH:-}" ]]; then
   for hint in \
-    "$HOME/Qt/6.11.1/macos" \
+    "$HOME/Qt/6.7.3/macos" \
+    "$HOME/Qt/6.6.3/macos" \
     "$HOME/Qt/6.8.3/macos" \
+    "$HOME/Qt/6.11.1/macos" \
     "/opt/homebrew/opt/qt" \
     "/usr/local/opt/qt"; do
     if [[ -f "$hint/lib/cmake/Qt6/Qt6Config.cmake" ]]; then
@@ -34,12 +36,17 @@ if [[ -n "${CMAKE_PREFIX_PATH:-}" && -x "${CMAKE_PREFIX_PATH}/bin/lupdate" ]]; t
   "${CMAKE_PREFIX_PATH}/bin/lupdate" src qml -ts i18n/genlotvpn_zh_CN.ts i18n/genlotvpn_en.ts >/dev/null 2>&1 || true
 fi
 
+# 默认跟随本机架构；Intel Monterey 勿再误用 arm64
+ARCH="${CMAKE_OSX_ARCHITECTURES:-$(uname -m)}"
+echo "[..] CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH:-}"
+echo "[..] CMAKE_OSX_ARCHITECTURES=${ARCH}"
+
 CMAKE_ARGS=(
   -B "$BUILD_DIR"
   -G Ninja
   -DCMAKE_BUILD_TYPE=Release
   -DCMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH}"
-  -DCMAKE_OSX_ARCHITECTURES="${CMAKE_OSX_ARCHITECTURES:-arm64}"
+  -DCMAKE_OSX_ARCHITECTURES="${ARCH}"
 )
 if [[ -n "${Protobuf_ROOT:-}" ]]; then
   CMAKE_ARGS+=(-DProtobuf_ROOT="${Protobuf_ROOT}")

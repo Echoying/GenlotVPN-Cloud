@@ -17,7 +17,8 @@ Windows/macOS 跨平台 VPN 登录客户端。UI 风格对齐 [Genlot 官网](ht
 
 **Windows 组件**：Visual Studio 2022、CMake 3.21+、Qt 6.6+ MSVC 64-bit、Protobuf 3.x  
 
-**macOS 组件**：Xcode CLT、CMake 3.21+、Qt 6.6+ macOS、Homebrew `protobuf`（默认 arm64）
+**macOS 组件**：Xcode CLT、CMake 3.21+、Qt **6.6/6.7** macOS（Monterey 勿用 6.11）、Protobuf（Homebrew）  
+详细步骤与踩坑：[docs/MACOS_SETUP.md](docs/MACOS_SETUP.md)
 
 **暂未安装 Qt/Protobuf 时**：可先只构建后端 `mvn package -pl ruoyi-vpn-auth -am -DskipTests` 并用 TCP 9443 联调；桌面客户端待环境就绪后再编译。
 
@@ -37,16 +38,26 @@ bin\build-vpn-client.bat
 ### macOS
 
 ```bash
-export CMAKE_PREFIX_PATH="$HOME/Qt/6.11.1/macos"
+export CMAKE_PREFIX_PATH="$HOME/Qt/6.7.3/macos"   # Monterey 用 6.6/6.7，勿用 6.11
+export CMAKE_OSX_ARCHITECTURES="$(uname -m)"      # Intel=x86_64，Apple Silicon=arm64
+export Protobuf_ROOT=/usr/local                   # Apple Silicon: /opt/homebrew
 bash bin/check-vpn-client-deps-macos.sh
 bash bin/build-vpn-client-macos.sh
 # 打包到 dist/：
 bash bin/build-vpn-client-macos.sh --package
 ```
 
+清理后全量重编：
+
+```bash
+rm -rf ruoyi-vpn-client/build-macos
+bash bin/build-vpn-client-macos.sh
+```
+
 产物：`ruoyi-vpn-client/build-macos/GenlotVPN.app`  
-分发目录：`ruoyi-vpn-client/dist/GenlotVPN-macos-{arch}-{version}/`  
-运维说明：[docs/DEPLOY_MACOS.md](docs/DEPLOY_MACOS.md)
+分发目录：`ruoyi-vpn-client/dist/GenlotVPN-macos-{arch}-{version}/`（经 `macdeployqt`，含 Qt 框架/插件与 libprotobuf）  
+完整编译手册：[docs/MACOS_SETUP.md](docs/MACOS_SETUP.md)  
+打包与运维：[docs/DEPLOY_MACOS.md](docs/DEPLOY_MACOS.md)
 
 **打包依赖（W-02，windeployqt + libprotobuf.dll）**
 

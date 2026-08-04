@@ -191,6 +191,8 @@ private:
     bool maybeHandleSessionExpired(const QString &msg);
     void handleSessionExpired(const QString &serverMsg);
     bool hasActiveCloudSession() const;
+    /** 是否可能已登录本机易安联控制器（在线/离线均需登出清理） */
+    bool needsControllerLogout() const;
     void applyGatewayListUpdate(const QVariantList &gws, bool turnOn, int tunCode);
     bool isGatewayDataReady(const QVariantList &gateways, int tunCode) const;
     void applyTunnelStatusToSelectedGateway();

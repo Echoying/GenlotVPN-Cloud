@@ -472,17 +472,21 @@ void VpnCloudService::logout(std::function<void(bool ok)> onComplete)
         return;
     }
     vpn::LogoutRequest req;
+    // 登出回调里会 clearSession/abort；推迟到事件循环，避免仍在 TCP readyRead 栈内
     sendRpc(static_cast<int>(vpn::MessageType::LOGOUT), serializeProto(req),
             [this, onComplete = std::move(onComplete)](const RpcResult &r) {
-        clearSession();
-        if (!r.ok) {
-            const QString msg = r.msg.isEmpty() ? QStringLiteral("退出登录请求失败") : r.msg.trimmed();
-            emitCloudError(msg);
-        }
-        emit logoutSucceeded();
-        if (onComplete) {
-            onComplete(r.ok);
-        }
+        const bool ok = r.ok;
+        const QString msg = r.msg.trimmed();
+        QTimer::singleShot(0, this, [this, ok, msg, onComplete]() {
+            clearSession();
+            if (!ok) {
+                emitCloudError(msg.isEmpty() ? QStringLiteral("退出登录请求失败") : msg);
+            }
+            emit logoutSucceeded();
+            if (onComplete) {
+                onComplete(ok);
+            }
+        });
     });
 #else
     clearSession();

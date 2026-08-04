@@ -89,6 +89,16 @@ if(APPLE)
     list(APPEND SOURCES src/macos/KeychainProtector.cpp)
 endif()
 
+# macOS：Info.plist 在 qt_add_executable 时就会 configure，须先设好变量（仅 target 属性会被写成空）
+if(APPLE)
+    set(MACOSX_BUNDLE_EXECUTABLE_NAME "GenlotVPN")
+    set(MACOSX_BUNDLE_BUNDLE_NAME "GenlotVPN")
+    set(MACOSX_BUNDLE_GUI_IDENTIFIER "com.genlot.GenlotVPN")
+    set(MACOSX_BUNDLE_BUNDLE_VERSION "${GENLOT_VERSION_STRING}")
+    set(MACOSX_BUNDLE_SHORT_VERSION_STRING "${GENLOT_VERSION_STRING}")
+    set(MACOSX_BUNDLE_ICON_FILE "genlot-app")
+endif()
+
 # WIN32：GUI 子系统；MACOSX_BUNDLE：产出 .app
 qt_add_executable(GenlotVPN WIN32 MACOSX_BUNDLE ${SOURCES})
 
@@ -109,11 +119,12 @@ endif()
 if(APPLE)
     set_target_properties(GenlotVPN PROPERTIES
         MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_EXECUTABLE_NAME "GenlotVPN"
-        MACOSX_BUNDLE_BUNDLE_NAME "GenlotVPN"
-        MACOSX_BUNDLE_GUI_IDENTIFIER "com.genlot.GenlotVPN"
-        MACOSX_BUNDLE_BUNDLE_VERSION "${GENLOT_VERSION_STRING}"
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "${GENLOT_VERSION_STRING}"
+        MACOSX_BUNDLE_EXECUTABLE_NAME "${MACOSX_BUNDLE_EXECUTABLE_NAME}"
+        MACOSX_BUNDLE_BUNDLE_NAME "${MACOSX_BUNDLE_BUNDLE_NAME}"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "${MACOSX_BUNDLE_GUI_IDENTIFIER}"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${MACOSX_BUNDLE_BUNDLE_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${MACOSX_BUNDLE_SHORT_VERSION_STRING}"
+        MACOSX_BUNDLE_ICON_FILE "${MACOSX_BUNDLE_ICON_FILE}"
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/macos/Info.plist.in"
     )
     if(EXISTS "${CMAKE_SOURCE_DIR}/assets/images/genlot-app.icns")
@@ -122,9 +133,8 @@ if(APPLE)
             PROPERTIES MACOSX_PACKAGE_LOCATION "Resources"
         )
         target_sources(GenlotVPN PRIVATE "${CMAKE_SOURCE_DIR}/assets/images/genlot-app.icns")
-        set_target_properties(GenlotVPN PROPERTIES
-            MACOSX_BUNDLE_ICON_FILE "genlot-app.icns"
-        )
+    else()
+        message(WARNING "未找到 assets/images/genlot-app.icns，Finder 将显示默认图标")
     endif()
 endif()
 
@@ -267,13 +277,26 @@ if(GENLOT_PROTOBUF_DLL)
     endif()
 endif()
 
-# QML 模块元数据（qmldir/qmltypes）需与 exe 同目录，否则 Release 打包后无法解析自定义页面类型
-add_custom_command(TARGET GenlotVPN POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_BINARY_DIR}/GenlotVPN
-        $<TARGET_FILE_DIR:GenlotVPN>/GenlotVPN
-    COMMENT "Copy GenlotVPN QML module next to executable"
-)
+# QML 模块元数据（qmldir/qmltypes）：
+# - Windows：与 GenlotVPN.exe 同目录下的 GenlotVPN/（exe 有后缀，无冲突）
+# - macOS：勿放到 Contents/MacOS/GenlotVPN（与可执行文件/版本符号链接同名会冲突），改放 Resources
+if(APPLE)
+    add_custom_command(TARGET GenlotVPN POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E rm -rf
+            $<TARGET_BUNDLE_DIR:GenlotVPN>/Contents/Resources/GenlotVPN
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_BINARY_DIR}/GenlotVPN
+            $<TARGET_BUNDLE_DIR:GenlotVPN>/Contents/Resources/GenlotVPN
+        COMMENT "Copy GenlotVPN QML module into app Resources"
+    )
+else()
+    add_custom_command(TARGET GenlotVPN POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_BINARY_DIR}/GenlotVPN
+            $<TARGET_FILE_DIR:GenlotVPN>/GenlotVPN
+        COMMENT "Copy GenlotVPN QML module next to executable"
+    )
+endif()
 if(GENLOT_QM_FILES)
     add_custom_command(TARGET GenlotVPN POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:GenlotVPN>/i18n
