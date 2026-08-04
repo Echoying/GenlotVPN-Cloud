@@ -3,6 +3,7 @@ package com.ruoyi.yianlian.service.vpn.impl;
 import com.ruoyi.common.core.constant.UserConstants;
 import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.common.core.utils.StringUtils;
+import com.ruoyi.yianlian.api.domain.VpnDingTalkRobotConfig;
 import com.ruoyi.yianlian.constant.SyncProxyConstants;
 import com.ruoyi.yianlian.domain.VpnRole;
 import com.ruoyi.yianlian.domain.VpnRoleYianlianMapping;
@@ -381,6 +382,76 @@ public class VpnRoleServiceImpl implements IVpnRoleService
             }
         }
         return roleKeys;
+    }
+
+    @Override
+    public VpnDingTalkRobotConfig resolveDingTalkRobotForLocalUser(Long localUserId, String appId)
+    {
+        if (localUserId == null || StringUtils.isEmpty(appId))
+        {
+            return null;
+        }
+        VpnUser lineUser = userMapper.selectUserByLocalUserIdAndAppId(localUserId, appId);
+        if (lineUser == null)
+        {
+            return null;
+        }
+        List<VpnRole> roles = roleMapper.selectRolePermissionByUserId(lineUser.getUserId());
+        if (roles == null || roles.isEmpty())
+        {
+            return null;
+        }
+
+        List<VpnRole> candidates = new ArrayList<>();
+        for (VpnRole role : roles)
+        {
+            if (role == null || !"0".equals(role.getStatus()))
+            {
+                continue;
+            }
+            if (!"1".equals(role.getDingtalkEnabled()))
+            {
+                continue;
+            }
+            if (StringUtils.isEmpty(role.getDingtalkAccessToken()))
+            {
+                continue;
+            }
+            candidates.add(role);
+        }
+        if (candidates.isEmpty())
+        {
+            return null;
+        }
+
+        candidates.sort((a, b) -> {
+            boolean aMatch = appId.equals(a.getAppId());
+            boolean bMatch = appId.equals(b.getAppId());
+            if (aMatch != bMatch)
+            {
+                return aMatch ? -1 : 1;
+            }
+            int as = a.getRoleSort() == null ? Integer.MAX_VALUE : a.getRoleSort();
+            int bs = b.getRoleSort() == null ? Integer.MAX_VALUE : b.getRoleSort();
+            if (as != bs)
+            {
+                return Integer.compare(as, bs);
+            }
+            long aid = a.getRoleId() == null ? Long.MAX_VALUE : a.getRoleId();
+            long bid = b.getRoleId() == null ? Long.MAX_VALUE : b.getRoleId();
+            return Long.compare(aid, bid);
+        });
+
+        VpnRole hit = candidates.get(0);
+        VpnDingTalkRobotConfig config = new VpnDingTalkRobotConfig();
+        config.setEnabled(true);
+        config.setAccessToken(hit.getDingtalkAccessToken().trim());
+        config.setSecret(StringUtils.isEmpty(hit.getDingtalkSecret()) ? null : hit.getDingtalkSecret().trim());
+        String webhook = hit.getDingtalkWebhookUrl();
+        config.setWebhookUrl(StringUtils.isEmpty(webhook) ? "https://oapi.dingtalk.com/robot/send" : webhook.trim());
+        config.setRoleId(hit.getRoleId());
+        config.setRoleName(hit.getRoleName());
+        return config;
     }
 
     private boolean includeRoleKeyForLogin(VpnRole role, String lineAppId)

@@ -4,6 +4,7 @@ import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.common.core.constant.ServiceNameConstants;
 import com.ruoyi.common.core.domain.R;
 import com.ruoyi.yianlian.api.domain.VpnChangePasswordRequest;
+import com.ruoyi.yianlian.api.domain.VpnDingTalkRobotConfig;
 import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.factory.RemoteVpnLocalUserFallbackFactory;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
@@ -46,6 +47,14 @@ public interface RemoteVpnLocalUserService
     R<Map<String, String>> getLineUserCredentials(@RequestParam("localUserId") Long localUserId,
                                                   @RequestParam("appId") String appId,
                                                   @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
+
+    /**
+     * 按本地用户 + 选线解析钉钉验证码机器人；无角色配置时 data 为 null
+     */
+    @GetMapping("/vpn/local/user/dingtalk-robot")
+    R<VpnDingTalkRobotConfig> resolveDingTalkRobot(@RequestParam("localUserId") Long localUserId,
+                                                   @RequestParam("appId") String appId,
+                                                   @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
 
     @PutMapping("/vpn/local/user/changePassword")
     R<Boolean> changePassword(@RequestBody VpnChangePasswordRequest request,

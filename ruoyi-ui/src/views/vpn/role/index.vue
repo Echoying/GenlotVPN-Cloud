@@ -169,6 +169,30 @@
           </el-radio-group>
         </el-form-item>
 
+        <el-divider content-position="left">选线验证码钉钉群</el-divider>
+        <el-alert
+          title="启用后，拥有本角色的用户发选线验证码将发到下方机器人；未启用或未填 token 则仍用 Nacos 默认群。不同步到易安联。"
+          type="info"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 12px"
+        />
+        <el-form-item label="验证码群">
+          <el-radio-group v-model="form.dingtalkEnabled">
+            <el-radio label="0">否</el-radio>
+            <el-radio label="1">是</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="form.dingtalkEnabled === '1'" label="AccessToken" prop="dingtalkAccessToken">
+          <el-input v-model="form.dingtalkAccessToken" placeholder="钉钉群机器人 access_token" show-password />
+        </el-form-item>
+        <el-form-item v-if="form.dingtalkEnabled === '1'" label="加签Secret">
+          <el-input v-model="form.dingtalkSecret" placeholder="可选；机器人开启加签时填写" show-password />
+        </el-form-item>
+        <el-form-item v-if="form.dingtalkEnabled === '1'" label="Webhook">
+          <el-input v-model="form.dingtalkWebhookUrl" placeholder="可选；留空则用官方 https://oapi.dingtalk.com/robot/send" />
+        </el-form-item>
+
         <el-divider content-position="left">应用授权</el-divider>
         <div class="auth-container">
           <div v-for="(group, index) in authGroups" :key="index" class="auth-group">
@@ -426,6 +450,9 @@ export default {
       const id = row.roleId || this.ids[0]
       getRole(id).then(response => {
         this.form = response.data
+        if (!this.form.dingtalkEnabled) {
+          this.$set(this.form, 'dingtalkEnabled', '0')
+        }
         return this.loadRoleAuthGroups(id)
       }).then(() => {
         this.open = true
@@ -443,6 +470,10 @@ export default {
         }
         if (!this.currentAppId) {
           this.$modal.msgWarning('请先选择线路')
+          return
+        }
+        if (this.form.dingtalkEnabled === '1' && !(this.form.dingtalkAccessToken || '').trim()) {
+          this.$modal.msgWarning('启用角色钉钉群时请填写 AccessToken')
           return
         }
         this.formSubmitting = true
@@ -489,7 +520,11 @@ export default {
         roleKey: undefined,
         roleSort: 0,
         remark: undefined,
-        status: "0"
+        status: "0",
+        dingtalkEnabled: "0",
+        dingtalkAccessToken: undefined,
+        dingtalkSecret: undefined,
+        dingtalkWebhookUrl: undefined
       }
       this.authGroups = []
       this.resetForm("form")

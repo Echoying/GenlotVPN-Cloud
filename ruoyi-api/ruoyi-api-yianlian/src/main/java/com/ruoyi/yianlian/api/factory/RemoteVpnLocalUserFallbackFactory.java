@@ -3,6 +3,7 @@ package com.ruoyi.yianlian.api.factory;
 import com.ruoyi.common.core.domain.R;
 import com.ruoyi.yianlian.api.RemoteVpnLocalUserService;
 import com.ruoyi.yianlian.api.domain.VpnChangePasswordRequest;
+import com.ruoyi.yianlian.api.domain.VpnDingTalkRobotConfig;
 import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import org.slf4j.Logger;
@@ -55,6 +56,13 @@ public class RemoteVpnLocalUserFallbackFactory implements FallbackFactory<Remote
             public R<Map<String, String>> getLineUserCredentials(Long localUserId, String appId, String source)
             {
                 return R.fail("获取线路用户凭证失败:" + throwable.getMessage());
+            }
+
+            @Override
+            public R<VpnDingTalkRobotConfig> resolveDingTalkRobot(Long localUserId, String appId, String source)
+            {
+                // 降级返回 null，vpn-auth 回退 Nacos 默认群
+                return R.ok(null);
             }
 
             @Override

@@ -57,6 +57,10 @@ docker/ruoyi/vpn/auth/certs/*.key
 docker/ruoyi/vpn/auth/certs/server.crt
 
 ######################################################################
+# Docker 部署产物（由 copy.sh / copy_artifacts.py 从 target 拷入，勿提交）
+docker/**/*.jar
+
+######################################################################
 # Others
 *.log
 *.xml.versionsBackup

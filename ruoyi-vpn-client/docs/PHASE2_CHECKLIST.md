@@ -78,15 +78,15 @@
 | 状态 | ID | 任务 | 范围 | 验收标准 |
 |------|-----|------|------|----------|
 | [x] | Mac-00 | **前置确认** | 易安联已提供 macOS Agent（30303） | 锁定完整五步法交付 |
-| [~] | Mac-01 | CMake macOS 构建 | Qt 6 + Clang，arm64；`bin/*-macos.sh` | 在 Mac 上 `cmake --build` 产出 `.app`（待实机验证） |
-| [~] | Mac-02 | Keychain 安全存储 | `PasswordProtector` + `KeychainProtector` | 记住密码进 Keychain（待实机验证） |
-| [~] | Mac-03 | 平台抽象层收尾 | `AppPaths`、托盘/提示、AES CommonCrypto | Core 可写路径与 Win 隔离（待实机验证） |
-| [ ] | Mac-04 | 代码签名 | Apple Developer 证书签名 `.app` | Gatekeeper 可打开（开发证书至少本机可用） |
-| [ ] | Mac-05 | 公证（Notarization） | `notarytool` 提交 | 外部分发 Mac 包不被拦截 |
-| [ ] | Mac-06 | `.dmg` 打包 | 拖拽安装镜像 | 用户可标准方式安装 |
+| [x] | Mac-01 | CMake macOS 构建 | Qt 6 + Clang；`bin/*-macos.sh` | 已产出可运行 `.app` |
+| [x] | Mac-02 | Keychain 安全存储 | `PasswordProtector` + `KeychainProtector` | 记住密码进 Keychain，实机可用 |
+| [x] | Mac-03 | 平台抽象层收尾 | `AppPaths`、托盘/提示、AES CommonCrypto | 完整五步法实机可用 |
+| [-] | Mac-04 | 代码签名 | Apple Developer 证书签名 `.app` | 内部约 20 人使用，暂不需要 |
+| [-] | Mac-05 | 公证（Notarization） | `notarytool` 提交 | 同上，暂不需要 |
+| [-] | Mac-06 | `.dmg` 打包 | 拖拽安装镜像 | 内部分发 zip/`.app` 即可 |
 | [x] | Mac-07 | macOS 联调文档 | `docs/DEPLOY_MACOS.md` / `MACOS_SETUP.md` | 含 Agent、路径、签名说明 |
 
-> **说明**：Mac Agent 已提供；工程侧跨平台改动已合入，需在 Apple Silicon Mac 上完成构建与五步法联调后将 Mac-01～03 勾为完成。
+> **说明**：Mac 客户端已完成开发并实机可用。签名/公证/dmg（Mac-04～06）面向外发，当前内部分发可不做；若以后对客户发版再启用。
 
 ---
 

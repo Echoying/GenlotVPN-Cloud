@@ -1,5 +1,6 @@
 package com.ruoyi.yianlian.service.vpn;
 
+import com.ruoyi.yianlian.api.domain.VpnDingTalkRobotConfig;
 import com.ruoyi.yianlian.domain.VpnRole;
 
 import java.util.List;
@@ -155,4 +156,10 @@ public interface IVpnRoleService
      * 汇总本地用户在各授权线路上的登录 role_keys（供客户端下发）
      */
     Set<String> resolveLoginRoleKeysForLocalUser(Long localUserId);
+
+    /**
+     * 按本地用户 + 当前选线解析钉钉验证码机器人配置。
+     * 无角色、或角色未启用/未配 token 时返回 null（调用方回退 Nacos 默认群）。
+     */
+    VpnDingTalkRobotConfig resolveDingTalkRobotForLocalUser(Long localUserId, String appId);
 }

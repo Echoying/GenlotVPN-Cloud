@@ -18,15 +18,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<result property="updateBy"           column="update_by"             />
 		<result property="updateTime"         column="update_time"           />
 		<result property="remark"             column="remark"                />
+		<result property="dingtalkEnabled"    column="dingtalk_enabled"      />
+		<result property="dingtalkAccessToken" column="dingtalk_access_token" />
+		<result property="dingtalkSecret"     column="dingtalk_secret"       />
+		<result property="dingtalkWebhookUrl" column="dingtalk_webhook_url"  />
 	</resultMap>
 
 	<sql id="selectRoleVo">
 	    select distinct r.role_id, r.app_id, r.role_name, r.role_key, r.role_sort, r.menu_check_strictly,
-            r.status, r.del_flag, r.create_time, r.remark
+            r.status, r.del_flag, r.create_time, r.remark,
+            r.dingtalk_enabled, r.dingtalk_access_token, r.dingtalk_secret, r.dingtalk_webhook_url
         from vpn_role r
 	        left join vpn_user_role ur on ur.role_id = r.role_id
 	        left join vpn_user u on u.user_id = ur.user_id
-    </sql>
+	</sql>
 
     <select id="selectRoleList" parameterType="VpnRole" resultMap="VpnRoleResult">
 		<include refid="selectRoleVo"/>
@@ -111,6 +116,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  			<if test="menuCheckStrictly != null">menu_check_strictly,</if>
  			<if test="status != null and status != ''">status,</if>
  			<if test="remark != null and remark != ''">remark,</if>
+ 			<if test="dingtalkEnabled != null and dingtalkEnabled != ''">dingtalk_enabled,</if>
+ 			<if test="dingtalkAccessToken != null">dingtalk_access_token,</if>
+ 			<if test="dingtalkSecret != null">dingtalk_secret,</if>
+ 			<if test="dingtalkWebhookUrl != null">dingtalk_webhook_url,</if>
  			<if test="createBy != null and createBy != ''">create_by,</if>
  			create_time
  		)values(
@@ -122,6 +131,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  			<if test="menuCheckStrictly != null">#{menuCheckStrictly},</if>
  			<if test="status != null and status != ''">#{status},</if>
  			<if test="remark != null and remark != ''">#{remark},</if>
+ 			<if test="dingtalkEnabled != null and dingtalkEnabled != ''">#{dingtalkEnabled},</if>
+ 			<if test="dingtalkAccessToken != null">#{dingtalkAccessToken},</if>
+ 			<if test="dingtalkSecret != null">#{dingtalkSecret},</if>
+ 			<if test="dingtalkWebhookUrl != null">#{dingtalkWebhookUrl},</if>
  			<if test="createBy != null and createBy != ''">#{createBy},</if>
  			sysdate()
  		)
@@ -137,6 +150,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  			<if test="menuCheckStrictly != null">menu_check_strictly = #{menuCheckStrictly},</if>
  			<if test="status != null and status != ''">status = #{status},</if>
  			<if test="remark != null">remark = #{remark},</if>
+ 			<if test="dingtalkEnabled != null">dingtalk_enabled = #{dingtalkEnabled},</if>
+ 			<if test="dingtalkAccessToken != null">dingtalk_access_token = #{dingtalkAccessToken},</if>
+ 			<if test="dingtalkSecret != null">dingtalk_secret = #{dingtalkSecret},</if>
+ 			<if test="dingtalkWebhookUrl != null">dingtalk_webhook_url = #{dingtalkWebhookUrl},</if>
  			<if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
  			update_time = sysdate()
  		</set>

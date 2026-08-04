@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import com.ruoyi.common.core.constant.SecurityConstants;
+import com.ruoyi.common.core.domain.R;
 import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.common.core.utils.DateUtils;
 import com.ruoyi.common.core.utils.StringUtils;
@@ -13,6 +15,10 @@ import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.vpn.auth.config.VpnLineVerifyProperties;
 import com.ruoyi.vpn.auth.dingtalk.DingTalkRobotClient;
 import com.ruoyi.vpn.auth.dingtalk.DingTalkRobotProperties;
+import com.ruoyi.vpn.auth.dingtalk.DingTalkRobotSender;
+import com.ruoyi.vpn.auth.dingtalk.DingTalkWebhookConfig;
+import com.ruoyi.yianlian.api.RemoteVpnLocalUserService;
+import com.ruoyi.yianlian.api.domain.VpnDingTalkRobotConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,20 +44,29 @@ public class VpnLineVerifyService
     private DingTalkRobotClient dingTalkRobotClient;
 
     @Autowired
+    private DingTalkRobotSender dingTalkRobotSender;
+
+    @Autowired
     private DingTalkRobotProperties dingTalkRobotProperties;
 
     @Autowired
     private VpnLineVerifyProperties verifyProperties;
 
+    @Autowired
+    private RemoteVpnLocalUserService remoteVpnLocalUserService;
+
     /**
-     * 发送验证码到钉钉群
+     * 发送验证码到钉钉群（优先角色配置，否则 Nacos dingtalk.robot）
      */
     public Map<String, String> sendCode(Long userId, String username, String appId, String lineName,
             String loginPurpose)
     {
         validateAppId(appId);
         validateLineName(lineName);
-        if (!dingTalkRobotProperties.isEnabled())
+
+        DingTalkWebhookConfig roleRobot = resolveRoleRobot(userId, appId);
+        boolean useRoleRobot = roleRobot != null;
+        if (!useRoleRobot && !dingTalkRobotProperties.isEnabled())
         {
             throw new ServiceException("钉钉机器人未启用，无法发送验证码");
         }
@@ -75,13 +90,91 @@ public class VpnLineVerifyService
         String expireAtStr = DateUtils.parseDateToStr(DateUtils.YYYY_MM_DD_HH_MM_SS, expireAt);
 
         String markdown = buildMarkdown(lineName, username, loginPurpose, code, expireAtStr);
-        dingTalkRobotClient.sendMarkdown("VPN线路验证码", markdown);
-        log.info("选线验证码已发送 userId={} appId={} lineName={} loginPurpose={} expireAt={}",
-                userId, appId, lineName, loginPurpose, expireAtStr);
+        if (useRoleRobot)
+        {
+            dingTalkRobotSender.sendMarkdown(roleRobot, "VPN线路验证码", markdown);
+            log.info("选线验证码已发送(角色群) userId={} appId={} lineName={} loginPurpose={} expireAt={}",
+                    userId, appId, lineName, loginPurpose, expireAtStr);
+        }
+        else
+        {
+            dingTalkRobotClient.sendMarkdown("VPN线路验证码", markdown);
+            log.info("选线验证码已发送(默认群) userId={} appId={} lineName={} loginPurpose={} expireAt={}",
+                    userId, appId, lineName, loginPurpose, expireAtStr);
+        }
 
         Map<String, String> result = new HashMap<>();
         result.put("expireAt", expireAtStr);
         return result;
+    }
+
+    /**
+     * 通过 Feign 解析角色钉钉机器人；失败或无配置时返回 null（回退默认群）
+     */
+    private DingTalkWebhookConfig resolveRoleRobot(Long userId, String appId)
+    {
+        if (userId == null || StringUtils.isEmpty(appId))
+        {
+            return null;
+        }
+        try
+        {
+            R<VpnDingTalkRobotConfig> response = remoteVpnLocalUserService.resolveDingTalkRobot(
+                    userId, appId, SecurityConstants.INNER);
+            if (response == null || response.getCode() != R.SUCCESS)
+            {
+                log.warn("解析角色钉钉机器人失败，回退默认群 userId={} appId={} msg={}",
+                        userId, appId, response != null ? response.getMsg() : "null");
+                return null;
+            }
+            VpnDingTalkRobotConfig cfg = response.getData();
+            if (cfg == null || !cfg.isEnabled() || StringUtils.isEmpty(cfg.getAccessToken()))
+            {
+                return null;
+            }
+            log.info("选线验证码使用角色钉钉群 userId={} appId={} roleId={} roleName={}",
+                    userId, appId, cfg.getRoleId(), cfg.getRoleName());
+            return toWebhookConfig(cfg);
+        }
+        catch (Exception e)
+        {
+            log.warn("解析角色钉钉机器人异常，回退默认群 userId={} appId={}", userId, appId, e);
+            return null;
+        }
+    }
+
+    private DingTalkWebhookConfig toWebhookConfig(VpnDingTalkRobotConfig cfg)
+    {
+        final boolean enabled = cfg.isEnabled();
+        final String webhookUrl = cfg.getWebhookUrl();
+        final String accessToken = cfg.getAccessToken();
+        final String secret = cfg.getSecret();
+        return new DingTalkWebhookConfig()
+        {
+            @Override
+            public boolean isEnabled()
+            {
+                return enabled;
+            }
+
+            @Override
+            public String getWebhookUrl()
+            {
+                return webhookUrl;
+            }
+
+            @Override
+            public String getAccessToken()
+            {
+                return accessToken;
+            }
+
+            @Override
+            public String getSecret()
+            {
+                return secret;
+            }
+        };
     }
 
     /**

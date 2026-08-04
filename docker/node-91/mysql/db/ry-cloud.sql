@@ -652,6 +652,10 @@ CREATE TABLE `vpn_role` (
   `update_by` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '更新者',
   `update_time` datetime DEFAULT NULL COMMENT '更新时间',
   `remark` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '备注',
+  `dingtalk_enabled` char(1) COLLATE utf8mb4_unicode_ci DEFAULT '0' COMMENT '是否启用该角色钉钉验证码群（0否 1是）',
+  `dingtalk_access_token` varchar(256) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '钉钉群机器人 access_token',
+  `dingtalk_secret` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '钉钉群机器人加签 secret（可选）',
+  `dingtalk_webhook_url` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '钉钉 webhook 地址（空则用官方默认）',
   PRIMARY KEY (`role_id`),
   KEY `idx_vpn_role_app_id` (`app_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='VPN角色信息表';

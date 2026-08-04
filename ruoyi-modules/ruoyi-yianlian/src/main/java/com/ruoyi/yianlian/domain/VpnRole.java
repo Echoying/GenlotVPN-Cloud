@@ -61,6 +61,18 @@ public class VpnRole extends BaseEntity
     /** 角色菜单权限 */
     private Set<String> permissions;
 
+    /** 是否启用该角色钉钉验证码群（0否 1是） */
+    private String dingtalkEnabled;
+
+    /** 钉钉群机器人 access_token */
+    private String dingtalkAccessToken;
+
+    /** 钉钉群机器人加签 secret（可选） */
+    private String dingtalkSecret;
+
+    /** 钉钉 webhook 地址（空则用官方默认） */
+    private String dingtalkWebhookUrl;
+
     public VpnRole()
     {
 

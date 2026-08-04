@@ -14,6 +14,7 @@ import com.ruoyi.common.security.annotation.InnerAuth;
 import com.ruoyi.common.security.annotation.RequiresPermissions;
 import com.ruoyi.common.security.utils.SecurityUtils;
 import com.ruoyi.yianlian.api.domain.VpnChangePasswordRequest;
+import com.ruoyi.yianlian.api.domain.VpnDingTalkRobotConfig;
 import com.ruoyi.yianlian.api.domain.VpnUserInfo;
 import com.ruoyi.yianlian.api.model.VpnLoginUser;
 import com.ruoyi.yianlian.domain.VpnLocalUser;
@@ -240,6 +241,18 @@ public class VpnLocalUserController extends BaseController
                                                         @RequestHeader(SecurityConstants.FROM_SOURCE) String source)
     {
         return R.ok(localUserService.getLineUserCredentials(localUserId, appId));
+    }
+
+    /**
+     * 解析选线验证码钉钉机器人（按本地用户角色；无配置时 data 为 null，调用方回退 Nacos）
+     */
+    @InnerAuth
+    @GetMapping("/dingtalk-robot")
+    public R<VpnDingTalkRobotConfig> resolveDingTalkRobot(@RequestParam Long localUserId,
+                                                          @RequestParam String appId,
+                                                          @RequestHeader(SecurityConstants.FROM_SOURCE) String source)
+    {
+        return R.ok(roleService.resolveDingTalkRobotForLocalUser(localUserId, appId));
     }
 
     @InnerAuth
