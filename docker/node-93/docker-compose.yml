@@ -23,3 +23,4 @@ services:
     volumes:
       - ./ruoyi/vpn/auth/certs:/home/ruoyi/certs:ro
       - ./ruoyi/vpn/auth/logs:/home/ruoyi/logs
+      - ./ruoyi/vpn/auth/jar/ruoyi-vpn-auth.jar:/home/ruoyi/ruoyi-vpn-auth.jar:ro

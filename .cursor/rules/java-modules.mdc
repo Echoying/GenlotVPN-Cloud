@@ -1,0 +1,18 @@
+---
+description: Java 模块用 JDK8 + clean，参照现有 Controller
+globs: ruoyi-modules/**/*.{java,xml}
+alwaysApply: false
+---
+
+# Java 模块（yianlian 等）
+
+- **JDK 8**（class 主版本 52）。构建必须带 `clean`：`mvn clean package -pl ruoyi-modules/ruoyi-yianlian -am -DskipTests` 或 `bin\build-yianlian.bat`。不要用无 clean 的增量 `mvn package`。
+- 参照现有 Controller：`startPage()` + `TableDataInfo`；单条 `AjaxResult.success()`；`@RequiresPermissions`；`@Log`；路径 `GET /list`、`GET /{id}`、`POST`、`PUT`、`DELETE /{ids}`。
+- 写操作：本地 `IVpnXxxService` 落库 → 各启用 `LineApp` 同步 → `*YianlianMapping`。查询汇总优先复用已有 Service（如 `IVpnLineAuthService`、`Yal*Auth`），不要再包一层远程写授权。
+
+```java
+// ❌ 新造返回包装、一次改无关模块
+// ✅ 对照 YalUserAuthController / VpnUserController 增接口
+```
+
+管理端 Java 改完后走 `python pipeline/bin/gate.py --run <当次>`（默认全量模块）再 `python pipeline/bin/deploy.py --run <当次>`。只改管理端用 `gate.py server`。S0（`ruoyi-vpn-auth` TCP/TLS）部署可用 `python pipeline/bin/deploy.py vpn --run <当次>`，验收仍走人勾 PHASE2，不按 S2 自动验收。

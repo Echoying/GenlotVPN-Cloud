@@ -1,0 +1,22 @@
+---
+description: 管理端 Vue 必须参照现有 vpn 页，合入前构建
+globs: ruoyi-ui/**/*.{vue,js}
+alwaysApply: false
+---
+
+# 管理端 Vue（熟悉域，阶段四）
+
+参照现有页，不要自创一套布局或请求风格。
+
+- 列表/查询：`ruoyi-ui/src/views/vpn/user/index.vue`
+- 授权类：同目录 `role` / `dept` / `service`
+- API：`ruoyi-ui/src/api/` 下已有 vpn 模块；权限用 `v-hasPermi`
+
+```javascript
+// ❌ 一次新建整棵 views 树、自造表格组件
+// ✅ 复制最近的 vpn 页，只改查询字段、列、权限标识
+```
+
+合入前：`python pipeline/bin/gate.py --run <当次>`（只改前端可用 `python pipeline/bin/gate.py ui --run <当次>`）。
+
+页面验收标准写进 spec，由 `python pipeline/bin/accept.py --run <当次目录>` 在 `http://10.27.0.92` 断言。账号走 `ADMIN_E2E_USER` / `ADMIN_E2E_PASSWORD`，不入库。

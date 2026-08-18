@@ -25,6 +25,7 @@ import com.ruoyi.common.security.service.TokenService;
 import com.ruoyi.vpn.auth.context.ClientAuditContext;
 import com.ruoyi.vpn.auth.service.LoginNotifyContext;
 import com.ruoyi.vpn.auth.service.VpnCaptchaService;
+import com.ruoyi.vpn.auth.service.VpnClientVersionGateService;
 import com.ruoyi.vpn.auth.service.VpnLineAppNameResolver;
 import com.ruoyi.vpn.auth.service.VpnLineVerifyService;
 import com.ruoyi.vpn.auth.service.VpnLoginNotifyService;
@@ -122,6 +123,9 @@ public class TcpRpcDispatcher
 
     @Autowired
     private VpnSessionKickService vpnSessionKickService;
+
+    @Autowired
+    private VpnClientVersionGateService vpnClientVersionGateService;
 
     public RpcResult dispatch(Envelope envelope, TcpSessionContext session)
     {
@@ -236,6 +240,12 @@ public class TcpRpcDispatcher
             {
                 recordLoginFail(req.getUsername(), "登录过于频繁，请稍后再试", loginPurpose);
                 return RpcResult.fail("登录过于频繁，请稍后再试");
+            }
+            RpcResult versionReject = vpnClientVersionGateService.check(
+                    req.getClientVersion(), req.getClientPlatform());
+            if (versionReject != null)
+            {
+                return versionReject;
             }
             try
             {
@@ -710,7 +720,17 @@ public class TcpRpcDispatcher
 
         public static RpcResult fail(String msg)
         {
-            return new RpcResult(RpcResponse.newBuilder().setCode(500).setMsg(msg).build());
+            return fail(500, msg, null);
+        }
+
+        public static RpcResult fail(int code, String msg, com.google.protobuf.Message data)
+        {
+            RpcResponse.Builder b = RpcResponse.newBuilder().setCode(code).setMsg(msg == null ? "" : msg);
+            if (data != null)
+            {
+                b.setData(data.toByteString());
+            }
+            return new RpcResult(b.build());
         }
 
         public RpcResponse getResponse()

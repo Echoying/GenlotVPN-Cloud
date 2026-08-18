@@ -75,11 +75,12 @@
             <template slot-scope="scope">
               <el-button size="mini" type="text" icon="el-icon-edit" @click="handleUpdate(scope.row)" v-hasPermi="['yianlian:user:edit']">修改</el-button>
               <el-button size="mini" type="text" icon="el-icon-delete" @click="handleDelete(scope.row)" v-hasPermi="['yianlian:user:remove']">删除</el-button>
-              <el-dropdown size="mini" @command="(command) => handleCommand(command, scope.row)" v-hasPermi="['yianlian:user:resetPwd', 'yianlian:user:edit']">
+              <el-dropdown size="mini" @command="(command) => handleCommand(command, scope.row)" v-hasPermi="['yianlian:user:resetPwd', 'yianlian:user:edit', 'yianlian:user:queryAuth']">
                 <el-button size="mini" type="text" icon="el-icon-d-arrow-right">更多</el-button>
                 <el-dropdown-menu slot="dropdown">
                   <el-dropdown-item command="handleResetPwd" icon="el-icon-key" v-hasPermi="['yianlian:user:resetPwd']">重置密码</el-dropdown-item>
                   <el-dropdown-item command="handleAuth" icon="el-icon-setting" v-hasPermi="['yianlian:user:edit']">授权</el-dropdown-item>
+                  <el-dropdown-item command="handleViewAuth" icon="el-icon-view" v-hasPermi="['yianlian:user:queryAuth']">查看权限</el-dropdown-item>
                 </el-dropdown-menu>
               </el-dropdown>
             </template>
@@ -262,6 +263,20 @@
       </div>
     </el-dialog>
 
+    <el-dialog :title="viewAuthTitle" :visible.sync="viewAuthOpen" width="720px" append-to-body>
+      <div v-if="viewAuthEmpty">暂无线路权限</div>
+      <div v-for="line in viewAuthLines" :key="line.lineId" style="margin-bottom:16px">
+        <div style="font-weight:bold;margin-bottom:8px">{{ line.lineName || line.lineId }}</div>
+        <el-table :data="line.items" size="mini" border>
+          <el-table-column label="应用组" prop="appGroupName" />
+          <el-table-column label="应用" prop="appName" />
+          <el-table-column label="来源">
+            <template slot-scope="scope">{{ (scope.row.sources || []).join(', ') }}</template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-dialog>
+
     <el-dialog :title="syncTitle" :visible.sync="syncOpen" width="860px" append-to-body>
       <el-alert
         :title="'当前线路：' + (currentLineName || currentAppId)"
@@ -360,7 +375,7 @@
 </template>
 
 <script>
-import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect, getLineSyncContext, syncLocalUsersToLine } from "@/api/vpn/user"
+import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect, getLineSyncContext, syncLocalUsersToLine, getUserLineAuths } from "@/api/vpn/user"
 import { listByUserId, batchSaveUserAuth, getServiceTree } from "@/api/vpn/userauth"
 import { listLineApp } from "@/api/vpn/line"
 import { serviceGroupTreeselect } from "@/api/vpn/serviceGroup"
@@ -472,7 +487,11 @@ export default {
       unsyncedUsers: [],
       syncedGroupsCache: [],
       syncGroups: [],
-      syncGroupKeySeq: 1
+      syncGroupKeySeq: 1,
+      viewAuthOpen: false,
+      viewAuthTitle: '',
+      viewAuthLines: [],
+      viewAuthEmpty: false
     }
   },
   computed: {
@@ -645,6 +664,9 @@ export default {
         case "handleAuth":
           this.handleAuth(row)
           break
+        case "handleViewAuth":
+          this.handleViewAuth(row)
+          break
         default:
           break
       }
@@ -754,6 +776,17 @@ export default {
 
     // ==================== 用户授权 ====================
 
+    handleViewAuth(row) {
+      getUserLineAuths(row.userId).then(res => {
+        const data = res.data || {}
+        this.viewAuthTitle = '线路权限 - ' + (data.userName || row.userName)
+        this.viewAuthLines = data.lines || []
+        this.viewAuthEmpty = !this.viewAuthLines.length
+        this.viewAuthOpen = true
+      }).catch(() => {
+        this.$modal.msgError('加载线路权限失败')
+      })
+    },
     /** 授权按钮操作：线路固定为列表当前线路 */
     handleAuth(row) {
       if (!this.currentAppId) {

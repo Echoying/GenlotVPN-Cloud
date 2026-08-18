@@ -1,0 +1,17 @@
+---
+description: S0 传输/认证由人主导，AI 不得自行降级或自动验收
+globs: ruoyi-vpn-auth/**/*.{java,yml},ruoyi-vpn-client/**/*.{cpp,h,hpp,qml},**/*.{proto}
+alwaysApply: false
+---
+
+# S0 安全（人主导）
+
+出错即事故：登录/Token、TLS、证书 Pinning、密码/`session_key`、授权判定。
+
+- **级别由人定，AI 不得自行降为 S1/S2。**
+- AI 只辅助实现与排错；协议、证书、密钥设计等人拍板。
+- 生产默认 TLS，无明文 TCP fallback。Pin 错误必须拒绝连接。
+- 密码/Token/`session_key` 不落盘明文、不进日志、不进对话。
+- 管理端验证码：只允许关 92 的 `security.captcha.enabled`，不删代码，不关桌面/选线验证码。
+
+合入前：构建通过 + 人勾 [PHASE2_CHECKLIST.md](ruoyi-vpn-client/docs/PHASE2_CHECKLIST.md) 的 S-xx，并在当次目录 `质量门禁.md` 与 `pipeline/work/_shared/质量门禁记录.md` 留行。不得用 Playwright/QTest 代替 S0 验收。

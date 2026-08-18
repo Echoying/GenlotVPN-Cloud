@@ -10,6 +10,8 @@ public:
     static QString localIpv4();
     static QString osDescription();
     static QString macAddress();
+    /** 平台标识：windows / macos / unknown（供云端版本策略选下载链接） */
+    static QString platformId();
 };
 
 } // namespace vpn

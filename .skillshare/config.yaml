@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/runkids/skillshare/main/schemas/project-config.schema.json
+targets:
+  - name: universal
+    skills:
+      mode: merge
+  - name: kiro
+    skills:
+      mode: merge
+skills:
+  - name: _brainstorming
+    source: git@10.13.0.176:huangzhiqing/echoying-skills.git
+    tracked: true
+    branch: main
+  - name: _writing-plans
+    source: git@10.13.0.176:huangzhiqing/echoying-skills.git
+    tracked: true
+    branch: main
+  - name: _verification-before-completion
+    source: git@10.13.0.176:huangzhiqing/echoying-skills.git
+    tracked: true
+    branch: main
+  - name: _systematic-debugging
+    source: git@10.13.0.176:huangzhiqing/echoying-skills.git
+    tracked: true
+    branch: main
+  - name: _dingtalk-webhook
+    source: git@10.13.0.176:huangzhiqing/echoying-skills.git
+    tracked: true
+    branch: main
+  - name: _coding-standards-review
+    source: git@10.13.0.176:huangzhiqing/echoying-skills.git
+    tracked: true
+    branch: main
+  - name: _publish-skills
+    source: git@10.13.0.176:huangzhiqing/echoying-skills.git
+    tracked: true
+    branch: main
+  - name: _subagent-driven-development
+    source: git@10.13.0.176:huangzhiqing/echoying-skills.git
+    tracked: true
+    branch: main
+audit:
+  block_threshold: CRITICAL

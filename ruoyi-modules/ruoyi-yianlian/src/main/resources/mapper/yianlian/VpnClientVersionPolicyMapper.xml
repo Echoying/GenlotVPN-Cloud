@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.yianlian.mapper.VpnClientVersionPolicyMapper">
+
+    <resultMap type="com.ruoyi.yianlian.domain.VpnClientVersionPolicy" id="VpnClientVersionPolicyResult">
+        <id     property="id"                   column="id"                     />
+        <result property="enabled"              column="enabled"                />
+        <result property="minVersion"           column="min_version"            />
+        <result property="downloadUrlWindows"   column="download_url_windows"   />
+        <result property="downloadUrlMacos"     column="download_url_macos"     />
+        <result property="createBy"             column="create_by"              />
+        <result property="createTime"           column="create_time"            />
+        <result property="updateBy"             column="update_by"              />
+        <result property="updateTime"           column="update_time"            />
+        <result property="remark"               column="remark"                 />
+    </resultMap>
+
+    <sql id="selectVo">
+        select id, enabled, min_version, download_url_windows, download_url_macos,
+               create_by, create_time, update_by, update_time, remark
+        from vpn_client_version_policy
+    </sql>
+
+    <select id="selectById" parameterType="Long" resultMap="VpnClientVersionPolicyResult">
+        <include refid="selectVo"/>
+        where id = #{id}
+    </select>
+
+    <update id="update" parameterType="com.ruoyi.yianlian.domain.VpnClientVersionPolicy">
+        update vpn_client_version_policy
+        <set>
+            <if test="enabled != null">enabled = #{enabled},</if>
+            <if test="minVersion != null">min_version = #{minVersion},</if>
+            <if test="downloadUrlWindows != null">download_url_windows = #{downloadUrlWindows},</if>
+            <if test="downloadUrlMacos != null">download_url_macos = #{downloadUrlMacos},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+</mapper>

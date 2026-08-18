@@ -77,6 +77,13 @@ export function listOfflineLoginLines(localUserId) {
   })
 }
 
+export function getLocalUserLineAuths(localUserId) {
+  return request({
+    url: '/yianlian/vpn/local/user/' + parseStrEmpty(localUserId) + '/line-auths',
+    method: 'get'
+  })
+}
+
 export function exportOfflineLogin(data) {
   return request({
     url: '/yianlian/vpn/local/user/offline-export',

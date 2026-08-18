@@ -1,0 +1,14 @@
+# 仅 92 / Nacos public 的 ruoyi-gateway-dev.yml 使用（E2E 自动登录）。
+# 不要写进生产 profile，不要改 ruoyi-vpn-auth 的 vpn.captcha。
+# 代码里的验证码逻辑保留，只改配置开关。
+#
+# 已在 10.27.0.91 Nacos 落地：
+#   security.captcha.enabled: false
+#   security.ignore.whites 增加 /code（否则 /prod-api/code 会被鉴权拦住，前端一直显示验证码框）
+security:
+  captcha:
+    enabled: false
+    type: math
+  ignore:
+    whites:
+      - /code

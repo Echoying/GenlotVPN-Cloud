@@ -93,6 +93,13 @@ public class VpnUserController extends BaseController {
         return R.ok(lineAuthService.toAuthorizedLineVos(lineIdSet));
     }
 
+    @RequiresPermissions("yianlian:user:queryAuth")
+    @GetMapping("/{userId}/line-auths")
+    public AjaxResult lineAuths(@PathVariable("userId") Long userId)
+    {
+        return success(lineAuthService.buildLineAuthView(userId));
+    }
+
     @RequiresPermissions("vpn:user:list")
     @GetMapping("/list")
     public TableDataInfo list(VpnUser user) {

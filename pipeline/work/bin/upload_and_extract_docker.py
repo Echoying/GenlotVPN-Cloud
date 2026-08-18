@@ -6,8 +6,9 @@
     pip install paramiko
 
 示例:
-    python docker/upload_and_extract_docker.py --password "genlot#20240709"
-    python docker/upload_and_extract_docker.py --host 10.9.2.177 --user root --password "xxx"
+    python pipeline/work/bin/upload_and_extract_docker.py --password "***"
+    python docker/upload_and_extract_docker.py --host <host> --user root --password "***"
+    # 密码只走参数或本机 envs，勿写进仓库
 """
 
 from __future__ import annotations

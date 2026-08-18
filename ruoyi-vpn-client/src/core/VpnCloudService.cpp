@@ -1,8 +1,10 @@
 #include "VpnCloudService.h"
+#include "AppInfo.h"
 #include "AppLogger.h"
 #include "ClientDeviceInfo.h"
 #include "PacketLogUtil.h"
 #include "TcpHmacUtils.h"
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QTimer>
 #include <QUuid>
@@ -245,6 +247,16 @@ void VpnCloudService::sendRpcWithRetry(int messageType, const QByteArray &payloa
         PacketLogUtil::logCloudRpcComplete(messageType, payload, body, result);
         if (!result.ok) {
             const QString msg = result.msg.isEmpty() ? QStringLiteral("请求失败") : result.msg.trimmed();
+            if (messageType == static_cast<int>(vpn::MessageType::LOGIN) && result.code == 426) {
+                QString downloadUrl;
+                vpn::ClientVersionReject rej;
+                if (rej.ParseFromArray(result.data.constData(), result.data.size())) {
+                    downloadUrl = QString::fromStdString(rej.download_url()).trimmed();
+                }
+                emitCloudError(msg);
+                emit versionUpgradeRequired(msg, downloadUrl);
+                return;
+            }
             emitCloudError(msg);
             if (onFailure) {
                 onFailure(msg);
@@ -302,6 +314,12 @@ void VpnCloudService::login(const QString &username, const QString &password,
     req.set_code(code.toStdString());
     req.set_uuid(uuid.toStdString());
     req.set_login_purpose(loginPurpose.toStdString());
+    QString clientVersion = QCoreApplication::applicationVersion().trimmed();
+    if (clientVersion.isEmpty()) {
+        clientVersion = AppInfo().version();
+    }
+    req.set_client_version(clientVersion.toStdString());
+    req.set_client_platform(ClientDeviceInfo::platformId().toStdString());
     fillClientDevice(req);
     sendRpc(static_cast<int>(vpn::MessageType::LOGIN), serializeProto(req),
             [this](const RpcResult &r) {

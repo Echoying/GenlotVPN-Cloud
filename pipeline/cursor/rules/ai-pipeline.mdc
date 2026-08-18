@@ -1,0 +1,28 @@
+---
+description: 六阶段流水线总控：人机边界、HARD-GATE、脱敏、回修轮次
+alwaysApply: true
+---
+
+# 六阶段流水线（本项目通用）
+
+本仓库任何功能都走这套，不按需求另做流水线。创造性工作先 `_brainstorming`。**spec 未批不写码。** 不新建 `phase-*` Skill。
+
+| 阶段 | AI | 人 |
+|------|----|----|
+| 一 | 拆模块，追加模块清单 | 认边界 |
+| 二 | spec + 验收标准（路径/文案写进 spec） | **批准一次** |
+| 三/四 | 按参照实现 | 抽查 |
+| 五 | `python pipeline/bin/gate.py --run <当次>` → `python pipeline/bin/deploy.py --run <当次>` → `python pipeline/bin/accept.py --run <当次>`（命令来自当前 spec 第 7 节） | 生产验证码仍开；S0 人验 |
+| 六 | 钉钉 + `_systematic-debugging` ≤2 轮 | 超轮次介入 |
+
+回修用 `_systematic-debugging`，不要丢回 brainstorming（需求理解错了才回阶段二）。
+
+管理端可自动验收；客户端只人工勾 `ruoyi-vpn-client/docs/PHASE2_CHECKLIST.md`，不得声称自动验收。
+
+## 脱敏
+
+对话、提交、文档禁止出现：密码、私钥、`session_key`、钉钉 token、SSH 密码。用 `pipeline/deploy/envs.yaml`、`.deploy/envs.yaml`、环境变量或 `***`。项目 Hook（`.cursor/hooks.json`）会拦疑似密钥，并在改传输层时提醒走人验 PHASE2。
+
+## 完成标准
+
+未跑对应构建/部署/验收脚本（或脚本尚未落地），不得说「已完成」。`gate` / `deploy` / `accept` 须带 `--run`，结果写入当次 `质量门禁.md`。落盘到 `pipeline/work/YYYY-MM-DD-短标题/`，聊天记录不算。

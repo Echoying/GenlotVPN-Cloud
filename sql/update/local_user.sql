@@ -76,11 +76,11 @@ PREPARE stmt2 FROM @uk_ddl;
 EXECUTE stmt2;
 DEALLOCATE PREPARE stmt2;
 
--- 5. 菜单：本地用户管理 + 线路用户管理改名
-UPDATE sys_menu SET menu_name = '线路用户管理' WHERE menu_id = 1065;
+-- 5. 菜单：本地用户 + 线路用户（四字侧栏）
+UPDATE sys_menu SET menu_name = '线路用户' WHERE menu_id = 1065;
 
 INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, route_name, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
-SELECT 1072, '本地用户管理', 1061, 5, 'local/user', 'vpn/local/user/index', NULL, '', 1, 0, 'C', '0', '0', 'vpn:localUser:list', 'user', 'admin', NOW(), '', NULL, 'VPN本地用户管理'
+SELECT 1072, '本地用户', 1061, 5, 'local/user', 'vpn/local/user/index', NULL, '', 1, 0, 'C', '0', '0', 'vpn:localUser:list', 'user', 'admin', NOW(), '', NULL, 'VPN本地用户管理'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE menu_id = 1072);
 
 INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, query, route_name, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)

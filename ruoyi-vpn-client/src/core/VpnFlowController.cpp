@@ -3,11 +3,15 @@
 #include "crypto/OfflineLoginIntegrity.h"
 #include "../transport/TcpClient.h"
 #include <QCoreApplication>
+#include <QDesktopServices>
 #include <QGuiApplication>
 #include <QClipboard>
 #include <QEventLoop>
+#include <QMessageBox>
+#include <QPushButton>
 #include <QSharedPointer>
 #include <QTimer>
+#include <QUrl>
 #include <QRegularExpression>
 
 namespace vpn {
@@ -303,6 +307,35 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         setLoading(false);
         emit toast(tr("密码修改成功，请使用新密码登录"), false);
         emit changePasswordFinished();
+    });
+    connect(m_cloud, &VpnCloudService::versionUpgradeRequired, this,
+            [this](const QString &message, const QString &downloadUrl) {
+        m_loginPending = false;
+        m_autoConnectPending = false;
+        m_autoConnectStarted = false;
+        setLoading(false);
+        const QString displayMsg = message.trimmed().isEmpty()
+                                       ? tr("客户端版本过低，请升级")
+                                       : message.trimmed();
+        setLoginError(displayMsg);
+        addLog(QStringLiteral("warn"), QStringLiteral("客户端版本过低，已中止登录"));
+
+        auto *box = new QMessageBox(QMessageBox::Warning, tr("需要升级客户端"), displayMsg);
+        box->setAttribute(Qt::WA_DeleteOnClose);
+        QPushButton *openBtn = nullptr;
+        if (!downloadUrl.trimmed().isEmpty()) {
+            openBtn = box->addButton(tr("打开下载页"), QMessageBox::AcceptRole);
+        }
+        box->addButton(QMessageBox::Ok);
+        connect(box, &QMessageBox::buttonClicked, this,
+                [downloadUrl, openBtn](QAbstractButton *btn) {
+            if (openBtn != nullptr && btn == openBtn) {
+                QDesktopServices::openUrl(QUrl(downloadUrl.trimmed()));
+            }
+        });
+        box->open();
+
+        m_cloud->fetchCaptcha();
     });
     connect(m_cloud, &VpnCloudService::requestFailed, this, [this](const QString &msg) {
         if (m_handlingSessionExpiry || m_logoutCleanupInProgress) {

@@ -22,6 +22,7 @@ services:
     extra_hosts: *middleware-hosts
     volumes:
       - ./ruoyi/gateway/logs:/home/ruoyi/logs
+      - ./ruoyi/gateway/jar/ruoyi-gateway.jar:/home/ruoyi/ruoyi-gateway.jar:ro
 
   ruoyi-auth:
     container_name: ruoyi-auth
@@ -35,6 +36,7 @@ services:
     extra_hosts: *middleware-hosts
     volumes:
       - ./ruoyi/auth/logs:/home/ruoyi/logs
+      - ./ruoyi/auth/jar/ruoyi-auth.jar:/home/ruoyi/ruoyi-auth.jar:ro
 
   ruoyi-modules-system:
     container_name: ruoyi-modules-system
@@ -48,6 +50,7 @@ services:
     extra_hosts: *middleware-hosts
     volumes:
       - ./ruoyi/modules/system/logs:/home/ruoyi/logs
+      - ./ruoyi/modules/system/jar/ruoyi-modules-system.jar:/home/ruoyi/ruoyi-modules-system.jar:ro
 
   ruoyi-modules-gen:
     container_name: ruoyi-modules-gen
@@ -61,6 +64,7 @@ services:
     extra_hosts: *middleware-hosts
     volumes:
       - ./ruoyi/modules/gen/logs:/home/ruoyi/logs
+      - ./ruoyi/modules/gen/jar/ruoyi-modules-gen.jar:/home/ruoyi/ruoyi-modules-gen.jar:ro
 
   ruoyi-modules-job:
     container_name: ruoyi-modules-job
@@ -74,6 +78,7 @@ services:
     extra_hosts: *middleware-hosts
     volumes:
       - ./ruoyi/modules/job/logs:/home/ruoyi/logs
+      - ./ruoyi/modules/job/jar/ruoyi-modules-job.jar:/home/ruoyi/ruoyi-modules-job.jar:ro
 
   ruoyi-modules-file:
     container_name: ruoyi-modules-file
@@ -88,6 +93,7 @@ services:
     volumes:
       - ./ruoyi/uploadPath:/home/ruoyi/uploadPath
       - ./ruoyi/modules/file/logs:/home/ruoyi/logs
+      - ./ruoyi/modules/file/jar/ruoyi-modules-file.jar:/home/ruoyi/ruoyi-modules-file.jar:ro
 
   ruoyi-visual-monitor:
     container_name: ruoyi-visual-monitor
@@ -101,6 +107,7 @@ services:
     extra_hosts: *middleware-hosts
     volumes:
       - ./ruoyi/visual/monitor/logs:/home/ruoyi/logs
+      - ./ruoyi/visual/monitor/jar/ruoyi-visual-monitor.jar:/home/ruoyi/ruoyi-visual-monitor.jar:ro
 
   ruoyi-modules-yianlian:
     container_name: ruoyi-modules-yianlian
@@ -114,6 +121,7 @@ services:
     extra_hosts: *middleware-hosts
     volumes:
       - ./ruoyi/modules/yianlian/logs:/home/ruoyi/logs
+      - ./ruoyi/modules/yianlian/jar/ruoyi-modules-yianlian.jar:/home/ruoyi/ruoyi-modules-yianlian.jar:ro
 
   ruoyi-nginx:
     container_name: ruoyi-nginx

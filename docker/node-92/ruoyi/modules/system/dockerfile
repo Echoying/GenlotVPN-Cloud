@@ -4,8 +4,7 @@ FROM eclipse-temurin:8-jre
 # author
 MAINTAINER ruoyi
 
-# 挂载目录
-VOLUME /home/ruoyi
+# 不要 VOLUME /home/ruoyi：匿名卷会挡住镜像/绑定里的新 jar
 # 创建目录
 RUN mkdir -p /home/ruoyi
 # 指定路径

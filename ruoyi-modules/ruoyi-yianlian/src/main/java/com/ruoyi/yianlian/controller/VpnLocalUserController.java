@@ -22,6 +22,7 @@ import com.ruoyi.yianlian.domain.VpnUser;
 import com.ruoyi.yianlian.domain.vo.VpnLocalUserBatchSyncRequest;
 import com.ruoyi.yianlian.domain.vo.VpnLocalUserSyncRequest;
 import com.ruoyi.yianlian.domain.vo.VpnOfflineLoginExportRequest;
+import com.ruoyi.yianlian.service.vpn.IVpnLineAuthService;
 import com.ruoyi.yianlian.service.vpn.IVpnLocalUserService;
 import com.ruoyi.yianlian.service.vpn.IVpnLocalUserSyncService;
 import com.ruoyi.yianlian.service.vpn.IVpnOfflineLoginExportService;
@@ -62,6 +63,9 @@ public class VpnLocalUserController extends BaseController
 
     @Autowired
     private AesUtils aesUtils;
+
+    @Autowired
+    private IVpnLineAuthService lineAuthService;
 
     @RequiresPermissions("vpn:localUser:list")
     @GetMapping("/list")
@@ -223,6 +227,13 @@ public class VpnLocalUserController extends BaseController
                                                             @RequestHeader(SecurityConstants.FROM_SOURCE) String source)
     {
         return R.ok(localUserService.getAuthorizedLines(localUserId));
+    }
+
+    @RequiresPermissions("vpn:localUser:queryAuth")
+    @GetMapping("/{localUserId}/line-auths")
+    public AjaxResult lineAuths(@PathVariable("localUserId") Long localUserId)
+    {
+        return success(lineAuthService.buildLocalLineAuthView(localUserId));
     }
 
     @InnerAuth

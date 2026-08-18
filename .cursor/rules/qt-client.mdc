@@ -1,0 +1,15 @@
+---
+description: Qt 客户端不自动验收，改传输层必须走人验
+globs: ruoyi-vpn-client/**
+alwaysApply: false
+---
+
+# Qt 桌面客户端
+
+- 技术栈已定：Qt 6 + QML；云端 TLS 1.3 + TCP + Protobuf（9443）。见 `pipeline/work/_shared/ADR-001-桌面端技术栈.md`、`ADR-002-云端协议.md`。
+- 本地控制器保持 HTTP `127.0.0.1:30303`，厂商 API 不改 Protobuf。
+- **禁止**：客户端 QTest、五步法自动 E2E、声称「客户端已自动验收」。
+- 验收：人勾 `ruoyi-vpn-client/docs/PHASE2_CHECKLIST.md`；能验的平台（Win/Mac）改传输/打包时各验一次。
+- 构建/打包纳入 `python pipeline/bin/gate.py`（或 `python pipeline/bin/gate.py client`）。Windows 上仍会调 `bin/build-vpn-client.bat --package`。不要用 `python pipeline/bin/accept.py` 套客户端。
+
+一次只加一个可构建的功能点。陌生域走阶段三最小 Demo，禁止一次生成整个客户端。

@@ -61,6 +61,29 @@ docker/ruoyi/vpn/auth/certs/server.crt
 docker/**/*.jar
 
 ######################################################################
+# 本机凭证（优先 pipeline/deploy/envs.yaml，其次 .deploy/envs.yaml。均勿提交）
+.env
+.env.local
+.env.*.local
+.secrets/
+.deploy/envs.yaml
+.deploy/secrets.env
+pipeline/deploy/envs.yaml
+
+######################################################################
+# Python / 本机 IDE 与 skill 副本
+__pycache__/
+*.pyc
+.agents/skills/
+.kiro/
+**/~$*.pptx
+
+# 流水线本机态 / 生成预览（主 pptx 与验收截图仍入库）
+pipeline/work/**/client-ref-state.json
+pipeline/work/_shared/share-assets/preview/
+pipeline/work/_shared/*-新.pptx
+
+######################################################################
 # Others
 *.log
 *.xml.versionsBackup

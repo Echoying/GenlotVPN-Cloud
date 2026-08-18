@@ -1,4 +1,5 @@
 #include "ClientDeviceInfo.h"
+#include <QtGlobal>
 #include <QAbstractSocket>
 #include <QHostAddress>
 #include <QNetworkInterface>
@@ -49,6 +50,17 @@ QString ClientDeviceInfo::macAddress()
         return mac.toUpper();
     }
     return QString();
+}
+
+QString ClientDeviceInfo::platformId()
+{
+#if defined(Q_OS_WIN)
+    return QStringLiteral("windows");
+#elif defined(Q_OS_MACOS)
+    return QStringLiteral("macos");
+#else
+    return QStringLiteral("unknown");
+#endif
 }
 
 } // namespace vpn

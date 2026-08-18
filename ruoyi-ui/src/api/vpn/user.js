@@ -147,6 +147,13 @@ export function getLineSyncContext(appId) {
 }
 
 // 按部门批量同步本地用户到线路
+export function getUserLineAuths(userId) {
+  return request({
+    url: '/yianlian/vpn/user/' + parseStrEmpty(userId) + '/line-auths',
+    method: 'get'
+  })
+}
+
 export function syncLocalUsersToLine(data) {
   return request({
     url: '/yianlian/vpn/user/sync-local',

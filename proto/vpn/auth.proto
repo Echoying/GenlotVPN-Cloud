@@ -26,6 +26,8 @@ message LoginRequest {
   string client_os = 8;
   string client_mac = 9;
   string app_name = 10;
+  string client_version = 11;
+  string client_platform = 12;
 }
 
 message LoginResponse {
@@ -70,3 +72,10 @@ message ReportClientLoginRequest {
 }
 
 message ReportClientLoginResponse {}
+
+// --- 客户端版本过低拒绝 ---
+message ClientVersionReject {
+  string min_version = 1;
+  string download_url = 2;
+  string client_version = 3;
+}

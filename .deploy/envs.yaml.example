@@ -1,0 +1,26 @@
+# 兼容旧路径。新位置：pipeline/deploy/envs.yaml.example
+# 复制为 .deploy/envs.yaml 或 pipeline/deploy/envs.yaml 后填写。不要提交。
+
+deploy:
+  ssh_host: 10.27.0.92
+  ssh_host_91: 10.27.0.91
+  ssh_host_93: 10.27.0.93
+  ssh_user: root
+  ssh_port: 22
+  ssh_password: ""
+  # 线上是把 node-92 / node-93 内容平铺到各机 /data/genlotvpn（含 deploy.sh、compose、nginx、ruoyi）
+  remote_dir: /data/genlotvpn
+  remote_dir_93: /data/genlotvpn
+
+accept:
+  base_url: http://10.27.0.92
+  user: ""
+  password: ""
+  # run: 2026-08-15-用户线路权限查询
+
+dingtalk:
+  # 只填 access_token 本身（问号后面那一段），不要整段 webhook URL
+  access_token: ""
+  # secret: ""
+  # webhook: ""
+  # keywords: ""

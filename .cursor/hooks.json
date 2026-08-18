@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": "python pipeline/cursor/hooks/before_submit_prompt.py",
+        "timeout": 10
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "python pipeline/cursor/hooks/s0_edit_remind.py",
+        "timeout": 8
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "python pipeline/cursor/hooks/s0_edit_remind.py",
+        "matcher": "Write|StrReplace|EditNotebook",
+        "timeout": 8
+      }
+    ]
+  }
+}

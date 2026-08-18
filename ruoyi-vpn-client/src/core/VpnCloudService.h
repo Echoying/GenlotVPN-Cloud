@@ -59,6 +59,8 @@ signals:
     void changePasswordSucceeded();
     void logoutSucceeded();
     void requestFailed(const QString &message);
+    /** 云端 LOGIN 返回 426：需升级客户端（含服务端文案与可选下载链接） */
+    void versionUpgradeRequired(const QString &message, const QString &downloadUrl);
 
 private:
     using RpcCallback = std::function<void(const RpcResult &)>;
