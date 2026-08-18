@@ -136,6 +136,8 @@ public class VpnTcpBusinessHandler extends SimpleChannelInboundHandler<byte[]>
                 && type != MessageType.LIST_PUBLIC_LINES
                 && type != MessageType.LOGIN
                 && type != MessageType.CHANGE_PASSWORD
+                && type != MessageType.SUBMIT_FEEDBACK
+                && type != MessageType.UPLOAD_FEEDBACK_IMAGE
                 && type != MessageType.MESSAGE_TYPE_UNSPECIFIED;
     }
 

@@ -104,6 +104,10 @@ if not exist "%DIST%\GenlotVPN\qmldir" (
 echo [OK] GenlotVPN QML module
 
 set "I18N_SRC="
+if exist "build-msvc2022\genlotvpn_en.qm" if exist "build-msvc2022\genlotvpn_zh_CN.qm" (
+  if not exist "build-msvc2022\i18n" mkdir "build-msvc2022\i18n"
+  copy /y "build-msvc2022\genlotvpn_*.qm" "build-msvc2022\i18n\" >nul
+)
 if exist "!EXE_DIR!i18n\genlotvpn_zh_CN.qm" set "I18N_SRC=!EXE_DIR!i18n"
 if not defined I18N_SRC if exist "build-msvc2022\i18n\genlotvpn_zh_CN.qm" set "I18N_SRC=build-msvc2022\i18n"
 if not defined I18N_SRC (

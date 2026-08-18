@@ -1,6 +1,6 @@
 # 客户端 AI 基础走查：登录流程（参考，≠ PHASE2）
 
-跨功能约定。当次场景差异写在该次 spec 第 7 节。脚本：`pipeline/work/bin/accept_client_ref.py`，入口 `python -u pipeline/bin/accept.py client-ref`。
+跨功能约定。当次场景差异写在该次 spec 第 7 节。**当次额外 scene 以 spec 第 7.3 为准。** 脚本：`pipeline/work/bin/accept_client_ref.py`，入口 `python -u pipeline/bin/accept.py client-ref`。
 
 **不改客户端源码。** 不靠 objectName。窗口标题含 `Genlot VPN`。门禁只许写 **参考完成 / 参考失败**，禁止写「通过」。PHASE2 仍人勾。
 
@@ -39,6 +39,24 @@ python -u pipeline/bin/accept.py client-ref --run <当次> --scene off --step su
 | `still-login-or-unknown` | 仍停在登录页（验证码错/过期、密码范围、未点到登录等） |
 
 `on` 场景：**不要点**「打开下载页」。
+
+## 问题反馈（`--scene feedback-guest` / `feedback-login`）
+
+当次命令与期望以 spec 第 7.3 为准。账号只读 `CLIENT_E2E_USER`（对话不写密码）。`feedback-guest` 的 submit **不要**带 `--code`。
+
+```bash
+python -u pipeline/bin/accept.py client-ref --run <当次> --scene feedback-guest --step prepare
+python -u pipeline/bin/accept.py client-ref --run <当次> --scene feedback-guest --step submit
+python -u pipeline/bin/accept.py client-ref --run <当次> --scene feedback-login --step prepare
+# Agent 读 CAPTCHA_PATH
+python -u pipeline/bin/accept.py client-ref --run <当次> --scene feedback-login --step submit --code <算式结果>
+```
+
+| 探测 | 含义 |
+|------|------|
+| `feedback-ok` | 底部海军蓝 toast（提交成功） |
+| `feedback-missing-user` | 底部红色 toast（如请填写账号） |
+| `still-login-or-unknown` | 未看到成功 toast / 登录未离开 |
 
 ## 管理端改策略（`--scene admin-set`）
 

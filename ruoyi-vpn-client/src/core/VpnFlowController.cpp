@@ -2,17 +2,23 @@
 #include "AppLogger.h"
 #include "crypto/OfflineLoginIntegrity.h"
 #include "../transport/TcpClient.h"
+#include <QBuffer>
+#include <QClipboard>
 #include <QCoreApplication>
 #include <QDesktopServices>
-#include <QGuiApplication>
-#include <QClipboard>
 #include <QEventLoop>
+#include <QFile>
+#include <QFileDialog>
+#include <QGuiApplication>
+#include <QImage>
 #include <QMessageBox>
+#include <QPair>
 #include <QPushButton>
+#include <QRegularExpression>
 #include <QSharedPointer>
 #include <QTimer>
 #include <QUrl>
-#include <QRegularExpression>
+#include <functional>
 
 namespace vpn {
 
@@ -44,6 +50,68 @@ bool containsSendCooldownHint(const QString &text)
 {
     return text.contains(QStringLiteral("秒后再发送"))
            || text.contains(QStringLiteral("seconds"), Qt::CaseInsensitive);
+}
+
+constexpr int kMaxFeedbackImageBytes = 400 * 1024;
+
+bool isPngHeader(const QByteArray &raw)
+{
+    return raw.size() >= 4 && raw.startsWith(QByteArray("\x89\x50\x4E\x47", 4));
+}
+
+bool encodeJpegUnderLimit(const QImage &img, QByteArray *out)
+{
+    if (img.isNull() || out == nullptr) {
+        return false;
+    }
+    for (int quality = 85; quality >= 40; quality -= 5) {
+        QByteArray encoded;
+        QBuffer buf(&encoded);
+        if (!buf.open(QIODevice::WriteOnly)) {
+            return false;
+        }
+        if (!img.save(&buf, "JPEG", quality)) {
+            return false;
+        }
+        buf.close();
+        if (encoded.size() <= kMaxFeedbackImageBytes) {
+            *out = encoded;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool prepareFeedbackImage(const QString &path, QByteArray *bytes, QString *contentType)
+{
+    if (bytes == nullptr || contentType == nullptr) {
+        return false;
+    }
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+    const QByteArray raw = file.readAll();
+    file.close();
+    if (raw.isEmpty()) {
+        return false;
+    }
+    if (isPngHeader(raw) && raw.size() <= kMaxFeedbackImageBytes) {
+        *bytes = raw;
+        *contentType = QStringLiteral("image/png");
+        return true;
+    }
+    QImage img;
+    if (!img.loadFromData(raw) && !img.load(path)) {
+        return false;
+    }
+    QByteArray jpeg;
+    if (!encodeJpegUnderLimit(img, &jpeg)) {
+        return false;
+    }
+    *bytes = jpeg;
+    *contentType = QStringLiteral("image/jpeg");
+    return true;
 }
 
 int classifyLoginErrorKind(const QString &msg)
@@ -1526,6 +1594,90 @@ void VpnFlowController::changePassword(const QString &username, const QString &o
     m_changePasswordPending = true;
     setLoading(true);
     m_cloud->changePassword(user, oldPwd, newPwd, QString());
+}
+
+void VpnFlowController::submitFeedback(QString title, QString content, QString category,
+                                       QString userName, QVariantList localPaths)
+{
+    if (m_loading) {
+        return;
+    }
+    const QString trimmedTitle = title.trimmed();
+    const QString trimmedContent = content.trimmed();
+    const QString trimmedUser = userName.trimmed();
+    const QString trimmedCategory = category.trimmed();
+    if (!m_loggedIn && trimmedUser.isEmpty()) {
+        emit toast(tr("请填写账号"), true);
+        return;
+    }
+    if (trimmedTitle.isEmpty()) {
+        emit toast(tr("请填写标题"), true);
+        return;
+    }
+    if (trimmedContent.isEmpty()) {
+        emit toast(tr("请填写描述"), true);
+        return;
+    }
+
+    QList<QPair<QByteArray, QString>> images;
+    for (const QVariant &item : localPaths) {
+        const QString path = item.toString().trimmed();
+        if (path.isEmpty()) {
+            continue;
+        }
+        QByteArray bytes;
+        QString contentType;
+        if (!prepareFeedbackImage(path, &bytes, &contentType)) {
+            emit toast(tr("图片过大或格式不支持"), true);
+            return;
+        }
+        images.append(qMakePair(bytes, contentType));
+        if (images.size() >= 3) {
+            break;
+        }
+    }
+
+    const QString submitUser = m_loggedIn ? QString() : trimmedUser;
+    setLoading(true);
+
+    using UploadNext = std::function<void(int, QStringList)>;
+    const auto uploadNext = QSharedPointer<UploadNext>::create();
+    *uploadNext = [this, trimmedTitle, trimmedContent, trimmedCategory, submitUser, images,
+                   uploadNext](int index, QStringList imageIds) {
+        if (index >= images.size()) {
+            m_cloud->submitFeedback(trimmedTitle, trimmedContent, trimmedCategory, submitUser, imageIds,
+                                    [this](bool ok, QString msg) {
+                setLoading(false);
+                if (!ok) {
+                    emit toast(msg.trimmed().isEmpty() ? tr("提交失败") : msg.trimmed(), true);
+                    return;
+                }
+                emit toast(tr("提交成功"), false);
+            });
+            return;
+        }
+        m_cloud->uploadFeedbackImage(images.at(index).first, images.at(index).second,
+                                     [this, uploadNext, index, imageIds](bool ok, QString imageId, QString msg) {
+            if (!ok) {
+                setLoading(false);
+                emit toast(msg.trimmed().isEmpty() ? tr("截图上传失败，请重试") : msg.trimmed(), true);
+                return;
+            }
+            QStringList nextIds = imageIds;
+            const QString id = imageId.trimmed();
+            if (!id.isEmpty()) {
+                nextIds.append(id);
+            }
+            (*uploadNext)(index + 1, nextIds);
+        });
+    };
+    (*uploadNext)(0, QStringList());
+}
+
+QString VpnFlowController::pickFeedbackImage()
+{
+    return QFileDialog::getOpenFileName(nullptr, tr("添加截图"), QString(),
+                                        QStringLiteral("Images (*.png *.jpg *.jpeg)"));
 }
 
 void VpnFlowController::goChooseLine()

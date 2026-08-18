@@ -137,6 +137,7 @@ bool LocaleManager::applyLocale(const QString &locale)
 
     m_currentLocale = normalized;
     if (m_engine) {
+        m_engine->setUiLanguage(normalized);
         m_engine->retranslate();
     }
     return true;

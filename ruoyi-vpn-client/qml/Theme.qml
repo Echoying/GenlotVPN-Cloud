@@ -57,11 +57,11 @@ QtObject {
     readonly property int connectWindowMinWidth: 560
     readonly property int connectWindowMinHeight: 480
 
-    // 设置页
+    // 设置页（反馈表单含账号/标题/描述/提交，420 会裁掉提交）
     readonly property int settingsWindowWidth: 680
-    readonly property int settingsWindowHeight: 420
+    readonly property int settingsWindowHeight: 560
     readonly property int settingsWindowMinWidth: 560
-    readonly property int settingsWindowMinHeight: 360
+    readonly property int settingsWindowMinHeight: 560
     readonly property int settingsNavWidth: 168
 
     // 设置页扁平配色
@@ -86,7 +86,7 @@ QtObject {
     readonly property int cardPadding: 0
     readonly property int cardWidth: 520
     readonly property int buttonRadius: 4
-    readonly property int headerHeight: 40
+    readonly property int headerHeight: 44
 
     readonly property string assetBg: Qt.resolvedUrl("../assets/images/genlot-bg-light.png")
     readonly property string assetLogoSvg: Qt.resolvedUrl("../assets/images/genlot-logo.svg")

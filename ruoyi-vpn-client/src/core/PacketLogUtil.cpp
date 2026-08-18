@@ -11,6 +11,7 @@
 #include "vpn/auth.pb.h"
 #include "vpn/line.pb.h"
 #include "vpn/line_verify.pb.h"
+#include "vpn/feedback.pb.h"
 #endif
 
 namespace vpn {
@@ -51,6 +52,10 @@ QString messageTypeName(int messageType)
         return QStringLiteral("REPORT_CLIENT_LOGIN");
     case vpn::MessageType::SESSION_PING:
         return QStringLiteral("SESSION_PING");
+    case vpn::MessageType::SUBMIT_FEEDBACK:
+        return QStringLiteral("SUBMIT_FEEDBACK");
+    case vpn::MessageType::UPLOAD_FEEDBACK_IMAGE:
+        return QStringLiteral("UPLOAD_FEEDBACK_IMAGE");
     default:
         return QStringLiteral("TYPE_%1").arg(messageType);
     }
@@ -161,6 +166,22 @@ QString formatCloudRequestPayload(int messageType, const QByteArray &payload)
         }
         return protoToLog(req);
     }
+    case vpn::MessageType::SUBMIT_FEEDBACK: {
+        vpn::SubmitFeedbackRequest req;
+        if (!req.ParseFromArray(payload.constData(), payload.size())) {
+            return QStringLiteral("<解析失败>");
+        }
+        return protoToLog(req);
+    }
+    case vpn::MessageType::UPLOAD_FEEDBACK_IMAGE: {
+        vpn::UploadFeedbackImageRequest req;
+        if (!req.ParseFromArray(payload.constData(), payload.size())) {
+            return QStringLiteral("<解析失败 image payload %1 字节>").arg(payload.size());
+        }
+        return QStringLiteral("content_type=%1 image_bytes=%2")
+            .arg(QString::fromStdString(req.content_type()))
+            .arg(static_cast<int>(req.image().size()));
+    }
     default:
         return QStringLiteral("<未知类型 payload %1 字节>").arg(payload.size());
     }
@@ -266,6 +287,20 @@ QString formatCloudResponseData(int messageType, const QByteArray &data)
     }
     case vpn::MessageType::SESSION_PING: {
         vpn::SessionPingResponse resp;
+        if (!resp.ParseFromArray(data.constData(), data.size())) {
+            return QStringLiteral("<解析失败>");
+        }
+        return protoToLog(resp);
+    }
+    case vpn::MessageType::SUBMIT_FEEDBACK: {
+        vpn::SubmitFeedbackResponse resp;
+        if (!resp.ParseFromArray(data.constData(), data.size())) {
+            return QStringLiteral("<解析失败>");
+        }
+        return protoToLog(resp);
+    }
+    case vpn::MessageType::UPLOAD_FEEDBACK_IMAGE: {
+        vpn::UploadFeedbackImageResponse resp;
         if (!resp.ParseFromArray(data.constData(), data.size())) {
             return QStringLiteral("<解析失败>");
         }

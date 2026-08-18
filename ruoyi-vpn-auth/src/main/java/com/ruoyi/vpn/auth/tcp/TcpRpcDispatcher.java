@@ -31,6 +31,7 @@ import com.ruoyi.vpn.auth.service.VpnLineVerifyService;
 import com.ruoyi.vpn.auth.service.VpnLoginNotifyService;
 import com.ruoyi.vpn.auth.service.VpnLoginService;
 import com.ruoyi.vpn.auth.service.VpnRecordLogService;
+import com.ruoyi.vpn.auth.service.VpnFeedbackRpcService;
 import com.ruoyi.vpn.auth.service.VpnSessionKickService;
 import com.ruoyi.vpn.auth.service.VpnUserOnlineRegistryService;
 import com.ruoyi.vpn.auth.utils.AesUtils;
@@ -58,6 +59,8 @@ import com.ruoyi.vpn.protocol.RefreshTokenRequest;
 import com.ruoyi.vpn.protocol.RefreshTokenResponse;
 import com.ruoyi.vpn.protocol.SessionPingRequest;
 import com.ruoyi.vpn.protocol.SessionPingResponse;
+import com.ruoyi.vpn.protocol.SubmitFeedbackRequest;
+import com.ruoyi.vpn.protocol.UploadFeedbackImageRequest;
 import com.ruoyi.vpn.protocol.ReportClientLoginRequest;
 import com.ruoyi.vpn.protocol.ReportClientLoginResponse;
 import com.ruoyi.vpn.protocol.RpcResponse;
@@ -127,6 +130,9 @@ public class TcpRpcDispatcher
     @Autowired
     private VpnClientVersionGateService vpnClientVersionGateService;
 
+    @Autowired
+    private VpnFeedbackRpcService vpnFeedbackRpcService;
+
     public RpcResult dispatch(Envelope envelope, TcpSessionContext session)
     {
         MessageType type = envelope.getType();
@@ -164,6 +170,10 @@ public class TcpRpcDispatcher
                     return handleGetSyncProxyConfig(envelope, session);
                 case SESSION_PING:
                     return handleSessionPing(envelope, session);
+                case UPLOAD_FEEDBACK_IMAGE:
+                    return handleUploadFeedbackImage(envelope, session);
+                case SUBMIT_FEEDBACK:
+                    return handleSubmitFeedback(envelope, session);
                 default:
                     return RpcResult.fail("不支持的消息类型");
             }
@@ -509,6 +519,59 @@ public class TcpRpcDispatcher
         vpnUserOnlineRegistryService.touchOnlineSession(token);
         vpnSessionKickService.touchSessionIndexByAccessToken(token);
         return RpcResult.ok(SessionPingResponse.newBuilder().build());
+    }
+
+    private RpcResult handleUploadFeedbackImage(Envelope envelope, TcpSessionContext session)
+            throws InvalidProtocolBufferException
+    {
+        UploadFeedbackImageRequest req = UploadFeedbackImageRequest.parseFrom(envelope.getPayload());
+        return vpnFeedbackRpcService.upload(req, session.getClientIp());
+    }
+
+    private RpcResult handleSubmitFeedback(Envelope envelope, TcpSessionContext session)
+            throws InvalidProtocolBufferException
+    {
+        SubmitFeedbackRequest req = SubmitFeedbackRequest.parseFrom(envelope.getPayload());
+        Long userId = null;
+        String userName;
+        if (hasValidRedisSession(envelope, session))
+        {
+            userId = resolveUserId(envelope, session);
+            userName = resolveUsername(envelope, session);
+        }
+        else
+        {
+            userName = req.getUserName();
+        }
+        return vpnFeedbackRpcService.submit(req, userId, userName, session.getClientIp());
+    }
+
+    /**
+     * 合法 token 且 Redis 会话仍在则视为已登录。不抛「未登录或会话已失效」，无效则按游客处理。
+     */
+    private boolean hasValidRedisSession(Envelope envelope, TcpSessionContext session)
+    {
+        String token = resolveToken(envelope, session);
+        if (StringUtils.isEmpty(token))
+        {
+            return false;
+        }
+        try
+        {
+            String tokenId = JwtUtils.getUserKey(token);
+            if (StringUtils.isEmpty(tokenId)
+                    || !redisService.hasKey(CacheConstants.LOGIN_TOKEN_KEY + tokenId))
+            {
+                return false;
+            }
+            JwtUtils.getUserId(token);
+            JwtUtils.getUserName(token);
+            return true;
+        }
+        catch (Exception e)
+        {
+            return false;
+        }
     }
 
     private RpcResult handleRefreshToken(Envelope envelope, TcpSessionContext session) throws InvalidProtocolBufferException

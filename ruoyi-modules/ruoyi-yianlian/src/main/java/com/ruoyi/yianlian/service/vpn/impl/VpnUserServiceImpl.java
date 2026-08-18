@@ -84,6 +84,12 @@ public class VpnUserServiceImpl implements IVpnUserService
     }
 
     @Override
+    public List<VpnUser> selectUserListByUserName(String userName)
+    {
+        return userMapper.selectUserListByUserName(userName);
+    }
+
+    @Override
     public VpnUser selectUserByUserNameAndAppId(String userName, String appId)
     {
         return userMapper.selectUserByUserNameAndAppId(userName, appId);

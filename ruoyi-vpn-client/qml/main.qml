@@ -13,6 +13,13 @@ ApplicationWindow {
     color: Theme.windowBg
     flags: Qt.Window | Qt.WindowTitleHint | Qt.WindowSystemMenuHint
            | Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint
+           // 不含 Maximize / Fullscreen：macOS 绿钮是 zoom/全屏，必须一起关掉
+
+    property int savedWindowWidth: 0
+    property int savedWindowHeight: 0
+    property int savedWindowMinWidth: 0
+    property int savedWindowMinHeight: 0
+    property int lastVisibility: Window.Windowed
 
     onClosing: function(close) {
         if (vpnTray.available) {
@@ -22,6 +29,24 @@ ApplicationWindow {
     }
 
     onVisibilityChanged: {
+        const wasMinimized = lastVisibility === Window.Minimized
+        lastVisibility = visibility
+        // macOS：最小化走系统窗口，不要 hide() 进托盘，否则 Dock 点回来 QML 常空白
+        if (Qt.platform.os === "osx" || Qt.platform.os === "macos") {
+            if (wasMinimized
+                    && (visibility === Window.Windowed
+                        || visibility === Window.AutomaticVisibility)) {
+                Qt.callLater(function() {
+                    if (!window.visible)
+                        return
+                    window.requestActivate()
+                    const w = window.width
+                    window.width = w + 1
+                    window.width = w
+                })
+            }
+            return
+        }
         if (vpnTray.available && visibility === Window.Minimized) {
             Qt.callLater(vpnTray.hideToTray)
         }
@@ -41,10 +66,29 @@ ApplicationWindow {
         window.height = h
     }
 
+    function saveWindowSize() {
+        savedWindowWidth = window.width
+        savedWindowHeight = window.height
+        savedWindowMinWidth = window.minimumWidth
+        savedWindowMinHeight = window.minimumHeight
+    }
+
+    function restoreWindowSize() {
+        if (savedWindowWidth <= 0 || savedWindowHeight <= 0)
+            return
+        applyWindowSize(savedWindowWidth, savedWindowHeight,
+                        savedWindowMinWidth, savedWindowMinHeight)
+        savedWindowWidth = 0
+        savedWindowHeight = 0
+    }
+
     function applyPageWindow(page) {
         if (page === "settings") {
-            applyWindowSize(Theme.settingsWindowWidth, Theme.settingsWindowHeight,
-                            Theme.settingsWindowMinWidth, Theme.settingsWindowMinHeight)
+            applyWindowSize(
+                Math.max(window.width, Theme.settingsWindowWidth),
+                Math.max(window.height, Theme.settingsWindowHeight),
+                Math.max(window.minimumWidth, Theme.settingsWindowMinWidth),
+                Math.max(window.minimumHeight, Theme.settingsWindowMinHeight))
         } else if (page === "applist") {
             applyWindowSize(Theme.appListWindowWidth, Theme.appListWindowHeight,
                             Theme.appListWindowMinWidth, Theme.appListWindowMinHeight)
@@ -78,11 +122,19 @@ ApplicationWindow {
     Connections {
         target: vpnFlow
         function onNavigateTo(page) {
-            applyPageWindow(page)
             if (page === "settings") {
+                if (stackView.currentItem && stackView.currentItem.objectName === "settingsPage")
+                    return
+                saveWindowSize()
+                applyWindowSize(
+                    Math.max(window.width, Theme.settingsWindowWidth),
+                    Math.max(window.height, Theme.settingsWindowHeight),
+                    Math.max(window.minimumWidth, Theme.settingsWindowMinWidth),
+                    Math.max(window.minimumHeight, Theme.settingsWindowMinHeight))
                 stackView.push(settingsPageComponent)
                 return
             }
+            applyPageWindow(page)
             if (page === "applist") {
                 stackView.replace(appListPageComponent)
             } else if (page === "choose") {
@@ -108,21 +160,26 @@ ApplicationWindow {
         color: Theme.windowBg
         z: 10
 
-        Row {
+        GhostButton {
             anchors.left: parent.left
-            anchors.leftMargin: 16
+            anchors.leftMargin: 8
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 6
+            text: qsTr("设置")
+            emphasized: true
+            onClicked: vpnFlow.goToSettings()
+        }
 
-            Text {
-                text: vpnFlow.username
-                visible: vpnFlow.username.length > 0
-                color: Theme.textPrimary
-                font.pixelSize: 13
-                font.bold: true
-                elide: Text.ElideRight
-                width: Math.min(160, window.width * 0.32)
-            }
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
+            text: vpnFlow.username
+            visible: vpnFlow.username.length > 0
+            color: Theme.textPrimary
+            font.pixelSize: 16
+            font.bold: true
+            elide: Text.ElideRight
+            width: Math.min(240, window.width * 0.42)
+            horizontalAlignment: Text.AlignHCenter
         }
 
         GhostButton {

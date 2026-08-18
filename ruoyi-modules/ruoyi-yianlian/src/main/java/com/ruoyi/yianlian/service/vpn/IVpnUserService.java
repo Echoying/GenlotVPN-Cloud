@@ -28,6 +28,11 @@ public interface IVpnUserService
     public VpnUser selectUserByUserName(String userName);
 
     /**
+     * 通过用户名查询用户（同名多线路会返回多条）
+     */
+    public List<VpnUser> selectUserListByUserName(String userName);
+
+    /**
      * 通过用户名和线路查询用户
      */
     public VpnUser selectUserByUserNameAndAppId(String userName, String appId);

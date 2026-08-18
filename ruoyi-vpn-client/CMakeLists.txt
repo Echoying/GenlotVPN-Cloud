@@ -86,7 +86,10 @@ if(WIN32)
     list(APPEND SOURCES src/windows/DpapiProtector.cpp)
 endif()
 if(APPLE)
-    list(APPEND SOURCES src/macos/KeychainProtector.cpp)
+    list(APPEND SOURCES
+        src/macos/KeychainProtector.cpp
+        src/macos/MacWindowHints.cpp
+    )
 endif()
 
 # macOS：Info.plist 在 qt_add_executable 时就会 configure，须先设好变量（仅 target 属性会被写成空）
@@ -196,7 +199,12 @@ if(WIN32)
     target_link_libraries(GenlotVPN PRIVATE crypt32 bcrypt)
 endif()
 if(APPLE)
-    target_link_libraries(GenlotVPN PRIVATE "-framework Security" "-framework CoreFoundation")
+    target_link_libraries(GenlotVPN PRIVATE
+        "-framework Security"
+        "-framework CoreFoundation"
+        "-framework AppKit"
+        "-framework objc"
+    )
 endif()
 
 target_include_directories(GenlotVPN PRIVATE src ${CMAKE_CURRENT_BINARY_DIR})
@@ -298,6 +306,17 @@ else()
     )
 endif()
 if(GENLOT_QM_FILES)
+    # .qm 更新时 exe 可能不重链，POST_BUILD 不会跑；这里按 QM 依赖单独同步
+    add_custom_command(
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/i18n.qm.stamp"
+        DEPENDS ${GENLOT_QM_FILES}
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/i18n"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${GENLOT_QM_FILES} "${CMAKE_CURRENT_BINARY_DIR}/i18n/"
+        COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/i18n.qm.stamp"
+        COMMENT "Sync translation QM into build i18n/"
+    )
+    add_custom_target(genlot_sync_qm ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/i18n.qm.stamp")
+    add_dependencies(GenlotVPN genlot_sync_qm)
     add_custom_command(TARGET GenlotVPN POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:GenlotVPN>/i18n
         COMMAND ${CMAKE_COMMAND} -E copy_if_different

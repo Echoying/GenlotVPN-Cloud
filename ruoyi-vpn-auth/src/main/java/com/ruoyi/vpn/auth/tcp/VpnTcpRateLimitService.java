@@ -19,6 +19,16 @@ public class VpnTcpRateLimitService
 
     private static final String KEY_LOGIN_RATE = "vpn_tcp:login_rate:";
 
+    private static final String KEY_FEEDBACK_UPLOAD = "vpn_tcp:feedback_upload:";
+
+    private static final String KEY_FEEDBACK_SUBMIT = "vpn_tcp:feedback_submit:";
+
+    private static final int FEEDBACK_WINDOW_SECONDS = 3600;
+
+    private static final int FEEDBACK_UPLOAD_MAX = 20;
+
+    private static final int FEEDBACK_SUBMIT_MAX = 5;
+
     @Autowired
     private RedisService redisService;
 
@@ -31,14 +41,37 @@ public class VpnTcpRateLimitService
     public boolean tryAcquireLogin(String clientIp)
     {
         VpnTcpProperties.Limits limits = properties.getLimits();
-        int maxAttempts = limits.getLoginMaxAttemptsPerIp();
-        int windowSeconds = limits.getLoginRateWindowSeconds();
+        return tryAcquire(KEY_LOGIN_RATE, clientIp, limits.getLoginMaxAttemptsPerIp(),
+                limits.getLoginRateWindowSeconds(), "TCP Login");
+    }
+
+    /**
+     * 反馈截图上传：窗口 3600s、上限 20；空 IP 放行。
+     */
+    public boolean tryAcquireFeedbackUpload(String ip)
+    {
+        return tryAcquire(KEY_FEEDBACK_UPLOAD, ip, FEEDBACK_UPLOAD_MAX, FEEDBACK_WINDOW_SECONDS,
+                "TCP FeedbackUpload");
+    }
+
+    /**
+     * 反馈提交：窗口 3600s、上限 5；空 IP 放行。
+     */
+    public boolean tryAcquireFeedbackSubmit(String ip)
+    {
+        return tryAcquire(KEY_FEEDBACK_SUBMIT, ip, FEEDBACK_SUBMIT_MAX, FEEDBACK_WINDOW_SECONDS,
+                "TCP FeedbackSubmit");
+    }
+
+    private boolean tryAcquire(String keyPrefix, String clientIp, int maxAttempts, int windowSeconds,
+            String logLabel)
+    {
         if (maxAttempts <= 0 || windowSeconds <= 0 || StringUtils.isEmpty(clientIp))
         {
             return true;
         }
 
-        String key = KEY_LOGIN_RATE + clientIp;
+        String key = keyPrefix + clientIp;
         Integer count = redisService.getCacheObject(key);
         if (count == null)
         {
@@ -47,7 +80,7 @@ public class VpnTcpRateLimitService
         }
         if (count >= maxAttempts)
         {
-            log.warn("TCP Login 频率超限 ip={} attempts={} windowSec={}", clientIp, count, windowSeconds);
+            log.warn("{} 频率超限 ip={} attempts={} windowSec={}", logLabel, clientIp, count, windowSeconds);
             return false;
         }
         long ttl = redisService.getExpire(key);

@@ -1,5 +1,8 @@
 #include "TrayIcon.h"
 #include "core/AppLogger.h"
+#ifdef Q_OS_MACOS
+#include "macos/MacWindowHints.h"
+#endif
 #include <QAction>
 #include <QApplication>
 #include <QMenu>
@@ -76,6 +79,9 @@ void TrayIcon::raiseWindow()
         }
         SetForegroundWindow(hwnd);
     }
+#endif
+#ifdef Q_OS_MACOS
+    refreshMacQuickWindow(m_window, true);
 #endif
 }
 

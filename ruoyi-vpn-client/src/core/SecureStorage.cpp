@@ -22,7 +22,7 @@ QByteArray embeddedDefaultConfigJson()
 {
     return QByteArray(
         "{\n"
-        "  \"serverHost\": \"10.9.2.177\",\n"
+        "  \"serverHost\": \"202.105.127.12\",\n"
         "  \"serverPort\": 9443,\n"
         "  \"useTls\": true,\n"
         "  \"certPinSha256\": \"cfaed547fc3b72894931ddcd7f94090bb909e95357510d3a79c94345f5e4d6fb\",\n"

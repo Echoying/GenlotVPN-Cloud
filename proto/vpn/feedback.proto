@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package vpn;
+
+option java_package = "com.ruoyi.vpn.protocol";
+option java_multiple_files = true;
+
+message UploadFeedbackImageRequest {
+  bytes image = 1;
+  string content_type = 2;
+}
+
+message UploadFeedbackImageResponse {
+  string image_id = 1;
+}
+
+message SubmitFeedbackRequest {
+  string title = 1;
+  string content = 2;
+  string category = 3;
+  string user_name = 4;
+  string client_version = 5;
+  string client_platform = 6;
+  repeated string image_ids = 7;
+}
+
+message SubmitFeedbackResponse {
+  int64 feedback_id = 1;
+}

@@ -3,6 +3,7 @@
 #include "../transport/TcpClient.h"
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QByteArray>
 #include <QVariantList>
 #include <functional>
@@ -38,6 +39,11 @@ public:
     Q_INVOKABLE void fetchUserCredentials(const QString &appId);
     Q_INVOKABLE void changePassword(const QString &username, const QString &oldPassword,
                                     const QString &newPassword, const QString &appId);
+    void uploadFeedbackImage(const QByteArray &bytes, const QString &contentType,
+                             std::function<void(bool ok, QString imageId, QString msg)> cb);
+    void submitFeedback(const QString &title, const QString &content, const QString &category,
+                        const QString &userName, const QStringList &imageIds,
+                        std::function<void(bool ok, QString msg)> cb);
     Q_INVOKABLE void logout();
     void logout(std::function<void(bool ok)> onComplete);
     void reportClientLogin(const QString &appId, const QString &lineName, bool success,

@@ -4,16 +4,59 @@ import GenlotVPN 1.0
 
 Item {
     id: root
+    objectName: "settingsPage"
 
     property var appWindow: Window.window
     property int currentSection: 0
 
-    readonly property var sections: [
-        { key: "server", title: qsTr("服务器") },
-        { key: "language", title: qsTr("语言") },
-        { key: "security", title: qsTr("安全连接") },
-        { key: "about", title: qsTr("关于") }
+    property var feedbackImagePaths: []
+
+    readonly property var guestSections: [
+        { key: "server" },
+        { key: "language" },
+        { key: "security" },
+        { key: "feedback" },
+        { key: "about" }
     ]
+    readonly property var loggedInSections: [
+        { key: "feedback" },
+        { key: "about" }
+    ]
+    readonly property var sections: (vpnFlow.loggedIn || vpnFlow.offlineMode) ? loggedInSections : guestSections
+
+    function sectionTitle(key) {
+        if (key === "server")
+            return qsTr("服务器")
+        if (key === "language")
+            return qsTr("语言")
+        if (key === "security")
+            return qsTr("安全连接")
+        if (key === "feedback")
+            return qsTr("问题反馈")
+        if (key === "about")
+            return qsTr("关于")
+        return ""
+    }
+    readonly property string activeKey: (currentSection >= 0 && currentSection < sections.length)
+                                        ? sections[currentSection].key : ""
+
+    Connections {
+        target: vpnFlow
+        function onLoggedInChanged() {
+            root.currentSection = 0
+        }
+        function onOfflineModeChanged() {
+            root.currentSection = 0
+        }
+    }
+
+    readonly property var feedbackCategories: [
+        { name: qsTr("连接"), value: "connect" },
+        { name: qsTr("登录"), value: "login" },
+        { name: qsTr("界面"), value: "ui" },
+        { name: qsTr("其他"), value: "other" }
+    ]
+    readonly property int defaultFeedbackCategoryIndex: 3
 
     readonly property int serverPortFieldWidth: 96
     readonly property int compactFieldWidth: Math.max(120, (panelColumn.width - 12) / 2)
@@ -57,29 +100,52 @@ Item {
         loadFields()
     }
 
+    function fileUrlFromPath(path) {
+        const p = String(path || "").replace(/\\/g, "/")
+        if (!p)
+            return ""
+        if (p.indexOf("file:") === 0)
+            return p
+        return "file:///" + p
+    }
+
+    function addFeedbackImage() {
+        if (root.feedbackImagePaths.length >= 3)
+            return
+        const path = vpnFlow.pickFeedbackImage()
+        if (!path)
+            return
+        const next = root.feedbackImagePaths.slice()
+        next.push(path)
+        root.feedbackImagePaths = next
+    }
+
+    function removeFeedbackImage(index) {
+        const next = root.feedbackImagePaths.slice()
+        next.splice(index, 1)
+        root.feedbackImagePaths = next
+    }
+
+    function currentFeedbackCategory() {
+        const idx = feedbackCategoryCombo.currentIndex
+        const items = root.feedbackCategories
+        if (idx >= 0 && idx < items.length)
+            return items[idx].value || ""
+        return ""
+    }
+
+    function submitFeedbackForm() {
+        vpnFlow.submitFeedback(
+                    feedbackTitleField.text,
+                    feedbackContentArea.text,
+                    root.currentFeedbackCategory(),
+                    feedbackUserField.text,
+                    root.feedbackImagePaths)
+    }
+
     function goBack() {
-        const backPage = vpnFlow.offlineMode ? "applist"
-                        : (vpnFlow.loggedIn ? "choose" : "login")
-        if (appWindow && typeof appWindow.applyPageWindow === "function") {
-            appWindow.applyPageWindow(backPage)
-        } else if (appWindow) {
-            if (backPage === "login") {
-                appWindow.minimumWidth = Theme.loginWindowMinWidth
-                appWindow.minimumHeight = Theme.loginWindowMinHeight
-                appWindow.width = Theme.loginWindowWidth
-                appWindow.height = Theme.loginWindowHeight
-            } else if (backPage === "applist") {
-                appWindow.minimumWidth = Theme.appListWindowMinWidth
-                appWindow.minimumHeight = Theme.appListWindowMinHeight
-                appWindow.width = Theme.appListWindowWidth
-                appWindow.height = Theme.appListWindowHeight
-            } else {
-                appWindow.minimumWidth = Theme.chooseLineWindowMinWidth
-                appWindow.minimumHeight = Theme.chooseLineWindowMinHeight
-                appWindow.width = Theme.chooseLineWindowWidth
-                appWindow.height = Theme.chooseLineWindowHeight
-            }
-        }
+        if (appWindow && typeof appWindow.restoreWindowSize === "function")
+            appWindow.restoreWindowSize()
         if (StackView.view)
             StackView.view.pop()
     }
@@ -162,7 +228,7 @@ Item {
                                 anchors.left: parent.left
                                 anchors.leftMargin: 14
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: root.sections[index].title
+                                text: root.sectionTitle(root.sections[index].key)
                                 color: root.currentSection === index
                                        ? Theme.navy
                                        : Theme.textSecondary
@@ -220,7 +286,7 @@ Item {
                         Column {
                             width: parent.width
                             spacing: 16
-                            visible: root.currentSection === 0
+                            visible: root.activeKey === "server"
 
                             Row {
                                 width: parent.width
@@ -352,7 +418,7 @@ Item {
                         Column {
                             width: parent.width
                             spacing: 16
-                            visible: root.currentSection === 1
+                            visible: root.activeKey === "language"
 
                             FlatCombo {
                                 id: localeCombo
@@ -373,7 +439,7 @@ Item {
                         Column {
                             width: parent.width
                             spacing: 16
-                            visible: root.currentSection === 2
+                            visible: root.activeKey === "security"
 
                             Row {
                                 width: parent.width
@@ -456,7 +522,7 @@ Item {
                         Column {
                             width: parent.width
                             spacing: 12
-                            visible: root.currentSection === 3
+                            visible: root.activeKey === "about"
 
                             Text {
                                 text: "Genlot VPN"
@@ -484,6 +550,155 @@ Item {
                                 text: "Copyright © Genlot"
                                 color: Theme.textSecondary
                                 font.pixelSize: 11
+                            }
+                        }
+
+                        // —— 问题反馈 ——
+                        Column {
+                            width: parent.width
+                            spacing: 16
+                            visible: root.activeKey === "feedback"
+
+                            Column {
+                                width: parent.width
+                                spacing: 6
+                                visible: !vpnFlow.loggedIn
+
+                                Text {
+                                    text: qsTr("账号")
+                                    color: Theme.textSecondary
+                                    font.pixelSize: 12
+                                }
+
+                                FlatField {
+                                    id: feedbackUserField
+                                    width: parent.width
+                                    placeholderText: qsTr("请输入账号")
+                                }
+                            }
+
+                            Column {
+                                width: parent.width
+                                spacing: 6
+
+                                Text {
+                                    text: qsTr("标题")
+                                    color: Theme.textSecondary
+                                    font.pixelSize: 12
+                                }
+
+                                FlatField {
+                                    id: feedbackTitleField
+                                    width: parent.width
+                                    placeholderText: qsTr("请填写标题")
+                                    maximumLength: 80
+                                }
+                            }
+
+                            Column {
+                                width: parent.width
+                                spacing: 6
+
+                                Text {
+                                    text: qsTr("描述")
+                                    color: Theme.textSecondary
+                                    font.pixelSize: 12
+                                }
+
+                                FlatTextArea {
+                                    id: feedbackContentArea
+                                    width: parent.width
+                                    implicitHeight: 88
+                                    placeholderText: qsTr("请填写描述")
+                                    maximumLength: 2000
+                                }
+                            }
+
+                            Column {
+                                width: parent.width
+                                spacing: 6
+
+                                Text {
+                                    text: qsTr("分类")
+                                    color: Theme.textSecondary
+                                    font.pixelSize: 12
+                                }
+
+                                FlatCombo {
+                                    id: feedbackCategoryCombo
+                                    width: parent.width
+                                    model: root.feedbackCategories
+                                    textRole: "name"
+                                    currentIndex: root.defaultFeedbackCategoryIndex
+                                }
+                            }
+
+                            Flow {
+                                width: parent.width
+                                spacing: 8
+
+                                Repeater {
+                                    model: root.feedbackImagePaths
+                                    delegate: Rectangle {
+                                        required property int index
+                                        required property var modelData
+                                        width: 72
+                                        height: 72
+                                        radius: Theme.buttonRadius
+                                        color: Theme.inputBg
+                                        border.color: Theme.inputBorder
+                                        border.width: 1
+                                        clip: true
+
+                                        Image {
+                                            anchors.fill: parent
+                                            anchors.margins: 2
+                                            fillMode: Image.PreserveAspectCrop
+                                            asynchronous: true
+                                            source: root.fileUrlFromPath(modelData)
+                                        }
+
+                                        MouseArea {
+                                            anchors.top: parent.top
+                                            anchors.right: parent.right
+                                            width: 18
+                                            height: 18
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: root.removeFeedbackImage(index)
+
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: "×"
+                                                color: Theme.danger
+                                                font.pixelSize: 14
+                                                font.bold: true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Item {
+                                width: parent.width
+                                height: 40
+
+                                GhostButton {
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: qsTr("添加截图")
+                                    enabled: !vpnFlow.loading && root.feedbackImagePaths.length < 3
+                                    onClicked: root.addFeedbackImage()
+                                }
+
+                                PrimaryButton {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: qsTr("提交")
+                                    soft: true
+                                    width: 88
+                                    enabled: !vpnFlow.loading
+                                    onClicked: root.submitFeedbackForm()
+                                }
                             }
                         }
                     }

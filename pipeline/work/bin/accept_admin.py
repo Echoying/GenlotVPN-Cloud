@@ -215,10 +215,15 @@ def main() -> int:
                 if ok and args.expect_text:
                     try:
                         if args.click:
-                            # 点过按钮后看弹窗标题，避免 toast「加载线路权限失败」误匹配「线路权限」
-                            page.locator(".el-dialog__title:visible").filter(
+                            # 点过按钮后优先看弹窗标题，避免整页模糊匹配；
+                            # 「保存成功」在 $modal.msgSuccess 的 toast 上，不在 .el-dialog__title。
+                            title = page.locator(".el-dialog__title:visible").filter(
                                 has_text=args.expect_text
-                            ).first.wait_for(timeout=8000)
+                            )
+                            toast = page.locator(".el-message:visible").filter(
+                                has_text=args.expect_text
+                            )
+                            title.or_(toast).first.wait_for(timeout=8000)
                         else:
                             page.get_by_text(args.expect_text, exact=False).first.wait_for(timeout=8000)
                         checks.append((f"出现文案「{args.expect_text}」", "通过"))

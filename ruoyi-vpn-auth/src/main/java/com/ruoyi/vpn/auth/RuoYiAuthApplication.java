@@ -12,7 +12,7 @@ import com.ruoyi.common.security.annotation.EnableRyFeignClients;
  * @author ruoyi
  */
 @EnableRyFeignClients
-@ComponentScan(basePackages = {"com.ruoyi.vpn.auth", "com.ruoyi.yianlian.api"})
+@ComponentScan(basePackages = {"com.ruoyi.vpn.auth", "com.ruoyi.yianlian.api", "com.ruoyi.system.api"})
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class })
 public class RuoYiAuthApplication
 {

@@ -186,6 +186,50 @@ EN_MAP = {
     "离线登录文件缺少完整性校验信息": "Offline login file is missing integrity check data",
     "离线登录文件缺少本地用户密码哈希": "Offline login file is missing local user password hash",
     "界面加载失败，请查看 logs 目录中的 [QML] 日志。": "Failed to load UI. Check [QML] entries in the logs folder.",
+    "问题反馈": "Feedback",
+    "连接": "Connection",
+    "登录": "Login",
+    "界面": "UI",
+    "其他": "Other",
+    "请输入账号": "Enter account",
+    "标题": "Title",
+    "请填写标题": "Please enter a title",
+    "描述": "Description",
+    "请填写描述": "Please enter a description",
+    "分类": "Category",
+    "添加截图": "Add screenshot",
+    "提交": "Submit",
+    "请填写账号": "Please enter an account",
+    "图片过大或格式不支持": "Image is too large or the format is not supported",
+    "提交失败": "Submit failed",
+    "提交成功": "Submitted successfully",
+    "截图上传失败，请重试": "Screenshot upload failed. Please try again.",
+    "正在建立 VPN 连接": "Establishing VPN connection",
+    "连接线路": "Connecting to line",
+    "正在连接 %1，请稍候...": "Connecting to %1, please wait...",
+    "正在检测线路并登录控制器，请勿关闭窗口": (
+        "Detecting line and signing in to the controller. Do not close this window."
+    ),
+    "等待验证...": "Waiting for verification...",
+    "选线验证": "Line verification",
+    "请输入登录用途（5-50字）": "Enter login purpose (5-50 characters)",
+    "钉钉验证码（6位数字）": "DingTalk code (6 digits)",
+    "正在登录控制器 SDK...": "Signing in to controller SDK...",
+    "正在初始化 VPN 服务...": "Initializing VPN service...",
+    "正在校验客户端版本...": "Checking client version...",
+    "正在获取登录凭证...": "Retrieving login credentials...",
+    "正在检测线路连通性...": "Checking line connectivity...",
+    "客户端版本过低，请升级": "Client version is too old. Please upgrade.",
+    "需要升级客户端": "Client upgrade required",
+    "打开下载页": "Open download page",
+    "无法获取网络时间，已使用本机时间校验（可能被篡改）": (
+        "Could not fetch network time. Using local time (it may have been tampered with)."
+    ),
+    "请勿篡改文件": "Do not tamper with the file",
+    "TLS 握手失败（本机 TLS 与服务器特性不兼容）。请重启 ruoyi-vpn-auth 使服务端支持 TLS 1.2+1.3，并确认 config.json 中 useTls 为 true。": (
+        "TLS handshake failed (local TLS is incompatible with the server). Restart ruoyi-vpn-auth "
+        "for TLS 1.2+1.3 and ensure useTls is true in config.json."
+    ),
 }
 
 

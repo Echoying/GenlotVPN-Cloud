@@ -123,6 +123,9 @@ public:
     void ensureLogoutBeforeProcessExit();
     Q_INVOKABLE void changePassword(const QString &username, const QString &oldPwd,
                                     const QString &newPwd, const QString &confirmPwd);
+    Q_INVOKABLE void submitFeedback(QString title, QString content, QString category,
+                                    QString userName, QVariantList localPaths);
+    Q_INVOKABLE QString pickFeedbackImage();
     Q_INVOKABLE void goChooseLine();
     Q_INVOKABLE void goToSettings();
     Q_INVOKABLE void copyToClipboard(const QString &text);

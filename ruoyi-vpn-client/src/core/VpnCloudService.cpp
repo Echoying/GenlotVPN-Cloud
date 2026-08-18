@@ -16,6 +16,7 @@
 #include "vpn/line.pb.h"
 #include "vpn/line_verify.pb.h"
 #include "vpn/common.pb.h"
+#include "vpn/feedback.pb.h"
 #endif
 
 namespace vpn {
@@ -409,6 +410,85 @@ void VpnCloudService::changePassword(const QString &username, const QString &old
         if (!r.ok) return;
         emit changePasswordSucceeded();
     });
+#endif
+}
+
+void VpnCloudService::uploadFeedbackImage(const QByteArray &bytes, const QString &contentType,
+                                          std::function<void(bool ok, QString imageId, QString msg)> cb)
+{
+#ifdef VPN_HAS_PROTO
+    vpn::UploadFeedbackImageRequest req;
+    req.set_image(bytes.constData(), static_cast<size_t>(bytes.size()));
+    req.set_content_type(contentType.toStdString());
+    sendRpc(static_cast<int>(vpn::MessageType::UPLOAD_FEEDBACK_IMAGE), serializeProto(req),
+            [cb](const RpcResult &r) {
+                vpn::UploadFeedbackImageResponse data;
+                if (!data.ParseFromArray(r.data.constData(), r.data.size())) {
+                    if (cb) {
+                        cb(false, QString(), QStringLiteral("响应解析失败"));
+                    }
+                    return;
+                }
+                if (cb) {
+                    cb(true, QString::fromStdString(data.image_id()), r.msg);
+                }
+            },
+            [cb](const QString &msg) {
+                if (cb) {
+                    cb(false, QString(), msg);
+                }
+            });
+#else
+    Q_UNUSED(bytes);
+    Q_UNUSED(contentType);
+    if (cb) {
+        cb(false, QString(), QStringLiteral("Protobuf 未生成"));
+    }
+#endif
+}
+
+void VpnCloudService::submitFeedback(const QString &title, const QString &content, const QString &category,
+                                     const QString &userName, const QStringList &imageIds,
+                                     std::function<void(bool ok, QString msg)> cb)
+{
+#ifdef VPN_HAS_PROTO
+    vpn::SubmitFeedbackRequest req;
+    req.set_title(title.toStdString());
+    req.set_content(content.toStdString());
+    req.set_category(category.toStdString());
+    req.set_user_name(userName.toStdString());
+    QString clientVersion = QCoreApplication::applicationVersion().trimmed();
+    if (clientVersion.isEmpty()) {
+        clientVersion = AppInfo().version();
+    }
+    req.set_client_version(clientVersion.toStdString());
+    req.set_client_platform(ClientDeviceInfo::platformId().toStdString());
+    for (const QString &imageId : imageIds) {
+        const QString id = imageId.trimmed();
+        if (!id.isEmpty()) {
+            req.add_image_ids(id.toStdString());
+        }
+    }
+    sendRpc(static_cast<int>(vpn::MessageType::SUBMIT_FEEDBACK), serializeProto(req),
+            [cb](const RpcResult &r) {
+                if (cb) {
+                    cb(true, r.msg);
+                }
+            },
+            [cb](const QString &msg) {
+                if (cb) {
+                    cb(false, msg);
+                }
+            });
+#else
+    Q_UNUSED(title);
+    Q_UNUSED(content);
+    Q_UNUSED(category);
+    Q_UNUSED(userName);
+    Q_UNUSED(imageIds);
+    if (cb) {
+        cb(false, QStringLiteral("Protobuf 未生成"));
+    }
 #endif
 }
 

@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QGuiApplication>
 #include <QIcon>
 #include <QMessageBox>
 #include <QQuickStyle>
@@ -25,6 +26,9 @@
 #include "core/AppInfo.h"
 #include "platform/SingleInstance.h"
 #include "platform/TrayIcon.h"
+#ifdef Q_OS_MACOS
+#include "macos/MacWindowHints.h"
+#endif
 
 namespace {
 
@@ -169,12 +173,24 @@ int main(int argc, char *argv[])
     }
     QWindow *mainWindow = qobject_cast<QWindow *>(engine.rootObjects().value(0));
     if (mainWindow) {
+#ifdef Q_OS_MACOS
+        vpn::applyMacWindowChrome(mainWindow);
+#else
         mainWindow->setFlags(mainWindow->flags() & ~Qt::WindowMaximizeButtonHint);
+#endif
         if (!appIcon.isNull()) {
             mainWindow->setIcon(appIcon);
         }
     }
     trayIcon.attachWindow(mainWindow);
+#ifdef Q_OS_MACOS
+    QObject::connect(&app, &QGuiApplication::applicationStateChanged,
+                     [&](Qt::ApplicationState state) {
+        if (state == Qt::ApplicationActive) {
+            trayIcon.showMainWindow();
+        }
+    });
+#endif
     QObject::connect(&singleInstance, &vpn::SingleInstance::activateRequested, [&]() {
         appLogger->info(QStringLiteral("[单实例] 收到置前请求"));
         trayIcon.showMainWindow();
