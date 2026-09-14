@@ -20,6 +20,7 @@ class TcpClient : public QObject {
     Q_OBJECT
 public:
     explicit TcpClient(QObject *parent = nullptr);
+    ~TcpClient() override;
 
     void configure(const QString &host, quint16 port, bool useTls,
                    const QString &certPinSha256, const QString &certPinSha256Backup = QString());

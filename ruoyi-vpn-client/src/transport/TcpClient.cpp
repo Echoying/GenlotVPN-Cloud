@@ -129,6 +129,22 @@ TcpClient::TcpClient(QObject *parent) : QObject(parent)
     connect(&m_socket, &QSslSocket::disconnected, this, &TcpClient::onDisconnected);
 }
 
+TcpClient::~TcpClient()
+{
+    // 成员按声明逆序析构：回调与队列先毁，m_socket 最后毁。
+    // QAbstractSocket 析构时会 abort() 并发出 disconnected，此时槽仍连着，
+    // 会带着已销毁的 m_pendingCallback 进 failPending/finishActive 而崩溃。
+    disconnect(&m_socket, nullptr, this, nullptr);
+    m_connectTimer.stop();
+    m_responseTimer.stop();
+    m_queue.clear();
+    m_pendingCallback = nullptr;
+    m_waitingResponse = false;
+    if (m_socket.state() != QAbstractSocket::UnconnectedState) {
+        m_socket.abort();
+    }
+}
+
 void TcpClient::configure(const QString &host, quint16 port, bool useTls,
                           const QString &certPinSha256, const QString &certPinSha256Backup)
 {
