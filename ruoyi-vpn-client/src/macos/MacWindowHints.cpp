@@ -1,6 +1,7 @@
-#ifdef Q_OS_MACOS
-
 #include "MacWindowHints.h"
+
+#include <QtGlobal>
+#ifdef Q_OS_MACOS
 
 #include <QEvent>
 #include <QQuickWindow>

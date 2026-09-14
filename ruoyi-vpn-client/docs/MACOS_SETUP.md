@@ -209,6 +209,7 @@ Universal 需同时具备双架构 Qt/Protobuf，另行评估。
 | 错误 | 原因 | 处理 |
 |------|------|------|
 | `ld: framework not found objc`（或看成 pbjc） | 误链 `-framework objc` | 已改为 `-lobjc`；拉最新代码后 `rm -rf ruoyi-vpn-client/build-macos` 再编 |
+| `Undefined symbols … applyMacWindowChrome` / `x86_64` | `MacWindowHints.cpp` 在包含 Qt 头之前判断 `Q_OS_MACOS`，整文件被编成空 | 已先 `#include <QtGlobal>`；拉最新后清 `build-macos` 再编 |
 | `qmlimportscanner cannot be run … requires macOS 13` | 装了 Qt 6.11+ | 改装 6.7，改 `CMAKE_PREFIX_PATH`，清 `build-macos` 重编 |
 | `unknown type name 'QTimer'` | 头文件缺前向声明 | 已修于 `TrustedTimeProvider.h`；拉最新代码 |
 | `Error copying directory … GenlotVPN: File exists` | QML 模块目录与可执行文件同名冲突 | 已改为拷到 `Contents/Resources/GenlotVPN`；拉最新代码后重编 |
