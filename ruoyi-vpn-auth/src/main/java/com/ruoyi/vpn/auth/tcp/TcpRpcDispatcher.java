@@ -63,6 +63,8 @@ import com.ruoyi.vpn.protocol.SubmitFeedbackRequest;
 import com.ruoyi.vpn.protocol.UploadFeedbackImageRequest;
 import com.ruoyi.vpn.protocol.ReportClientLoginRequest;
 import com.ruoyi.vpn.protocol.ReportClientLoginResponse;
+import com.ruoyi.vpn.protocol.RotateLinePasswordRequest;
+import com.ruoyi.vpn.protocol.RotateLinePasswordResponse;
 import com.ruoyi.vpn.protocol.RpcResponse;
 import com.ruoyi.vpn.protocol.SendLineVerifyRequest;
 import com.ruoyi.vpn.protocol.SendLineVerifyResponse;
@@ -164,6 +166,8 @@ public class TcpRpcDispatcher
                     return handleConfirmLineVerify(envelope, session);
                 case GET_USER_CREDENTIALS:
                     return handleGetUserCredentials(envelope, session);
+                case ROTATE_LINE_PASSWORD:
+                    return handleRotateLinePassword(envelope, session);
                 case REPORT_CLIENT_LOGIN:
                     return handleReportClientLogin(envelope, session);
                 case GET_SYNC_PROXY_CONFIG:
@@ -661,6 +665,16 @@ public class TcpRpcDispatcher
                 .setPassword(encryptedPassword)
                 .build();
         return RpcResult.ok(response);
+    }
+
+    private RpcResult handleRotateLinePassword(Envelope envelope, TcpSessionContext session)
+            throws InvalidProtocolBufferException
+    {
+        requireAuth(session, envelope);
+        RotateLinePasswordRequest req = RotateLinePasswordRequest.parseFrom(envelope.getPayload());
+        Long userId = resolveUserId(envelope, session);
+        vpnLoginService.rotateLinePassword(userId, req.getAppId());
+        return RpcResult.ok(RotateLinePasswordResponse.newBuilder().build());
     }
 
     private void refreshVpnLoginTokenIfPresent(String accessToken)

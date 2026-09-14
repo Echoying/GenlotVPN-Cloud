@@ -21,6 +21,7 @@ docker/
 
   node-93/                     # VPN 机 10.27.0.93
     .env  deploy.sh  docker-compose.yml
+    nginx/                     # 下载静态站（80/443，与 vpn-auth 证书分开）
     ruoyi/vpn/auth/certs/
 ```
 
@@ -30,7 +31,7 @@ docker/
 |------|----|--------|------|------|
 | 中间件机 | 10.27.0.91 | node-91 | ruoyi-mysql / ruoyi-redis / ruoyi-nacos | 3306 / 6379 / 8848,9848,9849 |
 | 管理端机 | 10.27.0.92 | node-92 | gateway / auth / system / gen / job / file / monitor / yianlian / nginx | 8080 / 9200 / 9201 / 9202 / 9203 / 9300 / 9100 / 9205 / 80 |
-| VPN 机 | 10.27.0.93 | node-93 | vpn-auth | 9400, 9443 |
+| VPN 机 | 10.27.0.93 | node-93 | vpn-auth；下载 nginx（`ruoyi-download-nginx`） | 9400, 9443；**80, 443**（下载站 HTTPS，见下） |
 
 每个 `node-9x` 目录内含独立的 `.env`（三台 IP 变量）、`deploy.sh`（本机操作脚本）、`docker-compose.yml`。
 
@@ -51,7 +52,9 @@ docker/
 |------|----------|------|
 | 91 | 3306, 6379, 8848, 9848, 9849 | 92 / 93 |
 | 92 | 80, 8080, 9100, 9200, 9201, 9202, 9203, 9205, 9300 | 93 / 客户端 |
-| 93 | 9400, 9443 | 92 / 客户端 |
+| 93 | 9400, 9443, **80, 443** | 92 / 客户端 / 外网下载 |
+
+> **93 的 443** 是 **93 这张公网 IP 自己的 HTTPS**（下载页 `/genlotvpn/`），**不是**公司官网 443。网络侧把该 IP 的 80/443 映到 93 宿主机同端口；**不**动 9443 映射、**不**反代 vpn-auth。
 
 > 注意：Nacos 的 gRPC 端口 `9848/9849` 必须放通，否则 2.x 客户端注册/心跳失败。
 
@@ -84,6 +87,7 @@ cd node-93 && sh deploy.sh up
 1. 打开 Nacos 控制台 `http://10.27.0.91:8848/nacos`，在「服务管理 → 服务列表」中确认各微服务实例 IP 为 `10.27.0.92` / `10.27.0.93`（**不能是 172.x 容器内网 IP**）。
 2. 访问管理端 `http://10.27.0.92` 联调。
 3. VPN 桌面客户端连接 `10.27.0.93:9443`（TLS/TCP）。
+4. 下载页（内网自签）：`https://10.27.0.93/genlotvpn/download/`；公网形态 `https://<93公网IP>/genlotvpn/download/`（443 为该 IP 自有 HTTPS，非官网）。
 
 ## 八、停止 / 删除
 
@@ -105,6 +109,7 @@ sh deploy.sh rm     # 删除本机容器
 | 92 | Java 微服务 ×8 | `ruoyi/<模块>/logs/` | `ruoyi-*/info.log`、`error.log`（按日滚动） |
 | 92 | Nginx | `nginx/logs/` | `access.log`、`error.log` |
 | 93 | vpn-auth | `ruoyi/vpn/auth/logs/` | 同上 |
+| 93 | 下载 nginx | `nginx/logs/` | `access.log`、`error.log` |
 
 Java 服务容器内写 `/home/ruoyi/logs/<服务名>/`，与 logback.xml 一致。首次启动后目录自动创建。
 

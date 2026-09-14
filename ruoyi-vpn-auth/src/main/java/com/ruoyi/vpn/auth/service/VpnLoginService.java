@@ -18,6 +18,7 @@ import com.ruoyi.common.core.utils.StringUtils;
 import com.ruoyi.common.core.utils.ip.IpUtils;
 import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.common.security.utils.SecurityUtils;
+import com.ruoyi.yianlian.api.RemoteVpnLinePasswordService;
 import com.ruoyi.yianlian.api.RemoteVpnLineService;
 import com.ruoyi.yianlian.api.RemoteVpnLocalUserService;
 
@@ -36,6 +37,9 @@ public class VpnLoginService
 
     @Autowired
     private RemoteVpnLineService remoteVpnLineService;
+
+    @Autowired
+    private RemoteVpnLinePasswordService remoteVpnLinePasswordService;
 
     @Autowired
     private VpnPasswordService passwordService;
@@ -207,6 +211,24 @@ public class VpnLoginService
             throw new ServiceException(StringUtils.isNotEmpty(result.getMsg()) ? result.getMsg() : "获取线路用户凭证失败");
         }
         return result.getData();
+    }
+
+    /**
+     * 更新指定线路的线路用户密码（不返回新密码）
+     */
+    public void rotateLinePassword(Long localUserId, String appId)
+    {
+        if (localUserId == null || StringUtils.isEmpty(appId))
+        {
+            throw new ServiceException("用户标识或线路标识不能为空");
+        }
+        assertLocalUserAuthorizedForLine(localUserId, appId);
+        R<Boolean> result = remoteVpnLinePasswordService.rotateLinePassword(localUserId, appId, SecurityConstants.INNER);
+        if (result == null || R.FAIL == result.getCode() || !Boolean.TRUE.equals(result.getData()))
+        {
+            String msg = result == null ? null : result.getMsg();
+            throw new ServiceException(StringUtils.isNotEmpty(msg) ? msg : "更新线路密码失败，请重试");
+        }
     }
 
     /**

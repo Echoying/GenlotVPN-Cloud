@@ -23,6 +23,7 @@ enum MessageType {
   SESSION_PING = 18;
   SUBMIT_FEEDBACK = 19;
   UPLOAD_FEEDBACK_IMAGE = 20;
+  ROTATE_LINE_PASSWORD = 21;
 }
 
 // 统一报文外壳

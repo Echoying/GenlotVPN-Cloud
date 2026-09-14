@@ -193,6 +193,21 @@ private:
     void finishLogout(bool clearUsername);
     bool maybeHandleSessionExpired(const QString &msg);
     void handleSessionExpired(const QString &serverMsg);
+    /** 当前连线使用的线路 appId（优先验证线路） */
+    QString currentLineAppId() const;
+    /** 控制器登录返回 2040 */
+    void handleLinePasswordExpired(const QString &message);
+    void requestLinePasswordRotation();
+    void handleLinePasswordRotationFailed(int requestGeneration, const QString &message);
+    void handleLinePasswordRotated(int requestGeneration);
+    /** 轮换用尽或不可用：按控制器 2040 原文结束本轮连线（保留 attempts 直到下一个清理入口） */
+    void finishLinePasswordExpiredFailure();
+    void resetLinePasswordRotationState();
+    /** 会话失效或登出清理进行中：作废轮换状态，不重试、不 toast 2040 */
+    bool abortLinePasswordRotationIfSessionCleanup();
+    /** 代次是否仍是当前在途请求（用于丢弃迟到回调） */
+    bool isCurrentLinePasswordRotation(int requestGeneration) const;
+    QString linePasswordExpiredText() const;
     bool hasActiveCloudSession() const;
     /** 是否可能已登录本机易安联控制器（在线/离线均需登出清理） */
     bool needsControllerLogout() const;
@@ -273,6 +288,13 @@ private:
     bool m_handlingOfflineExpiry = false;
     bool m_connectChainActive = false;
     bool m_logoutCleanupInProgress = false;
+    int m_linePasswordRotationAttempts = 0;
+    QString m_linePasswordExpiredMessage;
+    bool m_linePasswordRotationPending = false;
+    /** 轮换代次：每次发起请求与每个清理入口都自增，使非当前请求的回调作废 */
+    int m_linePasswordRotationGeneration = 0;
+    /** 轮换已成功、清理尚未落地：此期间不接受新的轮换与 2040 */
+    bool m_linePasswordRotationCompleting = false;
 
     QTimer *m_offlineExpireTimer = nullptr;
     QTimer *m_tunnelStatusTimer = nullptr;
@@ -289,6 +311,7 @@ private:
     static constexpr int TunnelStatusPollIntervalMs = 10000;
     static constexpr int SessionPingIntervalMs = 30000;
     static constexpr int kOfflineExpireCheckIntervalMs = 5 * 60 * 1000;
+    static constexpr int kMaxLinePasswordRotationAttempts = 2;
 };
 
 } // namespace vpn

@@ -4,7 +4,7 @@
 
   python pipeline/bin/gate.py server --run 2026-08-15-用户线路权限查询
   python pipeline/bin/gate.py              全量（建议加 --run）
-  python pipeline/bin/gate.py java|ui|client
+  python pipeline/bin/gate.py java|ui|client|download
 """
 from __future__ import annotations
 
@@ -90,6 +90,24 @@ def build_client() -> None:
     print("[gate] 非 Windows：跳过客户端打包（请在 Windows 上执行 python pipeline/bin/gate.py client）", flush=True)
 
 
+def gate_download() -> None:
+    site = REPO / "docker" / "node-93" / "nginx" / "html" / "genlotvpn"
+    for rel in ("index.html", "css/app.css", "js/app.js", "js/i18n.js"):
+        if not (site / rel).is_file():
+            raise SystemExit("[gate] 失败: 缺少 " + rel)
+    conf = (REPO / "docker" / "node-93" / "nginx" / "conf" / "nginx.conf").read_text(encoding="utf-8")
+    if "proxy_pass" in conf:
+        raise SystemExit("[gate] 失败: 下载 nginx 不得 proxy_pass")
+    if "autoindex off" not in conf:
+        raise SystemExit("[gate] 失败: 需要 autoindex off")
+    sys.path.insert(0, str(REPO / "pipeline" / "work" / "bin"))
+    from download_manifest import build_manifest
+    m = build_manifest(REPO / "apps")
+    if "windows" not in m or "macos" not in m:
+        raise SystemExit("[gate] 失败: manifest 结构不对")
+    print("[gate] manifest windows.client=", m["windows"]["client"], flush=True)
+
+
 def main() -> int:
     os.chdir(REPO)
     rest, run = pop_run_arg(sys.argv[1:])
@@ -106,10 +124,14 @@ def main() -> int:
         do_java = do_ui = False
     elif scope == "server":
         do_client = False
+    elif scope == "download":
+        do_java = do_ui = do_client = False
     elif scope and scope not in ("", "all"):
-        raise SystemExit("[gate] 用法: python pipeline/bin/gate.py [server|java|ui|client] [--run 当次目录]")
+        raise SystemExit("[gate] 用法: python pipeline/bin/gate.py [server|java|ui|client|download] [--run 当次目录]")
 
     try:
+        if scope == "download":
+            gate_download()
         if do_java:
             build_java()
         if do_ui:

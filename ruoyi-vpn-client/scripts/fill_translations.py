@@ -138,6 +138,13 @@ EN_MAP = {
     "切换网关后连接超时": "Connection timed out after gateway switch",
     "网关连接超时": "Gateway connection timed out",
     "登录已过期，请重新登录": "Session expired. Please log in again.",
+    "当前密码已过期，请修改密码后重新登录！": (
+        "Your password has expired. Please change it and log in again."
+    ),
+    "线路密码已过期，正在自动更新...": "Line password expired. Updating automatically...",
+    "密码已经更新，需要退出重新登录": (
+        "Password updated. Please sign out and log in again."
+    ),
     "请填写完整信息": "Please fill in all fields",
     "两次输入的密码不一致": "Passwords do not match",
     "新密码不能与旧密码相同": "New password must differ from the old one",

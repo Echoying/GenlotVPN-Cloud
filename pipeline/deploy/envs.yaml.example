@@ -14,6 +14,7 @@ deploy:
 
 accept:
   base_url: http://10.27.0.92
+  download_base_url: https://10.27.0.93
   user: ""
   password: ""
   # 桌面端 AI 基础走查（client-ref），与管理端账号分开

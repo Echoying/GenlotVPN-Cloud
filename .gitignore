@@ -41,11 +41,14 @@ nbdist/
 ######################################################################
 # VPN 桌面客户端构建产物
 # - dist/、build-macos/：本地临时，忽略
-# - apps/：打包产物进 Git；只提交 zip（及 README），未压缩 .app 目录仅本机用
+# - apps/ 安装包不入库（GitHub 单文件 100MB 限制；发版走 deploy.py download 到 93）
 */build-macos/
 !apps/
 !apps/**/*
 apps/macos/*/
+apps/**/*.zip
+apps/**/*.exe
+apps/**/*.pkg
 
 ######################################################################
 # Frontend (Vue / npm)
@@ -55,6 +58,14 @@ node_modules/
 # VPN TCP TLS 私钥（证书公钥可本地生成，勿提交私钥）
 docker/ruoyi/vpn/auth/certs/*.key
 docker/ruoyi/vpn/auth/certs/server.crt
+
+# 93 下载站 nginx 证书（与 vpn-auth 9443 证书分开，不入库）
+docker/node-93/nginx/certs/*.key
+docker/node-93/nginx/certs/*.crt
+
+# 93 下载站部署暂存（deploy 从 apps/ 同步安装包，不入库）
+docker/node-93/nginx/files/
+
 
 ######################################################################
 # Docker 部署产物（由 copy.sh / copy_artifacts.py 从 target 拷入，勿提交）
@@ -76,12 +87,15 @@ __pycache__/
 *.pyc
 .agents/skills/
 .kiro/
+.superpowers/
+.skillshare/
 **/~$*.pptx
 
 # 流水线本机态 / 生成预览（主 pptx 与验收截图仍入库）
 pipeline/work/**/client-ref-state.json
 pipeline/work/_shared/share-assets/preview/
 pipeline/work/_shared/*-新.pptx
+pipeline/work/_shared/share-ppt-bak/*.pptx
 
 ######################################################################
 # Others

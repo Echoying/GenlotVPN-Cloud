@@ -43,6 +43,7 @@ SECTION_KEY_MAP = {
     },
     "accept": {
         "base_url": "ADMIN_E2E_BASE_URL",
+        "download_base_url": "DOWNLOAD_E2E_BASE_URL",
         "user": "ADMIN_E2E_USER",
         "password": "ADMIN_E2E_PASSWORD",
         "client_user": "CLIENT_E2E_USER",

@@ -30,6 +30,19 @@ QString extractControllerError(const QJsonObject &obj, const QString &fallback)
     return fallback;
 }
 
+/** 控制器 code 兼容字符串与数字两种形式 */
+bool matchesControllerCode(const QJsonObject &obj, const QString &code)
+{
+    const QJsonValue value = obj.value(QStringLiteral("code"));
+    if (value.isString()) {
+        return value.toString().trimmed() == code;
+    }
+    if (value.isDouble()) {
+        return QString::number(static_cast<qint64>(value.toDouble())) == code;
+    }
+    return false;
+}
+
 QJsonObject parseControllerJson(const QByteArray &plainJson, QString *errorOut)
 {
     QJsonParseError parseError;
@@ -72,7 +85,8 @@ QByteArray ControllerService::decodeControllerBody(const QByteArray &wireBody) c
 }
 
 void ControllerService::postJson(const QString &path, const QJsonDocument &doc,
-                                 std::function<void(const QJsonObject &)> onSuccess)
+                                 std::function<void(const QJsonObject &)> onSuccess,
+                                 BusinessErrorHandler onBusinessError)
 {
     const QByteArray plainJson = doc.toJson(QJsonDocument::Compact);
     const QByteArray requestBody = encodeControllerBody(plainJson);
@@ -91,7 +105,8 @@ void ControllerService::postJson(const QString &path, const QJsonDocument &doc,
         req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
     }
     auto *reply = m_nam.post(req, requestBody);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, path, onSuccess = std::move(onSuccess)]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, path, onSuccess = std::move(onSuccess),
+                                                    onBusinessError = std::move(onBusinessError)]() {
         reply->deleteLater();
         const QByteArray wireBody = reply->readAll();
         const QByteArray plainJson = decodeControllerBody(wireBody);
@@ -118,6 +133,9 @@ void ControllerService::postJson(const QString &path, const QJsonDocument &doc,
         if (obj.value(QStringLiteral("code")).toString() != QStringLiteral("200")) {
             const QString err = extractControllerError(obj, QStringLiteral("控制器请求失败"));
             AppLogger::instance()->error(QStringLiteral("[控制器] POST %1 失败: %2").arg(path, err));
+            if (onBusinessError && onBusinessError(obj)) {
+                return;
+            }
             emit operationFailed(err);
             return;
         }
@@ -217,8 +235,17 @@ void ControllerService::loginWithAccount(const QString &username, const QString 
     body[QStringLiteral("username")] = username;
     // password 保持云端下发的字段级 AES 密文；开启传输加密时由 postJson 再整包加密
     body[QStringLiteral("password")] = encryptedPassword;
-    postJson(QStringLiteral("/api/v1/user/loginWithAccount"), QJsonDocument(body), [this](const QJsonObject &) {
+    postJson(QStringLiteral("/api/v1/user/loginWithAccount"), QJsonDocument(body),
+             [this](const QJsonObject &) {
         emit loginControllerSucceeded();
+    },
+             [this](const QJsonObject &obj) {
+        // 2040：线路密码已过期，交由上层走自动轮换，不走通用失败
+        if (!matchesControllerCode(obj, QStringLiteral("2040"))) {
+            return false;
+        }
+        emit loginPasswordExpired(extractControllerError(obj, QString()));
+        return true;
     });
 }
 

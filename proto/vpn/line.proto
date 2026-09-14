@@ -27,3 +27,9 @@ message GetUserCredentialsResponse {
   string username = 1;
   string password = 2;
 }
+
+message RotateLinePasswordRequest {
+  string app_id = 1;
+}
+
+message RotateLinePasswordResponse {}

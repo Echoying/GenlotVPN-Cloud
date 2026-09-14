@@ -28,6 +28,7 @@ import com.ruoyi.yianlian.service.vpn.IVpnLocalUserSyncService;
 import com.ruoyi.yianlian.service.vpn.IVpnOfflineLoginExportService;
 import com.ruoyi.yianlian.service.vpn.IVpnRoleService;
 import com.ruoyi.yianlian.service.vpn.IVpnUserService;
+import com.ruoyi.yianlian.service.vpn.LinePasswordRotationService;
 import com.ruoyi.yianlian.utils.AesUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,6 +67,9 @@ public class VpnLocalUserController extends BaseController
 
     @Autowired
     private IVpnLineAuthService lineAuthService;
+
+    @Autowired
+    private LinePasswordRotationService linePasswordRotationService;
 
     @RequiresPermissions("vpn:localUser:list")
     @GetMapping("/list")
@@ -252,6 +256,16 @@ public class VpnLocalUserController extends BaseController
                                                         @RequestHeader(SecurityConstants.FROM_SOURCE) String source)
     {
         return R.ok(localUserService.getLineUserCredentials(localUserId, appId));
+    }
+
+    @InnerAuth
+    @PutMapping("/rotate-line-password")
+    public R<Boolean> rotateLinePassword(@RequestParam Long localUserId,
+                                         @RequestParam String appId,
+                                         @RequestHeader(SecurityConstants.FROM_SOURCE) String source)
+    {
+        linePasswordRotationService.rotate(localUserId, appId);
+        return R.ok(true);
     }
 
     /**

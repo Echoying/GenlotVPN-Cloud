@@ -370,6 +370,13 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         setStatusMessage(tr("正在登录控制器 SDK..."));
         m_controller->loginWithAccount(user, pwd);
     });
+    connect(m_cloud, &VpnCloudService::linePasswordRotationSucceeded, this, [this](int generation) {
+        handleLinePasswordRotated(generation);
+    });
+    connect(m_cloud, &VpnCloudService::linePasswordRotationFailed, this,
+            [this](int generation, const QString &msg) {
+        handleLinePasswordRotationFailed(generation, msg);
+    });
     connect(m_cloud, &VpnCloudService::changePasswordSucceeded, this, [this]() {
         m_changePasswordPending = false;
         setLoading(false);
@@ -511,8 +518,12 @@ VpnFlowController::VpnFlowController(VpnCloudService *cloud, ControllerService *
         const QString appId = (m_verifyLine.isEmpty() ? m_pendingLine : m_verifyLine).value(QStringLiteral("appId")).toString();
         m_cloud->fetchUserCredentials(appId);
     });
+    connect(m_controller, &ControllerService::loginPasswordExpired, this, [this](const QString &msg) {
+        handleLinePasswordExpired(msg);
+    });
     connect(m_controller, &ControllerService::loginControllerSucceeded, this, [this]() {
         addLog(QStringLiteral("info"), QStringLiteral("控制器登录成功"));
+        resetLinePasswordRotationState();
         const QVariantMap line = m_verifyLine.isEmpty() ? m_pendingLine : m_verifyLine;
         if (!m_offlineMode) {
             reportClientLoginAudit(true, QStringLiteral("connect"),
@@ -874,6 +885,8 @@ void VpnFlowController::connectOfflineLineInternal(int index, const QString &loc
 
 void VpnFlowController::goBackToLogin()
 {
+    // 作废在途轮换代次，避免回调在登录页 toast 或清理会话
+    resetLinePasswordRotationState();
     emit navigateTo(QStringLiteral("login"));
 }
 
@@ -1016,6 +1029,11 @@ void VpnFlowController::onConnectChainAfterVerify()
 
 void VpnFlowController::proceedControllerConnect(const QVariantMap &line)
 {
+    if (m_linePasswordRotationCompleting) {
+        // 轮换成功清理尚未落地：禁止新一轮连线，以免代次自增丢掉成功 toast
+        return;
+    }
+    resetLinePasswordRotationState();
     setLoading(true);
     setStatusMessage(tr("正在检测线路连通性..."));
     const QString host = line.value(QStringLiteral("host")).toString();
@@ -1514,6 +1532,195 @@ void VpnFlowController::handleSessionExpired(const QString &serverMsg)
     });
 }
 
+QString VpnFlowController::currentLineAppId() const
+{
+    const QVariantMap line = m_verifyLine.isEmpty() ? m_pendingLine : m_verifyLine;
+    return line.value(QStringLiteral("appId")).toString().trimmed();
+}
+
+QString VpnFlowController::linePasswordExpiredText() const
+{
+    return m_linePasswordExpiredMessage.isEmpty()
+               ? tr("当前密码已过期，请修改密码后重新登录！")
+               : m_linePasswordExpiredMessage;
+}
+
+void VpnFlowController::resetLinePasswordRotationState()
+{
+    // 自增代次：在途 RPC 的迟到回调将不再匹配，直接被丢弃
+    ++m_linePasswordRotationGeneration;
+    m_linePasswordRotationAttempts = 0;
+    m_linePasswordRotationPending = false;
+    m_linePasswordRotationCompleting = false;
+    m_linePasswordExpiredMessage.clear();
+}
+
+bool VpnFlowController::abortLinePasswordRotationIfSessionCleanup()
+{
+    if (!m_handlingSessionExpiry && !m_logoutCleanupInProgress) {
+        return false;
+    }
+    resetLinePasswordRotationState();
+    return true;
+}
+
+bool VpnFlowController::isCurrentLinePasswordRotation(int requestGeneration) const
+{
+    return m_linePasswordRotationPending
+           && requestGeneration == m_linePasswordRotationGeneration;
+}
+
+void VpnFlowController::handleLinePasswordExpired(const QString &message)
+{
+    if (abortLinePasswordRotationIfSessionCleanup()) {
+        return;
+    }
+    setLoading(false);
+
+    if (m_linePasswordRotationPending) {
+        // 轮换 RPC 在途（含成功后待清理），等其结果，避免并发再发
+        return;
+    }
+    m_linePasswordExpiredMessage = message.trimmed();
+    if (m_offlineMode) {
+        addLog(QStringLiteral("warn"), QStringLiteral("[离线登录] 线路密码已过期，离线模式不做自动更新"));
+        finishLinePasswordExpiredFailure();
+        return;
+    }
+    if (!hasActiveCloudSession()) {
+        finishLinePasswordExpiredFailure();
+        return;
+    }
+    if (currentLineAppId().isEmpty()) {
+        addLog(QStringLiteral("warn"), QStringLiteral("线路密码已过期，但未取到当前线路 appId，跳过自动更新"));
+        finishLinePasswordExpiredFailure();
+        return;
+    }
+    if (m_linePasswordRotationAttempts >= kMaxLinePasswordRotationAttempts) {
+        finishLinePasswordExpiredFailure();
+        return;
+    }
+    requestLinePasswordRotation();
+}
+
+void VpnFlowController::requestLinePasswordRotation()
+{
+    if (abortLinePasswordRotationIfSessionCleanup()) {
+        return;
+    }
+    if (m_linePasswordRotationPending
+        || m_linePasswordRotationAttempts >= kMaxLinePasswordRotationAttempts) {
+        return;
+    }
+    const QString appId = currentLineAppId();
+    if (appId.isEmpty()) {
+        finishLinePasswordExpiredFailure();
+        return;
+    }
+    // 每次请求自增代次：两次尝试各有独立代次，迟到回调不会被误归到下一次
+    ++m_linePasswordRotationGeneration;
+    m_linePasswordRotationPending = true;
+    ++m_linePasswordRotationAttempts;
+    addLog(QStringLiteral("info"),
+           QStringLiteral("线路密码已过期，正在自动更新（第 %1/%2 次）")
+               .arg(m_linePasswordRotationAttempts)
+               .arg(kMaxLinePasswordRotationAttempts));
+    setStatusMessage(tr("线路密码已过期，正在自动更新..."));
+    m_cloud->rotateLinePassword(appId, m_linePasswordRotationGeneration);
+}
+
+void VpnFlowController::handleLinePasswordRotationFailed(int requestGeneration, const QString &message)
+{
+    if (abortLinePasswordRotationIfSessionCleanup()) {
+        return;
+    }
+    if (!isCurrentLinePasswordRotation(requestGeneration) || m_linePasswordRotationCompleting) {
+        // 迟到或已作废的回调，不改状态
+        return;
+    }
+    m_linePasswordRotationPending = false;
+    const QString reason = message.trimmed();
+    addLog(QStringLiteral("warn"),
+           QStringLiteral("线路密码自动更新失败（第 %1/%2 次）: %3")
+               .arg(m_linePasswordRotationAttempts)
+               .arg(kMaxLinePasswordRotationAttempts)
+               .arg(reason));
+
+    // 会话失效优先走既有清理，避免与本流程重复提示
+    if (maybeHandleSessionExpired(reason)) {
+        resetLinePasswordRotationState();
+        return;
+    }
+    if (m_linePasswordRotationAttempts < kMaxLinePasswordRotationAttempts) {
+        requestLinePasswordRotation();
+        return;
+    }
+    finishLinePasswordExpiredFailure();
+}
+
+void VpnFlowController::handleLinePasswordRotated(int requestGeneration)
+{
+    if (!isCurrentLinePasswordRotation(requestGeneration) || m_linePasswordRotationCompleting) {
+        // 迟到、已作废或重复的成功回调，不改状态
+        return;
+    }
+    // 清理落地前保持 pending + loading，避免过早回到可再次连线的状态
+    m_linePasswordRotationCompleting = true;
+    setLoading(true);
+    addLog(QStringLiteral("info"), QStringLiteral("密码已经更新，需要退出重新登录"));
+
+    // 推迟到事件循环下一轮，避免在 TCP 回调栈内清理会话
+    QTimer::singleShot(0, this, [this, requestGeneration]() {
+        if (requestGeneration != m_linePasswordRotationGeneration) {
+            // 期间已开始新一轮连线/退出，本次清理作废，不得动新会话
+            return;
+        }
+        if (m_handlingSessionExpiry || m_logoutCleanupInProgress) {
+            resetLinePasswordRotationState();
+            return;
+        }
+        m_loginPending = false;
+        m_lineVerifyPending = false;
+        m_sendLineVerifyPending = false;
+        m_changePasswordPending = false;
+        m_autoConnectPending = false;
+        m_autoConnectStarted = false;
+        m_connectChainActive = false;
+        setLoading(false);
+
+        stopGatewayPolling();
+        clearGatewaySwitchingState();
+        stopTunnelStatusPolling();
+        stopSessionPing();
+
+        if (m_controller && needsControllerLogout()) {
+            m_controller->controllerLogout();
+        }
+        if (m_cloud && m_cloud->hasSession()) {
+            m_cloud->clearSession();
+        }
+        // finishLogout 保留用户名、回登录页并刷新验证码
+        finishLogout(false);
+
+        emit toast(tr("密码已经更新，需要退出重新登录"), false);
+    });
+}
+
+void VpnFlowController::finishLinePasswordExpiredFailure()
+{
+    // 本轮 attempts / 原文保留，直到 proceedControllerConnect、退出等清理入口再重置
+    const QString errorMsg = linePasswordExpiredText();
+    m_linePasswordRotationPending = false;
+    m_linePasswordRotationCompleting = false;
+    setLoading(false);
+    addLog(QStringLiteral("error"), errorMsg);
+    if (shouldReportConnectFailure()) {
+        reportClientLoginAudit(false, QStringLiteral("controller"), errorMsg);
+        m_connectChainActive = false;
+    }
+    emit toast(errorMsg, true);
+}
+
 void VpnFlowController::finishLogout(bool clearUsername)
 {
     stopGatewayPolling();
@@ -1527,6 +1734,7 @@ void VpnFlowController::finishLogout(bool clearUsername)
     m_sendLineVerifyPending = false;
     m_changePasswordPending = false;
     m_connectChainActive = false;
+    resetLinePasswordRotationState();
     setLoginError(QString());
     setVerifyError(QString());
     m_loginPurpose.clear();

@@ -37,6 +37,8 @@ public:
                                     const QString &loginPurpose);
     Q_INVOKABLE void confirmLineVerify(const QString &appId, const QString &code);
     Q_INVOKABLE void fetchUserCredentials(const QString &appId);
+    /** requestGeneration 为客户端内部代次，原样回传给结果信号，供调用方丢弃过期回调 */
+    Q_INVOKABLE void rotateLinePassword(const QString &appId, int requestGeneration);
     Q_INVOKABLE void changePassword(const QString &username, const QString &oldPassword,
                                     const QString &newPassword, const QString &appId);
     void uploadFeedbackImage(const QByteArray &bytes, const QString &contentType,
@@ -62,6 +64,10 @@ signals:
     void lineVerifySent(const QString &expireAt);
     void lineVerifyConfirmed();
     void userCredentialsReady(const QString &username, const QString &encryptedPassword);
+    /** 线路密码轮换成功（requestGeneration 为发起时的代次） */
+    void linePasswordRotationSucceeded(int requestGeneration);
+    /** 线路密码轮换失败（业务失败与传输重试耗尽均走此信号，不落通用 requestFailed） */
+    void linePasswordRotationFailed(int requestGeneration, const QString &message);
     void changePasswordSucceeded();
     void logoutSucceeded();
     void requestFailed(const QString &message);

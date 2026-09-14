@@ -3,7 +3,8 @@
 """上传管理端（默认 92 全部服务）并重建容器。
 
 默认：gateway / auth / system / gen / job / file / monitor / yianlian / nginx。
---vpn / --all：再上传 93 的 vpn-auth。
+--vpn / --all：再上传 93 的 vpn-auth，随后同步下载站。
+--download：只同步 93 下载站（不部署 92 / vpn-auth）。
 --ui：只更新前端。
 
 密码只读 DEPLOY_SSH_PASSWORD，不入库、不打印。
@@ -13,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -25,10 +27,11 @@ except Exception:
 
 _PIPE_BIN = Path(__file__).resolve().parents[2] / "bin"
 sys.path.insert(0, str(_PIPE_BIN))
-from paths import repo_root  # noqa: E402
+from paths import repo_root, work_bin  # noqa: E402
 from local_env import load as load_local_env  # noqa: E402
 
 REPO = repo_root()
+sys.path.insert(0, str(work_bin()))
 
 load_local_env()
 
@@ -101,10 +104,11 @@ def env(name: str, default: str = "") -> str:
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="上传并重建 92 全部管理端服务（可选 93 vpn-auth）")
+    p = argparse.ArgumentParser(description="上传并重建 92 全部管理端服务（可选 93 vpn-auth / 下载站）")
     p.add_argument("--ui", action="store_true", help="只更新前端 nginx")
-    p.add_argument("--vpn", action="store_true", help="额外部署 93 vpn-auth")
-    p.add_argument("--all", action="store_true", help="92 全部 + 93 vpn-auth")
+    p.add_argument("--vpn", action="store_true", help="额外部署 93 vpn-auth，并同步下载站")
+    p.add_argument("--all", action="store_true", help="92 全部 + 93 vpn-auth + 下载站")
+    p.add_argument("--download", action="store_true", help="只同步 93 下载站（不部署 92 / vpn-auth）")
     p.add_argument("--host", default=env("DEPLOY_SSH_HOST", "10.27.0.92"))
     p.add_argument("--host-93", default=env("DEPLOY_SSH_HOST_93", "10.27.0.93"))
     p.add_argument("--port", type=int, default=int(env("DEPLOY_SSH_PORT") or "22"))
@@ -258,11 +262,60 @@ def upload_jars(sftp, remote_base: str, items: list) -> None:
         print(f"[deploy] 已上传 {item['src'].name}")
 
 
+def sync_download_site(ssh, sftp, remote93):
+    from download_manifest import write_manifest
+    apps = REPO / "apps"
+    files_root = DOCKER / "node-93" / "nginx" / "files"
+    (files_root / "apps").mkdir(parents=True, exist_ok=True)
+    # 只拷文件，不拷 macos 下已解压目录。不 rmtree：Windows 上大 exe 可能被锁。
+    for plat in ("windows", "macos"):
+        src = apps / plat
+        dst = files_root / "apps" / plat
+        dst.mkdir(parents=True, exist_ok=True)
+        if src.is_dir():
+            for p in src.iterdir():
+                if p.is_file():
+                    dest = dst / p.name
+                    try:
+                        shutil.copy2(p, dest)
+                    except PermissionError:
+                        if dest.is_file() and dest.stat().st_size == p.stat().st_size:
+                            print("[deploy] 跳过已锁定且大小相同: {}".format(p.name), flush=True)
+                        else:
+                            raise
+    write_manifest(apps, files_root / "manifest.json")
+    remote = remote93.rstrip("/")
+    run_remote(
+        ssh,
+        "mkdir -p '{0}/nginx/html/genlotvpn' '{0}/nginx/files' '{0}/nginx/conf' '{0}/nginx/certs' '{0}/nginx/logs'".format(remote),
+    )
+    run_remote(
+        ssh,
+        "test -f '{0}/nginx/certs/download.crt' || ("
+        "openssl req -x509 -nodes -days 3650 -newkey rsa:2048 "
+        "-keyout '{0}/nginx/certs/download.key' "
+        "-out '{0}/nginx/certs/download.crt' "
+        "-subj '/CN=genlotvpn-download')".format(remote),
+    )
+    n1 = sftp_put_tree(sftp, DOCKER / "node-93" / "nginx" / "html" / "genlotvpn", remote + "/nginx/html/genlotvpn")
+    n2 = sftp_put_tree(sftp, files_root, remote + "/nginx/files")
+    sftp.put(str(DOCKER / "node-93" / "nginx" / "conf" / "nginx.conf"), remote + "/nginx/conf/nginx.conf")
+    sftp.put(str(DOCKER / "node-93" / "docker-compose.yml"), remote + "/docker-compose.yml")
+    print("[deploy] 下载站页面 {} 个文件，包+清单 {} 个".format(n1, n2), flush=True)
+    compose_up(ssh, remote, ["ruoyi-download-nginx"])
+
+
 def main() -> int:
     args = parse_args()
-    do_ui = True
-    do_admin_jars = not args.ui
-    do_vpn = args.vpn or args.all
+    do_download = args.download or args.vpn or args.all
+    if args.download:
+        do_ui = False
+        do_admin_jars = False
+        do_vpn = False
+    else:
+        do_ui = True
+        do_admin_jars = not args.ui
+        do_vpn = args.vpn or args.all
     password = require_password()
 
     try:
@@ -284,53 +337,61 @@ def main() -> int:
         print("[deploy] 分发 93 vpn-auth jar")
         stage_jars([VPN_JAR])
 
-    ssh92 = connect(args.host, args.port, args.user, password)
-    try:
-        remote = args.remote_dir.rstrip("/")
-        dirs = [f"{remote}/nginx/html/dist"] + [
-            f"{remote}/{item['remote'].rsplit('/', 1)[0]}" for item in ADMIN_JARS
-        ]
-        run_remote(ssh92, "mkdir -p " + " ".join(f"'{d}'" for d in dirs))
-        sftp = ssh92.open_sftp()
+    if do_ui or do_admin_jars:
+        ssh92 = connect(args.host, args.port, args.user, password)
         try:
-            if do_ui:
-                n = sftp_put_tree(
-                    sftp,
-                    DOCKER / "node-92" / "nginx" / "html" / "dist",
-                    f"{remote}/nginx/html/dist",
-                )
-                print(f"[deploy] 已上传前端 {n} 个文件")
+            remote = args.remote_dir.rstrip("/")
+            dirs = [f"{remote}/nginx/html/dist"] + [
+                f"{remote}/{item['remote'].rsplit('/', 1)[0]}" for item in ADMIN_JARS
+            ]
+            run_remote(ssh92, "mkdir -p " + " ".join(f"'{d}'" for d in dirs))
+            sftp = ssh92.open_sftp()
+            try:
+                if do_ui:
+                    n = sftp_put_tree(
+                        sftp,
+                        DOCKER / "node-92" / "nginx" / "html" / "dist",
+                        f"{remote}/nginx/html/dist",
+                    )
+                    print(f"[deploy] 已上传前端 {n} 个文件")
+                if do_admin_jars:
+                    upload_jars(sftp, remote, ADMIN_JARS)
+                    upload_compose_and_dockerfiles(
+                        sftp, ssh92, remote, DOCKER / "node-92", ADMIN_JARS
+                    )
+            finally:
+                sftp.close()
+
+            services = ["ruoyi-nginx"] if args.ui else [j["service"] for j in ADMIN_JARS] + ["ruoyi-nginx"]
+            compose_up(ssh92, remote, services)
             if do_admin_jars:
-                upload_jars(sftp, remote, ADMIN_JARS)
-                upload_compose_and_dockerfiles(
-                    sftp, ssh92, remote, DOCKER / "node-92", ADMIN_JARS
-                )
+                inject_jars(ssh92, remote, ADMIN_JARS)
         finally:
-            sftp.close()
+            ssh92.close()
 
-        services = ["ruoyi-nginx"] if args.ui else [j["service"] for j in ADMIN_JARS] + ["ruoyi-nginx"]
-        compose_up(ssh92, remote, services)
-        if do_admin_jars:
-            inject_jars(ssh92, remote, ADMIN_JARS)
-    finally:
-        ssh92.close()
-
-    if do_vpn:
+    if do_vpn or do_download:
         ssh93 = connect(args.host_93, args.port, args.user, password)
         try:
             remote93 = args.remote_dir_93.rstrip("/")
-            parent = f"{remote93}/{VPN_JAR['remote'].rsplit('/', 1)[0]}"
-            run_remote(ssh93, f"mkdir -p '{parent}'")
-            sftp = ssh93.open_sftp()
-            try:
-                upload_jars(sftp, remote93, [VPN_JAR])
-                upload_compose_and_dockerfiles(
-                    sftp, ssh93, remote93, DOCKER / "node-93", [VPN_JAR]
-                )
-            finally:
-                sftp.close()
-            compose_up(ssh93, remote93, [VPN_JAR["service"]])
-            inject_jars(ssh93, remote93, [VPN_JAR])
+            if do_vpn:
+                parent = f"{remote93}/{VPN_JAR['remote'].rsplit('/', 1)[0]}"
+                run_remote(ssh93, f"mkdir -p '{parent}'")
+                sftp = ssh93.open_sftp()
+                try:
+                    upload_jars(sftp, remote93, [VPN_JAR])
+                    upload_compose_and_dockerfiles(
+                        sftp, ssh93, remote93, DOCKER / "node-93", [VPN_JAR]
+                    )
+                finally:
+                    sftp.close()
+                compose_up(ssh93, remote93, [VPN_JAR["service"]])
+                inject_jars(ssh93, remote93, [VPN_JAR])
+            if do_download:
+                sftp = ssh93.open_sftp()
+                try:
+                    sync_download_site(ssh93, sftp, remote93)
+                finally:
+                    sftp.close()
         finally:
             ssh93.close()
 

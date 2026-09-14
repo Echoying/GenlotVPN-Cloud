@@ -396,6 +396,24 @@ void VpnCloudService::fetchUserCredentials(const QString &appId)
 #endif
 }
 
+void VpnCloudService::rotateLinePassword(const QString &appId, int requestGeneration)
+{
+#ifdef VPN_HAS_PROTO
+    vpn::RotateLinePasswordRequest req;
+    req.set_app_id(appId.toStdString());
+    sendRpc(static_cast<int>(vpn::MessageType::ROTATE_LINE_PASSWORD), serializeProto(req),
+            [this, requestGeneration](const RpcResult &) {
+                emit linePasswordRotationSucceeded(requestGeneration);
+            },
+            [this, requestGeneration](const QString &msg) {
+                emit linePasswordRotationFailed(requestGeneration, msg);
+            });
+#else
+    Q_UNUSED(appId);
+    emit linePasswordRotationFailed(requestGeneration, QStringLiteral("Protobuf 未生成"));
+#endif
+}
+
 void VpnCloudService::changePassword(const QString &username, const QString &oldPassword,
                                      const QString &newPassword, const QString &appId)
 {

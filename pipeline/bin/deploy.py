@@ -5,6 +5,7 @@
   python pipeline/bin/deploy.py --run 2026-08-15-用户线路权限查询
   python pipeline/bin/deploy.py ui --run 2026-08-15-用户线路权限查询
   python pipeline/bin/deploy.py vpn --run 2026-08-15-用户线路权限查询
+  python pipeline/bin/deploy.py download --run 2026-08-19-客户端下载页
 """
 from __future__ import annotations
 
@@ -34,7 +35,7 @@ def main() -> int:
     is_help = any(a in ("-h", "--help") for a in args)
     mapped = list(args)
     scope = "92"
-    if args and args[0].lower() in ("ui", "vpn", "all"):
+    if args and args[0].lower() in ("ui", "vpn", "all", "download"):
         scope = args[0].lower()
         mapped = ["--" + args[0].lower()] + args[1:]
     elif args and args[0].lower() == "java":

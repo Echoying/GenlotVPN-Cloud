@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""验收入口。默认管理端 Playwright；client-ref 为桌面端 AI 基础走查（参考，≠ 通过）。"""
+"""验收入口。默认管理端 Playwright；download 免登录下载站；client-ref 为桌面端 AI 基础走查（参考，≠ 通过）。"""
 from __future__ import annotations
 
 import sys
@@ -19,6 +19,11 @@ def main() -> int:
         from accept_client_ref import main as client_main
 
         return client_main()
+    if args and args[0] == "download":
+        sys.argv = [sys.argv[0]] + args[1:]
+        from accept_download import main as download_main
+
+        return download_main()
     from accept_admin import main as admin_main
 
     return admin_main()

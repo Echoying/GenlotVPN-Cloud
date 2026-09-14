@@ -41,10 +41,16 @@ signals:
     void gatewaySwitchFinished();
     void appListReady(const QVariantList &apps);
     void operationFailed(const QString &message);
+    /** 控制器登录返回 2040：线路密码已过期 */
+    void loginPasswordExpired(const QString &message);
 
 private:
+    /** 业务错误回调返回 true 表示已自行处理，不再 emit operationFailed */
+    using BusinessErrorHandler = std::function<bool(const QJsonObject &)>;
+
     void postJson(const QString &path, const QJsonDocument &doc,
-                  std::function<void(const QJsonObject &)> onSuccess);
+                  std::function<void(const QJsonObject &)> onSuccess,
+                  BusinessErrorHandler onBusinessError = nullptr);
     void getJson(const QString &path, std::function<void(const QJsonObject &)> onSuccess);
     QByteArray encodeControllerBody(const QByteArray &plainJson) const;
     QByteArray decodeControllerBody(const QByteArray &wireBody) const;

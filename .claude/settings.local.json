@@ -26,7 +26,13 @@
       "Bash(docker compose:*)",
       "Bash(npx vue-cli-service:*)",
       "Bash(dir:*)",
-      "Bash(mvn test-compile:*)"
+      "Bash(mvn test-compile:*)",
+      "Bash(python -c \"from pptx import Presentation; prs = Presentation\\('分享-超级AI个体-40分钟.pptx'\\); print\\(f'总页数: {len\\(prs.slides\\)}'\\); [print\\(f'\\\\n幻灯片 {i+1}:'\\) or [print\\(f'  - {shape.text[:100]}'\\) for shape in slide.shapes if hasattr\\(shape, 'text'\\) and shape.text.strip\\(\\)] for i, slide in enumerate\\(prs.slides\\)]\")",
+      "Bash(python build_share_pptx_fullstack.py)",
+      "Bash(python build_share_pptx_v2.py)",
+      "Bash(python build_share_pptx_v3.py)",
+      "Bash(taskkill /F /IM POWERPNT.EXE)",
+      "Bash(python -c ' *)"
     ]
   }
 }

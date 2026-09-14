@@ -24,3 +24,17 @@ services:
       - ./ruoyi/vpn/auth/certs:/home/ruoyi/certs:ro
       - ./ruoyi/vpn/auth/logs:/home/ruoyi/logs
       - ./ruoyi/vpn/auth/jar/ruoyi-vpn-auth.jar:/home/ruoyi/ruoyi-vpn-auth.jar:ro
+
+  ruoyi-download-nginx:
+    container_name: ruoyi-download-nginx
+    image: nginx
+    network_mode: host
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./nginx/html/genlotvpn:/home/ruoyi/genlotvpn:ro
+      - ./nginx/files:/home/ruoyi/download-files:ro
+      - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./nginx/logs:/var/log/nginx
+

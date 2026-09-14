@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>客户端下载</title>
+  <link rel="stylesheet" href="/genlotvpn/css/app.css">
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <a class="brand" href="/genlotvpn/download/">
+        <img src="/genlotvpn/img/logo.png" alt="Genlot" width="40" height="40">
+        <span id="site-title">客户端下载</span>
+      </a>
+      <nav class="nav">
+        <a id="nav-download" href="/genlotvpn/download/">客户端下载</a>
+        <a id="nav-manual" href="/genlotvpn/manual/">安装手册</a>
+      </nav>
+      <div class="lang" id="lang-dd">
+        <select id="lang-toggle" aria-label="Language">
+          <option id="btn-zh" value="zh">中文</option>
+          <option id="btn-en" value="en">EN</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <h1 id="hero-title">客户端下载</h1>
+      <p class="hero-sub" id="hero-sub"></p>
+      <div class="os-pills" role="tablist">
+        <button type="button" id="btn-mac">macOS</button>
+        <button type="button" id="btn-win">Windows</button>
+      </div>
+    </div>
+  </section>
+
+  <main>
+    <section id="page-download">
+      <div id="cards"></div>
+    </section>
+    <section id="page-manual" hidden>
+      <p id="manual-head"></p>
+      <div class="guide-tabs">
+        <button type="button" id="guide-win">Windows 使用说明</button>
+        <button type="button" id="guide-mac">macOS 使用说明</button>
+      </div>
+      <ol id="steps"></ol>
+    </section>
+  </main>
+
+  <footer>
+    <p id="footer">© Genlot</p>
+  </footer>
+  <script src="/genlotvpn/js/i18n.js"></script>
+  <script src="/genlotvpn/js/app.js"></script>
+</body>
+</html>
