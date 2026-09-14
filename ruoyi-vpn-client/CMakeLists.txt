@@ -199,11 +199,12 @@ if(WIN32)
     target_link_libraries(GenlotVPN PRIVATE crypt32 bcrypt)
 endif()
 if(APPLE)
+    # objc 是 libobjc（-lobjc），不是 framework；-framework objc 会报 framework not found
     target_link_libraries(GenlotVPN PRIVATE
         "-framework Security"
         "-framework CoreFoundation"
         "-framework AppKit"
-        "-framework objc"
+        "-lobjc"
     )
 endif()
 
