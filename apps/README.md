@@ -1,6 +1,6 @@
 # 可分发客户端产物
 
-由打包脚本自动写入，**请将 zip 随版本提交到 Git**，供同事下载使用。
+由打包脚本写入本目录，**安装包不进 Git**。发版后跑 `python pipeline/bin/deploy.py download` 同步到 93 下载页。
 
 ## macOS
 

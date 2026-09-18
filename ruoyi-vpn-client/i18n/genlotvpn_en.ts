@@ -85,19 +85,19 @@
     <name>ChooseLinePage</name>
     <message>
         <source>请填写登录用途</source>
-        <translation type="vanished">Please enter login purpose</translation>
+        <translation>Please enter login purpose</translation>
     </message>
     <message>
         <source>登录用途至少填写5个字（还需 %1 字）</source>
-        <translation type="vanished">Purpose must be at least 5 characters (%1 more needed)</translation>
+        <translation>Purpose must be at least 5 characters (%1 more needed)</translation>
     </message>
     <message>
         <source>已达 50 字上限</source>
-        <translation type="vanished">Maximum 50 characters reached</translation>
+        <translation>Maximum 50 characters reached</translation>
     </message>
     <message>
         <source>已输入 %1/50 字</source>
-        <translation type="vanished">Entered %1/50 characters</translation>
+        <translation>Entered %1/50 characters</translation>
     </message>
     <message>
         <location filename="../qml/pages/ChooseLinePage.qml" line="15"/>
@@ -116,38 +116,38 @@
     </message>
     <message>
         <source>登录用途</source>
-        <translation type="vanished">Login Purpose</translation>
+        <translation>Login Purpose</translation>
     </message>
     <message>
         <source>请输入登录用途</source>
-        <translation type="vanished">Enter login purpose</translation>
+        <translation>Enter login purpose</translation>
     </message>
     <message>
         <source>确定</source>
-        <translation type="vanished">OK</translation>
+        <translation>OK</translation>
     </message>
     <message>
         <source>取消</source>
-        <translation type="vanished">Cancel</translation>
+        <translation>Cancel</translation>
     </message>
 </context>
 <context>
     <name>ConnectLinePage</name>
     <message>
         <source>正在连接 %1</source>
-        <translation type="vanished">Connecting to %1</translation>
+        <translation>Connecting to %1</translation>
     </message>
     <message>
         <source>连接中...</source>
-        <translation type="vanished">Connecting...</translation>
+        <translation>Connecting...</translation>
     </message>
     <message>
         <source>选线安全验证</source>
-        <translation type="vanished">Line Security Verification</translation>
+        <translation>Line Security Verification</translation>
     </message>
     <message>
         <source>请输入钉钉群收到的 6 位验证码</source>
-        <translation type="vanished">Enter the 6-digit code from DingTalk</translation>
+        <translation>Enter the 6-digit code from DingTalk</translation>
     </message>
     <message>
         <location filename="../qml/pages/ConnectLinePage.qml" line="18"/>
@@ -186,7 +186,7 @@
     </message>
     <message>
         <source>正在检测线路并登录控制器，请勿关闭窗口</source>
-        <translation type="vanished">Detecting line and signing in to the controller. Do not close this window.</translation>
+        <translation>Detecting line and signing in to the controller. Do not close this window.</translation>
     </message>
     <message>
         <location filename="../qml/pages/ConnectLinePage.qml" line="73"/>
@@ -354,7 +354,7 @@
     <message>
         <source>界面加载失败，请确认安装目录下存在 GenlotVPN 文件夹。
 详细日志见 logs 目录。</source>
-        <translation type="vanished">Failed to load UI. Ensure the GenlotVPN folder exists next to the executable.
+        <translation>Failed to load UI. Ensure the GenlotVPN folder exists next to the executable.
 See the logs directory for details.</translation>
     </message>
 </context>
@@ -425,7 +425,7 @@ See the logs directory for details.</translation>
     </message>
     <message>
         <source>请勿篡改文件</source>
-        <translation type="vanished">Do not tamper with the file</translation>
+        <translation>Do not tamper with the file</translation>
     </message>
     <message>
         <location filename="../src/core/OfflineLoginImporter.cpp" line="126"/>
@@ -502,7 +502,7 @@ See the logs directory for details.</translation>
     </message>
     <message>
         <source>离线登录文件已被篡改或无效</source>
-        <translation type="vanished">Offline login file has been tampered with or is invalid</translation>
+        <translation>Offline login file has been tampered with or is invalid</translation>
     </message>
     <message>
         <location filename="../src/core/OfflineLoginImporter.cpp" line="160"/>
@@ -660,11 +660,11 @@ See the logs directory for details.</translation>
     </message>
     <message>
         <source>界面语言</source>
-        <translation type="vanished">Display language</translation>
+        <translation>Display language</translation>
     </message>
     <message>
         <source>切换后立即生效，无需重启。</source>
-        <translation type="vanished">Takes effect immediately without restart.</translation>
+        <translation>Takes effect immediately without restart.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="450"/>
@@ -726,7 +726,7 @@ See the logs directory for details.</translation>
     </message>
     <message>
         <source>TLS 握手失败（Windows 与服务器 TLS 特性不兼容）。请重启 ruoyi-vpn-auth 使服务端支持 TLS 1.2+1.3，并确认 config.json 中 useTls 为 true。</source>
-        <translation type="vanished">TLS handshake failed (Windows/server TLS mismatch). Restart ruoyi-vpn-auth for TLS 1.2+1.3 and ensure useTls is true in config.json.</translation>
+        <translation>TLS handshake failed (Windows/server TLS mismatch). Restart ruoyi-vpn-auth for TLS 1.2+1.3 and ensure useTls is true in config.json.</translation>
     </message>
     <message>
         <location filename="../src/transport/TcpClient.cpp" line="34"/>
@@ -743,7 +743,7 @@ See the logs directory for details.</translation>
     <name>main</name>
     <message>
         <source>离线</source>
-        <translation type="vanished">Offline</translation>
+        <translation>Offline</translation>
     </message>
     <message>
         <location filename="../qml/main.qml" line="167"/>
@@ -913,7 +913,7 @@ See the logs directory for details.</translation>
     </message>
     <message>
         <source>请先在选线页填写登录用途</source>
-        <translation type="vanished">Please enter login purpose on the line selection page first</translation>
+        <translation>Please enter login purpose on the line selection page first</translation>
     </message>
     <message>
         <location filename="../src/core/VpnFlowController.cpp" line="814"/>
