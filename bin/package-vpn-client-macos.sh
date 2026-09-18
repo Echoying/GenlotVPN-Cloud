@@ -66,15 +66,20 @@ APP="$DIST/GenlotVPN.app"
 MACOS_DIR="$APP/Contents/MacOS"
 FW_DIR="$APP/Contents/Frameworks"
 
-# VERSION 属性会产出 GenlotVPN-x.y.z + 符号链接 GenlotVPN；打包后确保符号链接存在
+# 现在 macOS 固定产出 GenlotVPN（不带版本号），让钥匙串授权身份跨版本稳定；
+# 旧构建目录可能残留 GenlotVPN-x.y.z，一并清掉，避免被打进包
 resolve_bin() {
   local link="$MACOS_DIR/GenlotVPN"
+  if [[ -f "$link" && ! -L "$link" ]]; then
+    find "$MACOS_DIR" -maxdepth 1 -name 'GenlotVPN-*' ! -name '*.json' -delete 2>/dev/null || true
+    echo "$link"
+    return 0
+  fi
+  # 兼容旧构建：可执行文件带版本号 + 符号链接
   local verbin
-  verbin="$(find "$MACOS_DIR" -maxdepth 1 -type f -name 'GenlotVPN-*' | head -n1 || true)"
+  verbin="$(find "$MACOS_DIR" -maxdepth 1 -type f -name 'GenlotVPN-*' ! -name '*.json' | head -n1 || true)"
   if [[ -n "$verbin" ]]; then
-    local base
-    base="$(basename "$verbin")"
-    ln -sfn "$base" "$link"
+    ln -sfn "$(basename "$verbin")" "$link"
     echo "$verbin"
     return 0
   fi
@@ -156,6 +161,50 @@ if [[ -d build-macos ]]; then
   for qm in build-macos/genlotvpn_zh_CN.qm build-macos/genlotvpn_en.qm; do
     [[ -f "$qm" ]] && cp -f "$qm" "$APP/Contents/Resources/i18n/"
   done
+fi
+
+# Contents/MacOS 只允许放可执行代码；旧构建可能在此残留配置/翻译，会让 codesign 失败
+for stray in config.json config.default.json i18n; do
+  if [[ -e "$MACOS_DIR/$stray" ]]; then
+    rm -rf "$MACOS_DIR/$stray"
+    echo "[OK] 已移除 Contents/MacOS/$stray（资源只放 Resources）"
+  fi
+done
+
+# ---------- 代码签名 ----------
+# 必须在改完 bundle 内所有文件之后：签名后再动文件会让签名失效。
+# 默认 ad-hoc（-s -），无需证书；有 Developer ID 时用
+#   GENLOT_CODESIGN_ID="Developer ID Application: XXX (TEAMID)" 覆盖，
+# 那样钥匙串授权身份才真正跨版本稳定（ad-hoc 的 cdhash 每次编译都会变，
+# 升级后系统仍会问一次是否允许访问钥匙串，需选「始终允许」）。
+SIGN_ID="${GENLOT_CODESIGN_ID:--}"
+echo
+if [[ "$SIGN_ID" == "-" ]]; then
+  echo "[..] 代码签名：ad-hoc（未使用证书）..."
+else
+  echo "[..] 代码签名：$SIGN_ID ..."
+fi
+# 先签嵌套的动态库与框架，最后签 bundle 本体
+while IFS= read -r -d '' lib; do
+  codesign --force --timestamp=none --sign "$SIGN_ID" "$lib" >/dev/null 2>&1 \
+    || echo "[!] 签名失败（忽略）: ${lib#"$APP/"}"
+done < <(find "$APP/Contents/Frameworks" "$APP/Contents/PlugIns" \
+              -type f -name '*.dylib' -print0 2>/dev/null)
+for fw in "$FW_DIR"/*.framework; do
+  [[ -d "$fw" ]] || continue
+  codesign --force --timestamp=none --sign "$SIGN_ID" "$fw" >/dev/null 2>&1 \
+    || echo "[!] 签名失败（忽略）: $(basename "$fw")"
+done
+if ! codesign --force --timestamp=none --sign "$SIGN_ID" \
+       -i com.genlot.GenlotVPN "$APP" >/dev/null 2>&1; then
+  echo "[X] bundle 签名失败，请勿分发"
+  exit 1
+fi
+if codesign --verify --strict "$APP" >/dev/null 2>&1; then
+  echo "[OK] 已签名并校验通过"
+else
+  echo "[X] 签名校验未通过，请勿分发"
+  exit 1
 fi
 
 # ---------- 自检 ----------

@@ -55,14 +55,15 @@ git push
 1. `macdeployqt`：嵌入 Qt 框架、platforms / tls / imageformats / qml 等插件，以及 `Resources/qml/QtQuick*`  
 2. 拷贝 Homebrew `libprotobuf*.dylib` 到 `Contents/Frameworks`，并改写 `@executable_path`  
 3. 确保业务 `Resources/GenlotVPN/`、`config.default.json`、`genlot-app.icns`、i18n  
-4. **自检**：核心 Qt 框架、cocoa/tls 插件、无本机绝对路径残留；失败则非 0 退出  
-5. 同步到仓库 `apps/macos/`（zip 进 Git；未压缩 `.app` 仅本机）
+4. **代码签名**：默认 ad-hoc，可用 `GENLOT_CODESIGN_ID` 指定证书（第 5 节）  
+5. **自检**：核心 Qt 框架、cocoa/tls 插件、无本机绝对路径残留；失败则非 0 退出  
+6. 同步到仓库 `apps/macos/`（zip 进 Git；未压缩 `.app` 仅本机）
 
 ### 包内应有（抽查）
 
 | 路径 | 用途 |
 |------|------|
-| `Contents/MacOS/GenlotVPN`（→ `GenlotVPN-x.y.z`） | 主程序 |
+| `Contents/MacOS/GenlotVPN` | 主程序（macOS 下**不带**版本号后缀，保证钥匙串授权身份稳定） |
 | `Contents/Frameworks/Qt*.framework` | Qt 运行时 |
 | `Contents/Frameworks/libprotobuf*.dylib` | Protobuf |
 | `Contents/PlugIns/platforms/libqcocoa.dylib` | Cocoa 平台插件 |
@@ -122,9 +123,23 @@ nc -vz <服务器IP> 9443
 
 ## 5. 代码签名、公证与 DMG（外发）
 
-内测可直接运行本地构建的 `.app`（可能需右键打开绕过 Gatekeeper）。外发建议：
+打包脚本**默认已做 ad-hoc 签名**（`codesign -s -`，标识 `com.genlot.GenlotVPN`），无需证书。
+有 Developer ID 时用环境变量覆盖，签名身份才跨版本稳定：
 
-1. **签名**（Developer ID Application）：
+```bash
+GENLOT_CODESIGN_ID="Developer ID Application: YOUR NAME (TEAMID)" \
+  bash bin/package-vpn-client-macos.sh
+```
+
+> **与「记住密码」的关系**：macOS 钥匙串按创建条目的程序身份授权。
+> ad-hoc 签名的 cdhash 每次编译都变，升级版本后系统会再问一次是否允许访问钥匙串，
+> 用户需选「始终允许」；用同一 Developer ID 证书签名才能彻底免打扰。
+> 另外 `Contents/MacOS/` 只允许放可执行代码，配置模板与翻译一律放 `Contents/Resources/`，
+> 否则 codesign 会直接失败。
+
+外发还需：
+
+1. **加固运行时签名**（Developer ID Application）：
    ```bash
    codesign --deep --force --options runtime \
      --sign "Developer ID Application: YOUR NAME (TEAMID)" \
@@ -148,6 +163,7 @@ nc -vz <服务器IP> 9443
 | 控制器 30303 失败 | 启动易安联 Mac Agent |
 | 网关超时 | 检查 Agent 与线路可达性 |
 | 改配置不生效 | 确认改的是 Application Support 下的 `config.json`，不是 `.app` 内只读副本 |
+| 换版本后记不住密码 | 钥匙串授权绑定程序身份。系统询问时选「始终允许」；或在设置里取消再重新勾选「记住密码」。日志会有 `[Keychain] ... OSStatus=` |
 | 打包日志出现 libpq / libiodbc ERROR | 来自无用的 Qt SQL 插件；脚本会删除 `sqldrivers`，可忽略 |
 
 ## 7. 安全说明（与 Windows 对齐）

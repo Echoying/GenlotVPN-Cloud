@@ -141,7 +141,11 @@ if(APPLE)
     endif()
 endif()
 
-set_target_properties(GenlotVPN PROPERTIES VERSION ${PROJECT_VERSION})
+# macOS 上 VERSION 会把可执行文件产出成 GenlotVPN-x.y.z。未签名/ad-hoc 签名时，
+# 钥匙串按可执行文件身份授权，文件名每版一变就会让「记住密码」失配，故 Apple 下不带版本
+if(NOT APPLE)
+    set_target_properties(GenlotVPN PROPERTIES VERSION ${PROJECT_VERSION})
+endif()
 
 target_compile_definitions(GenlotVPN PRIVATE
     GENLOT_APP_VERSION="${GENLOT_VERSION_STRING}"
@@ -243,20 +247,24 @@ if(MSVC AND GENLOT_PROTOBUF_DLL AND NOT GENLOT_ALLOW_DEBUG_PROTOBUF)
     endif()
 endif()
 
-# 拷贝默认配置与运行时依赖到输出目录（exe 旁或 .app/Contents/MacOS）
+# 拷贝默认配置与运行时依赖到输出目录（exe 旁）
+# macOS 例外：Contents/MacOS 只允许放可执行代码，放资源会让 codesign 失败，
+# 配置模板与翻译只进 Contents/Resources（AppPaths 已优先从那里读）
 configure_file(${CMAKE_SOURCE_DIR}/resources/config.json ${CMAKE_BINARY_DIR}/config.json COPYONLY)
-add_custom_command(TARGET GenlotVPN POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/resources/config.json
-        $<TARGET_FILE_DIR:GenlotVPN>/config.json
-    COMMENT "Copy config.json next to GenlotVPN executable"
-)
-add_custom_command(TARGET GenlotVPN POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/resources/config.default.json
-        $<TARGET_FILE_DIR:GenlotVPN>/config.default.json
-    COMMENT "Copy config.default.json (first-run template)"
-)
+if(NOT APPLE)
+    add_custom_command(TARGET GenlotVPN POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_SOURCE_DIR}/resources/config.json
+            $<TARGET_FILE_DIR:GenlotVPN>/config.json
+        COMMENT "Copy config.json next to GenlotVPN executable"
+    )
+    add_custom_command(TARGET GenlotVPN POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_SOURCE_DIR}/resources/config.default.json
+            $<TARGET_FILE_DIR:GenlotVPN>/config.default.json
+        COMMENT "Copy config.default.json (first-run template)"
+    )
+endif()
 if(APPLE)
     # 可写配置从 Application Support 读取模板时，也放入 Resources
     add_custom_command(TARGET GenlotVPN POST_BUILD
@@ -318,13 +326,15 @@ if(GENLOT_QM_FILES)
     )
     add_custom_target(genlot_sync_qm ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/i18n.qm.stamp")
     add_dependencies(GenlotVPN genlot_sync_qm)
-    add_custom_command(TARGET GenlotVPN POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:GenlotVPN>/i18n
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${GENLOT_QM_FILES}
-            $<TARGET_FILE_DIR:GenlotVPN>/i18n/
-        COMMENT "Copy translation QM files"
-    )
+    if(NOT APPLE)
+        add_custom_command(TARGET GenlotVPN POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:GenlotVPN>/i18n
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${GENLOT_QM_FILES}
+                $<TARGET_FILE_DIR:GenlotVPN>/i18n/
+            COMMENT "Copy translation QM files"
+        )
+    endif()
     if(APPLE)
         add_custom_command(TARGET GenlotVPN POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory
